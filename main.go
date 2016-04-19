@@ -12,8 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boltdb/bolt"
-
+	"github.com/optdyn/gorjun/db"
 	"github.com/subutai-io/base/agent/log"
 )
 
@@ -22,28 +21,8 @@ type template struct {
 }
 
 var (
-	bucket = "MyBucket"
-	path   = "/tmp/"
-	db     = initdb()
+	path = "/tmp/"
 )
-
-func initdb() *bolt.DB {
-	db, err := bolt.Open("my.db", 0600, nil)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(bucket))
-		if err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	return db
-}
 
 func readTempl(hash string) (string, bytes.Buffer) {
 	var config bytes.Buffer
@@ -130,32 +109,12 @@ func genHash() string {
 func uploadTempl(w http.ResponseWriter, r *http.Request) {
 	t := getConf(readTempl(uploadHandler(w, r)))
 	log.Info("Name: " + t.name + ", version: " + t.version + ", hash: " + t.hash)
-	write(db, t.hash, t.name)
-	log.Info("Added to db: " + read(db, t.hash))
-}
-
-func write(db *bolt.DB, key, value string) {
-	err := db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		b.Put([]byte(key), []byte(value))
-		return nil
-	})
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-}
-
-func read(db *bolt.DB, key string) (value string) {
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		value = string(b.Get([]byte(key)))
-		return nil
-	})
-	return value
+	db.Write(t.hash, t.name)
+	log.Info("Added to db: " + db.Read(t.hash))
 }
 
 func main() {
+	defer db.Close()
 	http.HandleFunc("/template/upload", uploadTempl)
 	http.ListenAndServe(":8080", nil)
-	db.Close()
 }
