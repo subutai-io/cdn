@@ -45,6 +45,19 @@ func Read(key string) (value string) {
 	return value
 }
 
+func List() map[string]string {
+	list := make(map[string]string)
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		b.ForEach(func(k, v []byte) error {
+			list[string(k)] = string(v)
+			return nil
+		})
+		return nil
+	})
+	return list
+}
+
 func Close() {
 	db.Close()
 }

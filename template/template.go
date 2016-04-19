@@ -111,6 +111,15 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		defer f.Close()
 		io.Copy(w, f)
 	} else {
-		w.Write([]byte("Please specify name or hash"))
+		w.Write([]byte("Please specify hash"))
 	}
+}
+
+func List(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("<html><body>"))
+	for k, v := range db.List() {
+		// <a href="url">link text</a>
+		w.Write([]byte("<p><a href=\"http://localhost:8080/template/download?hash=" + k + "\">" + v + "</a></p>"))
+	}
+	w.Write([]byte("</body></html>"))
 }
