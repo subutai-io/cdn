@@ -24,6 +24,21 @@ var (
 	path = "/tmp/"
 )
 
+var uploadPage string = `
+  <html>
+  <title>Go upload</title>
+  <body>
+
+  <form action="http://localhost:8080/template/upload" method="post" enctype="multipart/form-data">
+  <label for="file">Filename:</label>
+  <input type="file" name="file" id="file">
+  <input type="submit" name="submit" value="Submit">
+  </form>
+
+  </body>
+  </html>
+`
+
 func readTempl(hash string) (string, bytes.Buffer) {
 	var config bytes.Buffer
 	f, err := os.Open(path + hash)
@@ -107,14 +122,33 @@ func genHash() string {
 }
 
 func uploadTempl(w http.ResponseWriter, r *http.Request) {
-	t := getConf(readTempl(uploadHandler(w, r)))
-	log.Info("Name: " + t.name + ", version: " + t.version + ", hash: " + t.hash)
-	db.Write(t.hash, t.name)
-	log.Info("Added to db: " + db.Read(t.hash))
+	if r.Method == "GET" {
+		w.Write([]byte(uploadPage))
+	} else if r.Method == "POST" {
+		t := getConf(readTempl(uploadHandler(w, r)))
+		w.Write([]byte("Name: " + t.name + ", version: " + t.version + ", hash: " + t.hash + "\n"))
+		db.Write(t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz")
+		w.Write([]byte("Added to db: " + db.Read(t.hash)))
+	}
+}
+
+func downloadTempl(w http.ResponseWriter, r *http.Request) {
+	hash := r.URL.Query().Get("hash")
+	if len(hash) != 0 {
+		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
+		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+		f, err := os.Open(path + hash)
+		log.Check(log.FatalLevel, "Opening file "+path+hash, err)
+		defer f.Close()
+		io.Copy(w, f)
+	} else {
+		w.Write([]byte("Please specify name or hash"))
+	}
 }
 
 func main() {
 	defer db.Close()
 	http.HandleFunc("/template/upload", uploadTempl)
+	http.HandleFunc("/template/download", downloadTempl)
 	http.ListenAndServe(":8080", nil)
 }
