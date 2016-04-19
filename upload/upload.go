@@ -15,6 +15,21 @@ var (
 	path = "/tmp/"
 )
 
+func Page(repo string) string {
+	return `
+  <html>
+  <title>Go upload</title>
+  <body>
+  <form action="http://localhost:8080/` + repo + `/upload" method="post" enctype="multipart/form-data">
+  <label for="file">Filename:</label>
+  <input type="file" name="file" id="file">
+  <input type="submit" name="submit" value="Submit">
+  </form>
+  </body>
+  </html>
+`
+}
+
 func Handler(w http.ResponseWriter, r *http.Request) string {
 	hash := genHash()
 	file, header, err := r.FormFile("file")
@@ -34,7 +49,7 @@ func Handler(w http.ResponseWriter, r *http.Request) string {
 	if err != nil {
 		log.Warn(err.Error())
 	}
-	log.Info("File uploaded successfully : " + header.Filename)
+	log.Info("File uploaded successfully: " + header.Filename)
 	return hash
 }
 
