@@ -6,13 +6,12 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/subutai-io/base/agent/log"
 )
 
 var (
-	path = "/tmp/deb/"
+	path = "/tmp/"
 )
 
 func Page(repo string) string {
@@ -31,14 +30,14 @@ func Page(repo string) string {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) string {
-	hash := genHash()
+	// hash := genHash()
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		log.Warn(err.Error())
 		return ""
 	}
 	defer file.Close()
-	out, err := os.Create(path + hash)
+	out, err := os.Create(path + header.Filename)
 	if err != nil {
 		log.Warn("Unable to create the file for writing. Check your write access privilege")
 		return ""
@@ -49,12 +48,20 @@ func Handler(w http.ResponseWriter, r *http.Request) string {
 	if err != nil {
 		log.Warn(err.Error())
 	}
-	log.Info("File uploaded successfully: " + header.Filename)
+	hash := genHash(path + header.Filename)
+	os.Rename(path+header.Filename, path+hash)
+	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
 	return hash
 }
 
-func genHash() string {
+func genHash(file string) string {
+	f, err := os.Open(file)
+	log.Check(log.FatalLevel, "Opening file"+file, err)
+	defer f.Close()
+
 	hash := md5.New()
-	hash.Write([]byte(time.Now().String()))
+	if _, err := io.Copy(hash, f); err != nil {
+		return ""
+	}
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }

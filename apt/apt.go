@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	// "path/filepath"
 	"strings"
 
 	"github.com/optdyn/gorjun/db"
@@ -19,7 +18,7 @@ import (
 )
 
 var (
-	path = "/tmp/deb/"
+	path = "/tmp/"
 )
 
 func readDeb(hash string) (string, bytes.Buffer) {
@@ -114,6 +113,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		hash, meta := getControl(readDeb(upload.Handler(w, r)))
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(path + hash)
+		meta["MD5sum"] = hash
 		writePackage(meta)
 		w.Write([]byte("Name: " + header.Filename + "\n"))
 		db.Write(hash, header.Filename, meta)

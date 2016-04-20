@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	path = "/tmp/deb/"
+	path = "/tmp/"
 )
 
 func Handler(w http.ResponseWriter, r *http.Request) {
