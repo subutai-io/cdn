@@ -12,6 +12,7 @@ import (
 var (
 	bucket = "MyBucket"
 	search = "SearchIndex"
+	users  = "Users"
 	db     = initdb()
 )
 
@@ -25,6 +26,9 @@ func initdb() *bolt.DB {
 		_, err = tx.CreateBucketIfNotExists([]byte(search))
 		log.Check(log.FatalLevel, "Creating search bucket: "+search, err)
 
+		_, err = tx.CreateBucketIfNotExists([]byte(users))
+		log.Check(log.FatalLevel, "Creating users bucket: "+search, err)
+
 		return nil
 	})
 	log.Check(log.FatalLevel, "Finishing update transaction"+bucket, err)
@@ -33,16 +37,21 @@ func initdb() *bolt.DB {
 }
 
 func Write(key, value string, options ...map[string]string) {
+	name := "subutai"
+	now, _ := time.Now().MarshalText()
 	err := db.Update(func(tx *bolt.Tx) error {
 
-		b, err := tx.Bucket([]byte(bucket)).CreateBucketIfNotExists([]byte(key))
-		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
-		err = b.Put([]byte("name"), []byte(value))
-		log.Check(log.WarnLevel, "Storing key: "+key, err)
+		b, err := tx.Bucket([]byte(users)).CreateBucketIfNotExists([]byte(name))
+		log.Check(log.FatalLevel, "Creating users subbucket: "+key, err)
+		b, err = b.CreateBucketIfNotExists([]byte("files"))
+		log.Check(log.FatalLevel, "Creating users:files subbucket: "+key, err)
+		b.Put([]byte(key), []byte(value))
 
-		now, _ := time.Now().MarshalText()
-		err = b.Put([]byte("date"), now)
-		log.Check(log.WarnLevel, "Storing key: date", err)
+		b, err = tx.Bucket([]byte(bucket)).CreateBucketIfNotExists([]byte(key))
+		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
+		b.Put([]byte("date"), now)
+		b.Put([]byte("name"), []byte(value))
+		b.Put([]byte("owner"), []byte(name))
 
 		for i, _ := range options {
 			for k, v := range options[i] {
@@ -53,8 +62,7 @@ func Write(key, value string, options ...map[string]string) {
 
 		b, err = tx.Bucket([]byte(search)).CreateBucketIfNotExists([]byte(value))
 		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
-		err = b.Put(now, []byte(key))
-		log.Check(log.WarnLevel, "Storing key: "+key, err)
+		b.Put(now, []byte(key))
 
 		return nil
 	})
