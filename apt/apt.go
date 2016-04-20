@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/optdyn/gorjun/db"
+	"github.com/optdyn/gorjun/download"
 	"github.com/optdyn/gorjun/upload"
 
 	"github.com/mkrautz/goar"
@@ -123,16 +124,18 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 func Download(w http.ResponseWriter, r *http.Request) {
 	file := strings.TrimLeft(r.RequestURI, "/apt/")
-	log.Info("Request: " + r.RequestURI)
-	if file != "Packages.gz" && file != "InRelease" && file != "Release" {
-		for k, _ := range db.Search(file) {
-			file = k
+	if len(file) == 0 {
+		download.List("apt", w, r)
+	} else {
+		log.Info("Request: " + r.RequestURI)
+		if file != "Packages.gz" && file != "InRelease" && file != "Release" {
+			file = db.LastHash(file)
 		}
+		f, err := os.Open(path + file)
+		if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		defer f.Close()
+		io.Copy(w, f)
 	}
-	f, err := os.Open(path + file)
-	if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
-		w.WriteHeader(http.StatusNotFound)
-	}
-	defer f.Close()
-	io.Copy(w, f)
 }
