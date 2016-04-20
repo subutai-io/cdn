@@ -7,7 +7,8 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
+	"strconv"
+	// "path/filepath"
 	"strings"
 
 	"github.com/optdyn/gorjun/db"
@@ -18,41 +19,8 @@ import (
 )
 
 var (
-	path = "/tmp/"
+	path = "/tmp/deb/"
 )
-
-func compress(source string) {
-	reader, err := os.Open(source)
-	log.Check(log.FatalLevel, "Opening file "+source+" to compress", err)
-
-	writer, err := os.Create(source + ".gz")
-	log.Check(log.FatalLevel, "Creating gz target", err)
-	defer writer.Close()
-
-	archiver := gzip.NewWriter(writer)
-	archiver.Name = filepath.Base(source)
-	defer archiver.Close()
-
-	_, err = io.Copy(archiver, reader)
-	log.Check(log.FatalLevel, "Writing data to archive", err)
-}
-
-func decompress(source string) {
-	reader, err := os.Open(source)
-	log.Check(log.FatalLevel, "Opening file "+source+" to decompress", err)
-	defer reader.Close()
-
-	archive, err := gzip.NewReader(reader)
-	log.Check(log.FatalLevel, "Creating gz reader", err)
-	defer archive.Close()
-
-	writer, err := os.Create(strings.TrimRight(source, ".gz"))
-	log.Check(log.FatalLevel, "Creating write target", err)
-	defer writer.Close()
-
-	_, err = io.Copy(writer, archive)
-	log.Check(log.FatalLevel, "Writing archive data to file", err)
-}
 
 func readDeb(hash string) (string, bytes.Buffer) {
 	var control bytes.Buffer
@@ -106,14 +74,23 @@ func getControl(hash string, control bytes.Buffer) (string, map[string]string) {
 	return hash, d
 }
 
+func getSize(file string) string {
+	f, err := os.Open(file)
+	log.Check(log.FatalLevel, "Opening file "+file, err)
+	defer f.Close()
+
+	stat, err := f.Stat()
+	log.Check(log.FatalLevel, "Getting file stat", err)
+	return strconv.Itoa(int(stat.Size()))
+}
+
 func writePackage(meta map[string]string) {
 	var f *os.File
-	if _, err := os.Stat(path + "Packages.gz"); os.IsNotExist(err) {
+	if _, err := os.Stat(path + "Packages"); os.IsNotExist(err) {
 		f, err = os.Create(path + "Packages")
 		log.Check(log.FatalLevel, "Creating packages file", err)
 		defer f.Close()
 	} else if err == nil {
-		decompress(path + "Packages.gz")
 		f, err = os.OpenFile(path+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
 		log.Check(log.FatalLevel, "Opening packages file", err)
 		defer f.Close()
@@ -127,33 +104,35 @@ func writePackage(meta map[string]string) {
 	}
 	_, err := f.Write([]byte("\n"))
 	log.Check(log.FatalLevel, "Appending endline", err)
-	os.Remove(path + "Packages.gz")
-	compress(path + "Packages")
-	os.Remove(path + "Packages")
-	return
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		w.Write([]byte(upload.Page("apt")))
 	} else if r.Method == "POST" {
-		hash, meta := getControl(readDeb(upload.Handler(w, r)))
-		writePackage(meta)
 		_, header, _ := r.FormFile("file")
+		hash, meta := getControl(readDeb(upload.Handler(w, r)))
+		meta["Filename"] = header.Filename
+		meta["Size"] = getSize(path + hash)
+		writePackage(meta)
 		w.Write([]byte("Name: " + header.Filename + "\n"))
-		db.Write(header.Filename, hash, meta)
-		w.Write([]byte("Added to db: " + db.Read(header.Filename)))
+		db.Write(hash, header.Filename, meta)
+		w.Write([]byte("Added to db: " + db.Read(hash)))
 	}
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
 	file := strings.TrimLeft(r.RequestURI, "/apt/")
-	if file != "Packages.gz" {
-		file = db.Read(file)
-		w.Write([]byte(file))
+	log.Info("Request: " + r.RequestURI)
+	if file != "Packages.gz" && file != "InRelease" && file != "Release" {
+		for k, _ := range db.Search(file) {
+			file = k
+		}
 	}
 	f, err := os.Open(path + file)
-	log.Check(log.FatalLevel, "Opening file "+path+file, err)
+	if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
+		w.WriteHeader(http.StatusNotFound)
+	}
 	defer f.Close()
 	io.Copy(w, f)
 }

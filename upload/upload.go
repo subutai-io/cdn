@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	path = "/tmp/"
+	path = "/tmp/deb/"
 )
 
 func Page(repo string) string {
