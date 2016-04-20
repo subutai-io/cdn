@@ -15,7 +15,16 @@ var (
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
+	name := r.URL.Query().Get("name")
 	if len(hash) != 0 {
+		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
+		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+		f, err := os.Open(path + hash)
+		log.Check(log.FatalLevel, "Opening file "+path+hash, err)
+		defer f.Close()
+		io.Copy(w, f)
+	} else if len(name) != 0 {
+		hash = db.LastHash(name)
 		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 		f, err := os.Open(path + hash)

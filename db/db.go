@@ -93,8 +93,7 @@ func Search(query string) map[string]string {
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(search))
-
-		c := tx.Bucket([]byte(search)).Cursor()
+		c := b.Cursor()
 		for k, _ := c.Seek([]byte(query)); bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
 			b.Bucket(k).ForEach(func(kk, vv []byte) error {
 				list[string(vv)] = string(k)
@@ -104,4 +103,14 @@ func Search(query string) map[string]string {
 		return nil
 	})
 	return list
+}
+
+func LastHash(name string) (hash string) {
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(search)).Bucket([]byte(name))
+		_, v := b.Cursor().Last()
+		hash = string(v)
+		return nil
+	})
+	return hash
 }
