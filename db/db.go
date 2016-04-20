@@ -1,6 +1,8 @@
 package db
 
 import (
+	"bytes"
+
 	"github.com/boltdb/bolt"
 
 	"github.com/subutai-io/base/agent/log"
@@ -8,6 +10,7 @@ import (
 
 var (
 	bucket = "MyBucket"
+	search = "SearchIndex"
 	db     = initdb()
 )
 
@@ -16,7 +19,11 @@ func initdb() *bolt.DB {
 	log.Check(log.FatalLevel, "Openning DB: my.db", err)
 	err = db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte(bucket))
-		log.Check(log.FatalLevel, "Creating bucket: "+bucket, err)
+		log.Check(log.FatalLevel, "Creating data bucket: "+bucket, err)
+
+		_, err = tx.CreateBucketIfNotExists([]byte(search))
+		log.Check(log.FatalLevel, "Creating search bucket: "+search, err)
+
 		return nil
 	})
 	log.Check(log.FatalLevel, "Finishing update transaction"+bucket, err)
@@ -30,6 +37,12 @@ func Write(key, value string) {
 		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
 		err = b.Put([]byte("name"), []byte(value))
 		log.Check(log.WarnLevel, "Storing key: "+key, err)
+
+		b, err = tx.Bucket([]byte(search)).CreateBucketIfNotExists([]byte(value))
+		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
+		err = b.Put([]byte(key), []byte(""))
+		log.Check(log.WarnLevel, "Storing key: "+key, err)
+
 		return nil
 	})
 	if err != nil {
@@ -40,7 +53,6 @@ func Write(key, value string) {
 func Read(key string) (value string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket)).Bucket([]byte(key))
-		// log.Check(log.WarnLevel, "Getting subbucket by key: "+key, err)
 		value = string(b.Get([]byte("name")))
 		return nil
 	})
@@ -62,4 +74,21 @@ func List() map[string]string {
 
 func Close() {
 	db.Close()
+}
+
+func Search(query string) map[string]string {
+	list := make(map[string]string)
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(search))
+
+		c := tx.Bucket([]byte(search)).Cursor()
+		for k, _ := c.Seek([]byte(query)); bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
+			b.Bucket(k).ForEach(func(kk, vv []byte) error {
+				list[string(kk)] = string(k)
+				return nil
+			})
+		}
+		return nil
+	})
+	return list
 }

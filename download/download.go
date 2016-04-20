@@ -34,3 +34,12 @@ func List(repo string, w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte("</body></html>"))
 }
+
+func Search(repo string, w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	w.Write([]byte("<html><body>"))
+	for k, v := range db.Search(query) {
+		w.Write([]byte("<p><a href=\"http://localhost:8080/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
+	}
+	w.Write([]byte("</body></html>"))
+}

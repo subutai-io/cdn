@@ -12,6 +12,7 @@ func main() {
 	defer db.Close()
 	http.HandleFunc("/template", template.Show)
 	http.HandleFunc("/template/upload", template.Upload)
+	http.HandleFunc("/template/search", template.Search)
 	http.HandleFunc("/template/download", template.Download)
 	http.HandleFunc("/raw", raw.Show)
 	http.HandleFunc("/raw/upload", raw.Upload)

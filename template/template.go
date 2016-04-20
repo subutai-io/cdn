@@ -96,3 +96,7 @@ func Show(w http.ResponseWriter, r *http.Request) {
 	//templates list handler will be here
 	download.List("template", w, r)
 }
+
+func Search(w http.ResponseWriter, r *http.Request) {
+	download.Search("template", w, r)
+}
