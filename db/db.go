@@ -53,7 +53,7 @@ func Write(key, value string, options ...map[string]string) {
 
 		b, err = tx.Bucket([]byte(search)).CreateBucketIfNotExists([]byte(value))
 		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
-		err = b.Put([]byte(key), []byte(""))
+		err = b.Put(now, []byte(key))
 		log.Check(log.WarnLevel, "Storing key: "+key, err)
 
 		return nil
@@ -97,7 +97,7 @@ func Search(query string) map[string]string {
 		c := tx.Bucket([]byte(search)).Cursor()
 		for k, _ := c.Seek([]byte(query)); bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
 			b.Bucket(k).ForEach(func(kk, vv []byte) error {
-				list[string(kk)] = string(k)
+				list[string(vv)] = string(k)
 				return nil
 			})
 		}
