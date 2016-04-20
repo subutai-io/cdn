@@ -26,9 +26,10 @@ func initdb() *bolt.DB {
 
 func Write(key, value string) {
 	err := db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		err := b.Put([]byte(key), []byte(value))
-		log.Check(log.WarnLevel, "Creating bucket: "+bucket, err)
+		b, err := tx.Bucket([]byte(bucket)).CreateBucketIfNotExists([]byte(key))
+		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
+		err = b.Put([]byte("name"), []byte(value))
+		log.Check(log.WarnLevel, "Storing key: "+key, err)
 		return nil
 	})
 	if err != nil {
@@ -38,8 +39,9 @@ func Write(key, value string) {
 
 func Read(key string) (value string) {
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		value = string(b.Get([]byte(key)))
+		b := tx.Bucket([]byte(bucket)).Bucket([]byte(key))
+		// log.Check(log.WarnLevel, "Getting subbucket by key: "+key, err)
+		value = string(b.Get([]byte("name")))
 		return nil
 	})
 	return value
@@ -50,7 +52,7 @@ func List() map[string]string {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		b.ForEach(func(k, v []byte) error {
-			list[string(k)] = string(v)
+			list[string(k)] = string(b.Bucket(k).Get([]byte("name")))
 			return nil
 		})
 		return nil
