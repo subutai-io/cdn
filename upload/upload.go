@@ -20,7 +20,7 @@ func Page(repo string) string {
   <html>
   <title>Go upload</title>
   <body>
-  <form action="http://localhost:8080/` + repo + `/upload" method="post" enctype="multipart/form-data">
+  <form action="/` + repo + `/upload" method="post" enctype="multipart/form-data">
   <label for="file">Filename:</label>
   <input type="file" name="file" id="file">
   <input type="submit" name="submit" value="Submit">
