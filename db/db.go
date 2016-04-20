@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"time"
 
 	"github.com/boltdb/bolt"
 
@@ -33,16 +34,20 @@ func initdb() *bolt.DB {
 
 func Write(key, value string, options ...map[string]string) {
 	err := db.Update(func(tx *bolt.Tx) error {
+
 		b, err := tx.Bucket([]byte(bucket)).CreateBucketIfNotExists([]byte(key))
 		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
 		err = b.Put([]byte("name"), []byte(value))
 		log.Check(log.WarnLevel, "Storing key: "+key, err)
 
+		now, _ := time.Now().MarshalText()
+		err = b.Put([]byte("date"), now)
+		log.Check(log.WarnLevel, "Storing key: date", err)
+
 		for i, _ := range options {
 			for k, v := range options[i] {
 				err = b.Put([]byte(k), []byte(v))
 				log.Check(log.WarnLevel, "Storing key: "+k, err)
-				log.Info(k + ": " + v)
 			}
 		}
 
@@ -73,10 +78,6 @@ func List() map[string]string {
 		b := tx.Bucket([]byte(bucket))
 		b.ForEach(func(k, v []byte) error {
 			list[string(k)] = string(b.Bucket(k).Get([]byte("name")))
-			b.Bucket(k).ForEach(func(kk, vv []byte) error {
-				log.Info(string(kk) + ": " + string(vv))
-				return nil
-			})
 			return nil
 		})
 		return nil
