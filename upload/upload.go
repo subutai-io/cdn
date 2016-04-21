@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/optdyn/gorjun/db"
+
 	"github.com/subutai-io/base/agent/log"
 )
 
@@ -30,7 +32,12 @@ func Page(repo string) string {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) string {
-	// hash := genHash()
+	token := r.PostFormValue("token")
+	if len(token) == 0 || len(db.CheckToken(token)) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Invalid token"))
+		return
+	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		log.Warn(err.Error())
