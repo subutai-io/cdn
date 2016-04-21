@@ -19,9 +19,12 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				<input type="submit" name="submit" value="Submit">
 			</form></body></html>`))
 	} else if r.Method == "POST" {
-		w.Write([]byte("Name: " + r.PostFormValue("name") + "\n"))
-		w.Write([]byte("PGP key: " + r.PostFormValue("key") + "\n"))
-		db.RegisterUser([]byte(r.PostFormValue("name")), []byte(r.PostFormValue("key")))
+		r.ParseMultipartForm(32 << 20)
+		name := r.MultipartForm.Value["name"][0]
+		key := r.MultipartForm.Value["key"][0]
+		w.Write([]byte("Name: " + name + "\n"))
+		w.Write([]byte("PGP key: " + key + "\n"))
+		db.RegisterUser([]byte(name), []byte(key))
 	}
 }
 
@@ -32,17 +35,11 @@ func Token(w http.ResponseWriter, r *http.Request) {
 		hash.Write([]byte(time.Now().String() + name))
 		token := fmt.Sprintf("%x", hash.Sum(nil))
 		db.SaveAuthID(name, token)
-		w.Write([]byte(`<html><title>Registration</title><body>
-			` + token + `
-			<form action="/auth/token" method="post">
-				Name: <input type="text" name="name" value="` + name + `"><br>
-				PGP signed message: <textarea cols="63" rows="30" name="message"></textarea><br>
-				<input type="submit" name="submit" value="Submit">
-			</form></body></html>`))
-
+		w.Write([]byte(token))
 	} else if r.Method == http.MethodPost {
-		name := r.PostFormValue("name")
-		message := r.PostFormValue("message")
+		r.ParseMultipartForm(32 << 20)
+		name := r.MultipartForm.Value["name"][0]
+		message := r.MultipartForm.Value["message"][0]
 		authid := pgp.Verify(name, message)
 		if db.CheckAuthID(authid) == name {
 			hash := md5.New()

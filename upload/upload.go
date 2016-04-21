@@ -32,7 +32,9 @@ func Page(repo string) string {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) string {
-	token := r.PostFormValue("token")
+	r.ParseMultipartForm(32 << 20)
+	token := r.MultipartForm.Value["token"][0]
+	fmt.Println("token: ", token)
 	if len(token) == 0 || len(db.CheckToken(token)) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Invalid token"))
