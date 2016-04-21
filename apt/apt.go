@@ -117,7 +117,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["MD5sum"] = hash
 		writePackage(meta)
 		w.Write([]byte("Name: " + header.Filename + "\n"))
-		db.Write(hash, header.Filename, meta)
+		db.Write("", hash, header.Filename, meta)
 		w.Write([]byte("Added to db: " + db.Read(hash)))
 	}
 }

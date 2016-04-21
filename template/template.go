@@ -86,7 +86,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == "POST" {
 		t := getConf(readTempl(upload.Handler(w, r)))
 		w.Write([]byte("Name: " + t.name + ", version: " + t.version + ", hash: " + t.hash + "\n"))
-		db.Write(t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
+		db.Write("", t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
 			map[string]string{
 				"arch":    t.arch,
 				"version": t.version,

@@ -36,12 +36,14 @@ func initdb() *bolt.DB {
 	return db
 }
 
-func Write(key, value string, options ...map[string]string) {
-	name := "subutai"
+func Write(owner, key, value string, options ...map[string]string) {
+	if len(owner) == 0 {
+		owner = "subutai"
+	}
 	now, _ := time.Now().MarshalText()
 	err := db.Update(func(tx *bolt.Tx) error {
 
-		b, err := tx.Bucket([]byte(users)).CreateBucketIfNotExists([]byte(name))
+		b, err := tx.Bucket([]byte(users)).CreateBucketIfNotExists([]byte(owner))
 		log.Check(log.FatalLevel, "Creating users subbucket: "+key, err)
 		b, err = b.CreateBucketIfNotExists([]byte("files"))
 		log.Check(log.FatalLevel, "Creating users:files subbucket: "+key, err)
@@ -51,7 +53,7 @@ func Write(key, value string, options ...map[string]string) {
 		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
 		b.Put([]byte("date"), now)
 		b.Put([]byte("name"), []byte(value))
-		b.Put([]byte("owner"), []byte(name))
+		b.Put([]byte("owner"), []byte(owner))
 
 		for i, _ := range options {
 			for k, v := range options[i] {

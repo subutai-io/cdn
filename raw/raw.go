@@ -19,7 +19,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		hash := upload.Handler(w, r)
 		_, header, _ := r.FormFile("file")
 		w.Write([]byte("Name: " + header.Filename + "\n"))
-		db.Write(hash, header.Filename)
+		db.Write("", hash, header.Filename)
 		w.Write([]byte("Added to db: " + db.Read(hash)))
 	}
 }
