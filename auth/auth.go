@@ -43,10 +43,7 @@ func Token(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost {
 		name := r.PostFormValue("name")
 		message := r.PostFormValue("message")
-		fmt.Println(name)
-		fmt.Println(message)
 		authid := pgp.Verify(name, message)
-		fmt.Println(authid)
 		if db.CheckAuthID(authid) == name {
 			hash := md5.New()
 			hash.Write([]byte(time.Now().String() + name))
