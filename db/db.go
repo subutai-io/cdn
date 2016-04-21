@@ -164,7 +164,9 @@ func SaveToken(name, token string) {
 func CheckToken(token string) (name string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(tokens))
-		name = string(b.Get([]byte(token)))
+		if value := b.Get([]byte(token)); value != nil {
+			name = string(value)
+		}
 		return nil
 	})
 	return name
