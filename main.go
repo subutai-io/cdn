@@ -6,7 +6,6 @@ import (
 	"github.com/optdyn/gorjun/apt"
 	"github.com/optdyn/gorjun/auth"
 	"github.com/optdyn/gorjun/db"
-	"github.com/optdyn/gorjun/pgp"
 	"github.com/optdyn/gorjun/raw"
 	"github.com/optdyn/gorjun/template"
 )
@@ -24,6 +23,6 @@ func main() {
 	http.HandleFunc("/apt/", apt.Download)
 	http.HandleFunc("/auth/register", auth.Register)
 	http.HandleFunc("/auth/token", auth.Token)
-	http.HandleFunc("/pgp/verify", pgp.Verify)
+	// http.HandleFunc("/pgp/verify", pgp.Verify)
 	http.ListenAndServe(":8080", nil)
 }

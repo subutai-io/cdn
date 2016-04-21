@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/optdyn/gorjun/db"
+	"github.com/optdyn/gorjun/pgp"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
@@ -25,10 +26,37 @@ func Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func Token(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Query().Get("name")
-	hash := md5.New()
-	hash.Write([]byte(time.Now().String() + name))
-	token := fmt.Sprintf("%x", hash.Sum(nil))
-	db.SaveToken(name, token)
-	w.Write([]byte("user: " + db.CheckToken(token) + " token: " + token))
+	if r.Method == http.MethodGet {
+		name := r.URL.Query().Get("name")
+		hash := md5.New()
+		hash.Write([]byte(time.Now().String() + name))
+		token := fmt.Sprintf("%x", hash.Sum(nil))
+		db.SaveAuthID(name, token)
+		w.Write([]byte(`<html><title>Registration</title><body>
+			` + token + `
+			<form action="/auth/token" method="post">
+				Name: <input type="text" name="name" value="` + name + `"><br>
+				PGP signed message: <textarea cols="63" rows="30" name="message"></textarea><br>
+				<input type="submit" name="submit" value="Submit">
+			</form></body></html>`))
+
+	} else if r.Method == http.MethodPost {
+		name := r.PostFormValue("name")
+		message := r.PostFormValue("message")
+		fmt.Println(name)
+		fmt.Println(message)
+		authid := pgp.Verify(name, message)
+		fmt.Println(authid)
+		if db.CheckAuthID(authid) == name {
+			hash := md5.New()
+			hash.Write([]byte(time.Now().String() + name))
+			token := fmt.Sprintf("%x", hash.Sum(nil))
+			db.SaveToken(name, token)
+			w.Write([]byte(token))
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Signature verification failed"))
+		}
+	}
+
 }
