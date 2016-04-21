@@ -36,7 +36,7 @@ func Handler(w http.ResponseWriter, r *http.Request) string {
 	if len(token) == 0 || len(db.CheckToken(token)) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Invalid token"))
-		return
+		return ""
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
