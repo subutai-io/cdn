@@ -1,7 +1,10 @@
 package auth
 
 import (
+	"crypto/md5"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/optdyn/gorjun/db"
 )
@@ -22,6 +25,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func Token(w http.ResponseWriter, r *http.Request) {
-	//raw-files download handler will be here
-	w.Write([]byte("Name: " + "\n"))
+	name := r.URL.Query().Get("name")
+	hash := md5.New()
+	hash.Write([]byte(time.Now().String() + name))
+	token := fmt.Sprintf("%x", hash.Sum(nil))
+	db.SaveToken(name, token)
+	w.Write([]byte("user: " + db.CheckToken(token) + " token: " + token))
 }

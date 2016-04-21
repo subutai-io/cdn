@@ -13,6 +13,7 @@ var (
 	bucket = "MyBucket"
 	search = "SearchIndex"
 	users  = "Users"
+	tokens = "Tokens"
 	db     = initdb()
 )
 
@@ -27,6 +28,9 @@ func initdb() *bolt.DB {
 		log.Check(log.FatalLevel, "Creating search bucket: "+search, err)
 
 		_, err = tx.CreateBucketIfNotExists([]byte(users))
+		log.Check(log.FatalLevel, "Creating users bucket: "+search, err)
+
+		_, err = tx.CreateBucketIfNotExists([]byte(tokens))
 		log.Check(log.FatalLevel, "Creating users bucket: "+search, err)
 
 		return nil
@@ -138,9 +142,26 @@ func RegisterUser(name, key []byte) {
 
 func UserKey(name string) (key string) {
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(users))
-		key = string(b.Get([]byte(name)))
+		b := tx.Bucket([]byte(users)).Bucket([]byte(name))
+		key = string(b.Get([]byte("key")))
 		return nil
 	})
 	return key
+}
+
+func SaveToken(name, token string) {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(tokens))
+		b.Put([]byte(token), []byte(name))
+		return nil
+	})
+}
+
+func CheckToken(token string) (name string) {
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(tokens))
+		name = string(b.Get([]byte(token)))
+		return nil
+	})
+	return name
 }
