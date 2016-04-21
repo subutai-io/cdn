@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/optdyn/gorjun/apt"
+	"github.com/optdyn/gorjun/auth"
 	"github.com/optdyn/gorjun/db"
 	"github.com/optdyn/gorjun/raw"
 	"github.com/optdyn/gorjun/template"
@@ -20,5 +21,7 @@ func main() {
 	http.HandleFunc("/raw/download", raw.Download)
 	http.HandleFunc("/apt/upload", apt.Upload)
 	http.HandleFunc("/apt/", apt.Download)
+	http.HandleFunc("/auth/register", auth.Register)
+	http.HandleFunc("/auth/token", auth.Token)
 	http.ListenAndServe(":8080", nil)
 }

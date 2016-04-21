@@ -124,3 +124,23 @@ func LastHash(name string) (hash string) {
 	})
 	return hash
 }
+
+func RegisterUser(name, key []byte) {
+	db.Update(func(tx *bolt.Tx) error {
+
+		b, err := tx.Bucket([]byte(users)).CreateBucketIfNotExists([]byte(name))
+		log.Check(log.FatalLevel, "Creating users subbucket: "+string(name), err)
+		b.Put([]byte("key"), key)
+
+		return nil
+	})
+}
+
+func UserKey(name string) (key string) {
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(users))
+		key = string(b.Get([]byte(name)))
+		return nil
+	})
+	return key
+}
