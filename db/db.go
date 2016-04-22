@@ -159,7 +159,7 @@ func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
 
 		b, err := tx.Bucket([]byte(users)).CreateBucketIfNotExists([]byte(name))
-		log.Check(log.FatalLevel, "Creating users subbucket: "+string(name), err)
+		log.Check(log.WarnLevel, "Creating users subbucket: "+string(name), err)
 		b.Put([]byte("key"), key)
 
 		return nil
@@ -181,7 +181,9 @@ func UserKey(name string) (key string) {
 func SaveToken(name, token string) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket([]byte(tokens)); b != nil {
-			b.Put([]byte(token), []byte(name))
+			b.Put([]byte("name"), []byte(name))
+			now, _ := time.Now().MarshalText()
+			b.Put([]byte("date"), now)
 		}
 		return nil
 	})
@@ -190,7 +192,12 @@ func SaveToken(name, token string) {
 func CheckToken(token string) (name string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket([]byte(tokens)); b != nil {
-			if value := b.Get([]byte(token)); value != nil {
+			date := new(time.Time)
+			date.UnmarshalText(b.Get([]byte("date")))
+			if date.Add(time.Minute * 60).Before(time.Now()) {
+				return nil
+			}
+			if value := b.Get([]byte("name")); value != nil {
 				name = string(value)
 			}
 		}
