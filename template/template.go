@@ -4,10 +4,14 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/md5"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/optdyn/gorjun/db"
 	"github.com/optdyn/gorjun/download"
@@ -18,6 +22,33 @@ import (
 var (
 	path = "/tmp/"
 )
+
+type ListItem struct {
+	Architecture   string `json:"architecture"`
+	ConfigContents string `json:"configContents"`
+	Extra          struct {
+		Lxc_idMap           string `json:"lxc.id_map"`
+		Lxc_include         string `json:"lxc.include"`
+		Lxc_mount           string `json:"lxc.mount"`
+		Lxc_mount_entry     string `json:"lxc.mount.entry"`
+		Lxc_network_flags   string `json:"lxc.network.flags"`
+		Lxc_network_hwaddr  string `json:"lxc.network.hwaddr"`
+		Lxc_network_link    string `json:"lxc.network.link"`
+		Lxc_network_type    string `json:"lxc.network.type"`
+		Lxc_rootfs          string `json:"lxc.rootfs"`
+		Subutai_config_path string `json:"subutai.config.path"`
+		Subutai_git_branch  string `json:"subutai.git.branch"`
+	} `json:"extra"`
+	ID               string `json:"id"`
+	Md5Sum           string `json:"md5Sum"`
+	Name             string `json:"name"`
+	OwnerFprint      string `json:"ownerFprint"`
+	Package          string `json:"package"`
+	PackagesContents string `json:"packagesContents"`
+	Parent           string `json:"parent"`
+	Size             int64  `json:"size"`
+	Version          string `json:"version"`
+}
 
 type Template struct {
 	hash    string
@@ -99,6 +130,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 				"arch":    t.arch,
 				"version": t.version,
 				"parent":  t.parent,
+				"type":    "template",
 			})
 		w.Write([]byte("Added to db: " + db.Read(t.hash)))
 	}
@@ -123,7 +155,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect method"))
 		log.Warn("Incorrect method")
@@ -140,4 +172,46 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	upload.Delete(w, r)
+}
+
+func Md5(w http.ResponseWriter, r *http.Request) {
+	log.Info("md5")
+	hash := md5.New()
+	hash.Write([]byte(time.Now().String()))
+	// w.Write([]byte("c9684cacea51e32d9304f5290b7e1b5e"))
+	w.Write([]byte(fmt.Sprintf("%x", hash.Sum(nil))))
+}
+
+func List(w http.ResponseWriter, r *http.Request) {
+	log.Info("list")
+	list := make([]ListItem, 0)
+	for hash, _ := range db.List() {
+		var item ListItem
+		for k, v := range db.Info(hash) {
+			switch k {
+			case "name":
+				name := strings.Split(v, "-")
+				if len(name) > 0 {
+					item.Name = name[0]
+				}
+			case "arch":
+				item.Architecture = v
+			case "version":
+				item.Version = v
+			case "owner":
+				item.OwnerFprint = v
+			case "parent":
+				item.Parent = v
+			}
+		}
+		f, err := os.Open(path + hash)
+		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
+		fi, _ := f.Stat()
+		item.Size = fi.Size()
+		item.Md5Sum = hash
+		item.ID = item.OwnerFprint + "." + item.Md5Sum
+		list = append(list, item)
+	}
+	js, _ := json.Marshal(list)
+	w.Write(js)
 }
