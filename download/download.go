@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/optdyn/gorjun/db"
 	"github.com/subutai-io/base/agent/log"
@@ -55,4 +56,32 @@ func Search(repo string, w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("<p><a href=\"/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
 	}
 	w.Write([]byte("</body></html>"))
+}
+
+func Info(repo string, w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	version := r.URL.Query().Get("version")
+
+	if len(name) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Please specify template name"))
+		return
+	}
+
+	for k, _ := range db.Search(name) {
+		info := db.Info(k)
+		if strings.HasPrefix(info["name"], name+"-subutai-template") {
+			if len(version) == 0 {
+				w.Write([]byte(k))
+				return
+			} else {
+				if info["version"] == version {
+					w.Write([]byte(k))
+					return
+				}
+			}
+		}
+		w.Write([]byte("Template not found"))
+		w.WriteHeader(http.StatusNotFound)
+	}
 }

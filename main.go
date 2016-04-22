@@ -13,6 +13,7 @@ import (
 func main() {
 	defer db.Close()
 	http.HandleFunc("/template", template.Show)
+	http.HandleFunc("/template/info", template.Info)
 	http.HandleFunc("/template/upload", template.Upload)
 	http.HandleFunc("/template/search", template.Search)
 	http.HandleFunc("/template/download", template.Download)

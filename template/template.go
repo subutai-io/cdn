@@ -117,3 +117,7 @@ func Show(w http.ResponseWriter, r *http.Request) {
 func Search(w http.ResponseWriter, r *http.Request) {
 	download.Search("template", w, r)
 }
+
+func Info(w http.ResponseWriter, r *http.Request) {
+	download.Info("template", w, r)
+}
