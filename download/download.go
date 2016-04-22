@@ -21,6 +21,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if len(id) > 0 {
 		hash = id
+		tmp := strings.Split(id, ".")
+		if len(tmp) == 2 {
+			hash = tmp[1]
+		}
 	}
 	if len(hash) != 0 {
 		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
@@ -78,11 +82,11 @@ func Info(repo string, w http.ResponseWriter, r *http.Request) {
 		info := db.Info(k)
 		if strings.HasPrefix(info["name"], name+"-subutai-template") {
 			if len(version) == 0 {
-				w.Write([]byte(k))
+				w.Write([]byte(info["owner"] + "." + k))
 				return
 			} else {
 				if info["version"] == version {
-					w.Write([]byte(k))
+					w.Write([]byte(info["owner"] + "." + k))
 					return
 				}
 			}

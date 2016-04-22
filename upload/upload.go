@@ -21,7 +21,7 @@ func Page(repo string) string {
   <html>
   <title>Go upload</title>
   <body>
-  <form action="/` + repo + `/upload" method="post" enctype="multipart/form-data">
+  <form action="/kurjun/rest/` + repo + `/upload" method="post" enctype="multipart/form-data">
   <label for="file">Filename:</label>
   <input type="file" name="file" id="file">
   <input type="submit" name="submit" value="Submit">

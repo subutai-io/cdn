@@ -12,12 +12,12 @@ import (
 
 func main() {
 	defer db.Close()
-	http.HandleFunc("/template", template.Show)
-	http.HandleFunc("/template/info", template.Info)
-	http.HandleFunc("/template/upload", template.Upload)
-	http.HandleFunc("/template/search", template.Search)
-	http.HandleFunc("/template/download", template.Download)
-	http.HandleFunc("/template/get", template.Download)
+	http.HandleFunc("/kurjun/rest/template", template.Show)
+	http.HandleFunc("/kurjun/rest/template/info", template.Info)
+	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)
+	http.HandleFunc("/kurjun/rest/template/search", template.Search)
+	http.HandleFunc("/kurjun/rest/template/download", template.Download)
+	http.HandleFunc("/kurjun/rest/template/get", template.Download)
 	http.HandleFunc("/raw", raw.Show)
 	http.HandleFunc("/raw/upload", raw.Upload)
 	http.HandleFunc("/raw/download", raw.Download)
