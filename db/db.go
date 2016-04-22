@@ -180,7 +180,7 @@ func UserKey(name string) (key string) {
 
 func SaveToken(name, token string) {
 	db.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket([]byte(tokens)); b != nil {
+		if b, _ := tx.Bucket([]byte(tokens)).CreateBucketIfNotExists([]byte(token)); b != nil {
 			b.Put([]byte("name"), []byte(name))
 			now, _ := time.Now().MarshalText()
 			b.Put([]byte("date"), now)
@@ -191,7 +191,7 @@ func SaveToken(name, token string) {
 
 func CheckToken(token string) (name string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket([]byte(tokens)); b != nil {
+		if b := tx.Bucket([]byte(tokens)).Bucket([]byte(token)); b != nil {
 			date := new(time.Time)
 			date.UnmarshalText(b.Get([]byte("date")))
 			if date.Add(time.Minute * 60).Before(time.Now()) {
@@ -216,10 +216,11 @@ func SaveAuthID(name, token string) {
 }
 
 func CheckAuthID(token string) (name string) {
-	db.View(func(tx *bolt.Tx) error {
+	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket([]byte(authid)); b != nil {
 			if value := b.Get([]byte(token)); value != nil {
 				name = string(value)
+				b.Delete([]byte(token))
 			}
 		}
 		return nil
