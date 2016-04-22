@@ -36,7 +36,7 @@ func Handler(w http.ResponseWriter, r *http.Request) string {
 	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))
-		log.Warn(r.RemoteAddr + " - rejecting not authorized upload request")
+		log.Warn(r.RemoteAddr + " - rejecting unauthorized upload request")
 		return ""
 	}
 	token := r.MultipartForm.Value["token"][0]
@@ -84,4 +84,48 @@ func genHash(file string) string {
 		return ""
 	}
 	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func Delete(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(32 << 20)
+	if len(r.MultipartForm.Value["id"]) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Empty file id"))
+		log.Warn(r.RemoteAddr + " - empty file id")
+		return
+	}
+	if len(r.MultipartForm.Value["token"]) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Empty token"))
+		log.Warn(r.RemoteAddr + " - empty token")
+		return
+	}
+	user := db.CheckToken(r.MultipartForm.Value["token"][0])
+	hash := r.MultipartForm.Value["id"][0]
+	log.Info("User: " + user + " token: " + r.MultipartForm.Value["token"][0])
+	info := db.Info(hash)
+	if len(info) == 0 {
+		log.Warn("File not found by hash")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("File not found"))
+		return
+	}
+	if info["owner"] != user {
+		log.Warn("File " + info["name"] + "(" + hash + ") is not owned by " + user + ", rejecting")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
+		return
+	}
+	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(path+hash)) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to remove file"))
+		return
+	}
+	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from db", db.Delete(hash)) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to remove db entity"))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Removed"))
 }

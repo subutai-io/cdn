@@ -81,6 +81,16 @@ func Write(owner, key, value string, options ...map[string]string) {
 	}
 }
 
+func Delete(key string) (err error) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket([]byte(bucket)); b != nil {
+			err = b.Delete([]byte(key))
+		}
+		return nil
+	})
+	return err
+}
+
 func Read(key string) (val string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket([]byte(bucket)).Bucket([]byte(key)); b != nil {

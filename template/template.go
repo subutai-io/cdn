@@ -105,19 +105,39 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
-	//templates download handler will be here
 	download.Handler(w, r)
 }
 
 func Show(w http.ResponseWriter, r *http.Request) {
-	//templates list handler will be here
 	download.List("template", w, r)
 }
 
 func Search(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		log.Warn("Incorrect method")
+		return
+	}
 	download.Search("template", w, r)
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		log.Warn("Incorrect method")
+		return
+	}
 	download.Info("template", w, r)
+}
+
+func Delete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		log.Warn("Incorrect method")
+		return
+	}
+	upload.Delete(w, r)
 }
