@@ -28,6 +28,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/raw", raw.Show)
 	http.HandleFunc("/kurjun/rest/raw/upload", raw.Upload)
 	http.HandleFunc("/kurjun/rest/raw/download", raw.Download)
+	http.HandleFunc("/kurjun/rest/apt/delete", apt.Delete)
 	http.HandleFunc("/kurjun/rest/apt/upload", apt.Upload)
 	http.HandleFunc("/kurjun/rest/apt/", apt.Download)
 	http.HandleFunc("/kurjun/rest/auth/register", auth.Register)

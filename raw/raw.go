@@ -33,3 +33,10 @@ func Show(w http.ResponseWriter, r *http.Request) {
 	//raw-files list handler will be here
 	download.List("raw", w, r)
 }
+
+func Delete(w http.ResponseWriter, r *http.Request) {
+	if len(upload.Delete(w, r)) != 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Removed"))
+	}
+}

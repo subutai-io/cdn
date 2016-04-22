@@ -2,6 +2,7 @@ package apt
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"io"
@@ -137,5 +138,74 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		}
 		defer f.Close()
 		io.Copy(w, f)
+	}
+}
+
+func readPackages() []string {
+	file, err := os.Open(path + "Packages")
+	log.Check(log.WarnLevel, "Opening packages file", err)
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	log.Check(log.WarnLevel, "Scanning packages list", scanner.Err())
+	return lines
+}
+
+func deleteInfo(hash string) {
+	list := readPackages()
+	if len(list) == 0 {
+		log.Warn("Empty packages list")
+		return
+	}
+
+	var newlist, block string
+	changed, skip := false, false
+	for _, line := range list {
+		if len(line) != 0 && skip {
+			continue
+		} else if len(line) == 0 {
+			skip = false
+			if len(block) != 0 {
+				newlist = newlist + block + "\n"
+				block = ""
+			}
+		} else if len(line) != 0 && !skip {
+			if strings.HasSuffix(line, hash) {
+				block = ""
+				skip = true
+				changed = true
+			} else {
+				block = block + line + "\n"
+			}
+		}
+	}
+	if changed {
+		log.Info("Updating packages list")
+		file, err := os.Create(path + "Packages.new")
+		log.Check(log.WarnLevel, "Opening packages file", err)
+		defer file.Close()
+
+		_, err = file.WriteString(newlist)
+		log.Check(log.WarnLevel, "Writing new list", err)
+		log.Check(log.WarnLevel, "Replacing old list",
+			os.Rename(path+"Packages.new", path+"Packages"))
+	}
+}
+
+func Delete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		log.Warn("Incorrect method")
+		return
+	}
+	if hash := upload.Delete(w, r); len(hash) != 0 {
+		deleteInfo(hash)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Removed"))
 	}
 }

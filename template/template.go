@@ -171,7 +171,10 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		log.Warn("Incorrect method")
 		return
 	}
-	upload.Delete(w, r)
+	if len(upload.Delete(w, r)) != 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Removed"))
+	}
 }
 
 func Md5(w http.ResponseWriter, r *http.Request) {
