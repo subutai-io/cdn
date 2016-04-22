@@ -38,6 +38,7 @@ func Handler(w http.ResponseWriter, r *http.Request) string {
 	if len(token) == 0 || len(db.CheckToken(token)) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Invalid token"))
+		log.Error("ggg")
 		return ""
 	}
 	file, header, err := r.FormFile("file")
@@ -65,7 +66,7 @@ func Handler(w http.ResponseWriter, r *http.Request) string {
 
 func genHash(file string) string {
 	f, err := os.Open(file)
-	log.Check(log.FatalLevel, "Opening file"+file, err)
+	log.Check(log.WarnLevel, "Opening file"+file, err)
 	defer f.Close()
 
 	hash := md5.New()

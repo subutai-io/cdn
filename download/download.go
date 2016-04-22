@@ -20,7 +20,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 		f, err := os.Open(path + hash)
-		log.Check(log.FatalLevel, "Opening file "+path+hash, err)
+		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
 		defer f.Close()
 		io.Copy(w, f)
 	} else if len(name) != 0 {
@@ -28,7 +28,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 		f, err := os.Open(path + hash)
-		log.Check(log.FatalLevel, "Opening file "+path+hash, err)
+		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
 		defer f.Close()
 		io.Copy(w, f)
 	} else {

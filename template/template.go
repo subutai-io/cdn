@@ -30,11 +30,11 @@ type Template struct {
 func readTempl(hash string) (string, bytes.Buffer) {
 	var config bytes.Buffer
 	f, err := os.Open(path + hash)
-	log.Check(log.FatalLevel, "Opening file "+path+hash, err)
+	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
 	defer f.Close()
 
 	gzf, err := gzip.NewReader(f)
-	log.Check(log.FatalLevel, "Creating gzip reader", err)
+	log.Check(log.WarnLevel, "Creating gzip reader", err)
 
 	tr := tar.NewReader(gzf)
 
@@ -43,11 +43,11 @@ func readTempl(hash string) (string, bytes.Buffer) {
 		if err == io.EOF {
 			break
 		}
-		log.Check(log.FatalLevel, "Reading tar content", err)
+		log.Check(log.WarnLevel, "Reading tar content", err)
 
 		if hdr.Name == "config" {
 			if _, err := io.Copy(&config, tr); err != nil {
-				log.Fatal(err.Error())
+				log.Warn(err.Error())
 			}
 			break
 		}

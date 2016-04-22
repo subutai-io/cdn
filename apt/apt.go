@@ -25,7 +25,7 @@ var (
 func readDeb(hash string) (string, bytes.Buffer) {
 	var control bytes.Buffer
 	file, err := os.Open(path + hash)
-	log.Check(log.FatalLevel, "Opening deb package", err)
+	log.Check(log.WarnLevel, "Opening deb package", err)
 
 	defer file.Close()
 
@@ -35,11 +35,11 @@ func readDeb(hash string) (string, bytes.Buffer) {
 		if err == io.EOF {
 			break
 		}
-		log.Check(log.FatalLevel, "Reading deb content", err)
+		log.Check(log.WarnLevel, "Reading deb content", err)
 
 		if header.Name == "control.tar.gz" {
 			ungzip, err := gzip.NewReader(library)
-			log.Check(log.FatalLevel, "Ungziping control file", err)
+			log.Check(log.WarnLevel, "Ungziping control file", err)
 
 			defer ungzip.Close()
 
@@ -49,11 +49,11 @@ func readDeb(hash string) (string, bytes.Buffer) {
 				if err == io.EOF {
 					break
 				}
-				log.Check(log.FatalLevel, "Reading control tar", err)
+				log.Check(log.WarnLevel, "Reading control tar", err)
 
 				if tarHeader.Name == "./control" {
 					if _, err := io.Copy(&control, tr); err != nil {
-						log.Fatal(err.Error())
+						log.Warn(err.Error())
 					}
 					break
 				}
@@ -76,11 +76,11 @@ func getControl(hash string, control bytes.Buffer) (string, map[string]string) {
 
 func getSize(file string) string {
 	f, err := os.Open(file)
-	log.Check(log.FatalLevel, "Opening file "+file, err)
+	log.Check(log.WarnLevel, "Opening file "+file, err)
 	defer f.Close()
 
 	stat, err := f.Stat()
-	log.Check(log.FatalLevel, "Getting file stat", err)
+	log.Check(log.WarnLevel, "Getting file stat", err)
 	return strconv.Itoa(int(stat.Size()))
 }
 
@@ -88,22 +88,22 @@ func writePackage(meta map[string]string) {
 	var f *os.File
 	if _, err := os.Stat(path + "Packages"); os.IsNotExist(err) {
 		f, err = os.Create(path + "Packages")
-		log.Check(log.FatalLevel, "Creating packages file", err)
+		log.Check(log.WarnLevel, "Creating packages file", err)
 		defer f.Close()
 	} else if err == nil {
 		f, err = os.OpenFile(path+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
-		log.Check(log.FatalLevel, "Opening packages file", err)
+		log.Check(log.WarnLevel, "Opening packages file", err)
 		defer f.Close()
 	} else {
-		log.Fatal(err.Error())
+		log.Warn(err.Error())
 	}
 
 	for k, v := range meta {
 		_, err := f.WriteString(string(k) + ": " + string(v) + "\n")
-		log.Check(log.FatalLevel, "Appending package data", err)
+		log.Check(log.WarnLevel, "Appending package data", err)
 	}
 	_, err := f.Write([]byte("\n"))
-	log.Check(log.FatalLevel, "Appending endline", err)
+	log.Check(log.WarnLevel, "Appending endline", err)
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
