@@ -16,6 +16,7 @@ func main() {
 	http.HandleFunc("/template/upload", template.Upload)
 	http.HandleFunc("/template/search", template.Search)
 	http.HandleFunc("/template/download", template.Download)
+	http.HandleFunc("/template/get", template.Download)
 	http.HandleFunc("/raw", raw.Show)
 	http.HandleFunc("/raw/upload", raw.Upload)
 	http.HandleFunc("/raw/download", raw.Download)

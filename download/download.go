@@ -16,6 +16,10 @@ var (
 func Handler(w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
 	name := r.URL.Query().Get("name")
+	id := r.URL.Query().Get("id")
+	if len(id) > 0 {
+		hash = id
+	}
 	if len(hash) != 0 {
 		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
