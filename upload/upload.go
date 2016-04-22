@@ -33,32 +33,42 @@ func Page(repo string) string {
 
 func Handler(w http.ResponseWriter, r *http.Request) string {
 	r.ParseMultipartForm(32 << 20)
-	token := r.MultipartForm.Value["token"][0]
-	fmt.Println("token: ", token)
-	if len(token) == 0 || len(db.CheckToken(token)) == 0 {
+	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Invalid token"))
-		log.Error("ggg")
+		w.Write([]byte("Not authorized"))
+		log.Warn(r.RemoteAddr + " - rejecting not authorized upload request")
 		return ""
 	}
+	token := r.MultipartForm.Value["token"][0]
+	log.Info("User: " + r.RemoteAddr + " token: " + token)
 	file, header, err := r.FormFile("file")
-	if err != nil {
-		log.Warn(err.Error())
+	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Cannot get file from request"))
 		return ""
 	}
 	defer file.Close()
 	out, err := os.Create(path + header.Filename)
-	if err != nil {
-		log.Warn("Unable to create the file for writing. Check your write access privilege")
+	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Cannot create file"))
 		return ""
 	}
 	defer out.Close()
 	// write the content from POST to the file
 	_, err = io.Copy(out, file)
-	if err != nil {
-		log.Warn(err.Error())
+	if log.Check(log.WarnLevel, "Writing file", err) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to write file"))
+		return ""
 	}
 	hash := genHash(path + header.Filename)
+	if len(hash) == 0 {
+		log.Warn("Failed to calculate hash for " + header.Filename)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to calculate hash"))
+		return ""
+	}
 	os.Rename(path+header.Filename, path+hash)
 	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
 	return hash

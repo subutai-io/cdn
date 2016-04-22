@@ -27,7 +27,7 @@ type Template struct {
 	version string
 }
 
-func readTempl(hash string) (string, bytes.Buffer) {
+func readTempl(hash string) bytes.Buffer {
 	var config bytes.Buffer
 	f, err := os.Open(path + hash)
 	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
@@ -52,7 +52,7 @@ func readTempl(hash string) (string, bytes.Buffer) {
 			break
 		}
 	}
-	return hash, config
+	return config
 }
 
 func getConf(hash string, config bytes.Buffer) (t *Template) {
@@ -81,10 +81,18 @@ func getConf(hash string, config bytes.Buffer) (t *Template) {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
+	var hash string
+	var config bytes.Buffer
 	if r.Method == "GET" {
 		w.Write([]byte(upload.Page("template")))
 	} else if r.Method == "POST" {
-		t := getConf(readTempl(upload.Handler(w, r)))
+		if hash = upload.Handler(w, r); len(hash) == 0 {
+			return
+		}
+		if config = readTempl(hash); len(config.String()) == 0 {
+			return
+		}
+		t := getConf(hash, config)
 		w.Write([]byte("Name: " + t.name + ", version: " + t.version + ", hash: " + t.hash + "\n"))
 		db.Write("", t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
 			map[string]string{
