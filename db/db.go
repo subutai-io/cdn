@@ -52,13 +52,13 @@ func Write(owner, key, value string, options ...map[string]string) {
 	err := db.Update(func(tx *bolt.Tx) error {
 
 		b, err := tx.Bucket([]byte(users)).CreateBucketIfNotExists([]byte(owner))
-		log.Check(log.FatalLevel, "Creating users subbucket: "+key, err)
+		log.Check(log.WarnLevel, "Creating users subbucket: "+key, err)
 		b, err = b.CreateBucketIfNotExists([]byte("files"))
-		log.Check(log.FatalLevel, "Creating users:files subbucket: "+key, err)
+		log.Check(log.WarnLevel, "Creating users:files subbucket: "+key, err)
 		b.Put([]byte(key), []byte(value))
 
 		b, err = tx.Bucket([]byte(bucket)).CreateBucketIfNotExists([]byte(key))
-		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
+		log.Check(log.WarnLevel, "Creating subbucket: "+key, err)
 		b.Put([]byte("date"), now)
 		b.Put([]byte("name"), []byte(value))
 		b.Put([]byte("owner"), []byte(owner))
@@ -71,7 +71,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 		}
 
 		b, err = tx.Bucket([]byte(search)).CreateBucketIfNotExists([]byte(value))
-		log.Check(log.FatalLevel, "Creating subbucket: "+key, err)
+		log.Check(log.WarnLevel, "Creating subbucket: "+key, err)
 		b.Put(now, []byte(key))
 
 		return nil
