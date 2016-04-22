@@ -81,13 +81,15 @@ func Write(owner, key, value string, options ...map[string]string) {
 	}
 }
 
-func Read(key string) (value string) {
+func Read(key string) (val string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket)).Bucket([]byte(key))
-		value = string(b.Get([]byte("name")))
+		if value := b.Get([]byte("name")); value != nil {
+			val = string(value)
+		}
 		return nil
 	})
-	return value
+	return val
 }
 
 func List() map[string]string {
@@ -95,7 +97,9 @@ func List() map[string]string {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		b.ForEach(func(k, v []byte) error {
-			list[string(k)] = string(b.Bucket(k).Get([]byte("name")))
+			if value := b.Bucket(k).Get([]byte("name")); value != nil {
+				list[string(k)] = string(value)
+			}
 			return nil
 		})
 		return nil
@@ -147,7 +151,9 @@ func RegisterUser(name, key []byte) {
 func UserKey(name string) (key string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(users)).Bucket([]byte(name))
-		key = string(b.Get([]byte("key")))
+		if value := b.Get([]byte("key")); value != nil {
+			key = string(value)
+		}
 		return nil
 	})
 	return key
@@ -183,7 +189,9 @@ func SaveAuthID(name, token string) {
 func CheckAuthID(token string) (name string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(authid))
-		name = string(b.Get([]byte(token)))
+		if value := b.Get([]byte(token)); value != nil {
+			name = string(value)
+		}
 		return nil
 	})
 	return name
