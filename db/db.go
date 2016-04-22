@@ -83,9 +83,10 @@ func Write(owner, key, value string, options ...map[string]string) {
 
 func Read(key string) (val string) {
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket)).Bucket([]byte(key))
-		if value := b.Get([]byte("name")); value != nil {
-			val = string(value)
+		if b := tx.Bucket([]byte(bucket)).Bucket([]byte(key)); b != nil {
+			if value := b.Get([]byte("name")); value != nil {
+				val = string(value)
+			}
 		}
 		return nil
 	})
@@ -95,13 +96,14 @@ func Read(key string) (val string) {
 func List() map[string]string {
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		b.ForEach(func(k, v []byte) error {
-			if value := b.Bucket(k).Get([]byte("name")); value != nil {
-				list[string(k)] = string(value)
-			}
-			return nil
-		})
+		if b := tx.Bucket([]byte(bucket)); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if value := b.Bucket(k).Get([]byte("name")); value != nil {
+					list[string(k)] = string(value)
+				}
+				return nil
+			})
+		}
 		return nil
 	})
 	return list
@@ -114,13 +116,14 @@ func Close() {
 func Search(query string) map[string]string {
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(search))
-		c := b.Cursor()
-		for k, _ := c.Seek([]byte(query)); bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
-			b.Bucket(k).ForEach(func(kk, vv []byte) error {
-				list[string(vv)] = string(k)
-				return nil
-			})
+		if b := tx.Bucket([]byte(search)); b != nil {
+			c := b.Cursor()
+			for k, _ := c.Seek([]byte(query)); bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
+				b.Bucket(k).ForEach(func(kk, vv []byte) error {
+					list[string(vv)] = string(k)
+					return nil
+				})
+			}
 		}
 		return nil
 	})
@@ -129,9 +132,10 @@ func Search(query string) map[string]string {
 
 func LastHash(name string) (hash string) {
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(search)).Bucket([]byte(name))
-		_, v := b.Cursor().Last()
-		hash = string(v)
+		if b := tx.Bucket([]byte(search)).Bucket([]byte(name)); b != nil {
+			_, v := b.Cursor().Last()
+			hash = string(v)
+		}
 		return nil
 	})
 	return hash
@@ -150,9 +154,10 @@ func RegisterUser(name, key []byte) {
 
 func UserKey(name string) (key string) {
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(users)).Bucket([]byte(name))
-		if value := b.Get([]byte("key")); value != nil {
-			key = string(value)
+		if b := tx.Bucket([]byte(users)).Bucket([]byte(name)); b != nil {
+			if value := b.Get([]byte("key")); value != nil {
+				key = string(value)
+			}
 		}
 		return nil
 	})
@@ -161,17 +166,19 @@ func UserKey(name string) (key string) {
 
 func SaveToken(name, token string) {
 	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(tokens))
-		b.Put([]byte(token), []byte(name))
+		if b := tx.Bucket([]byte(tokens)); b != nil {
+			b.Put([]byte(token), []byte(name))
+		}
 		return nil
 	})
 }
 
 func CheckToken(token string) (name string) {
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(tokens))
-		if value := b.Get([]byte(token)); value != nil {
-			name = string(value)
+		if b := tx.Bucket([]byte(tokens)); b != nil {
+			if value := b.Get([]byte(token)); value != nil {
+				name = string(value)
+			}
 		}
 		return nil
 	})
@@ -180,17 +187,19 @@ func CheckToken(token string) (name string) {
 
 func SaveAuthID(name, token string) {
 	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(authid))
-		b.Put([]byte(token), []byte(name))
+		if b := tx.Bucket([]byte(authid)); b != nil {
+			b.Put([]byte(token), []byte(name))
+		}
 		return nil
 	})
 }
 
 func CheckAuthID(token string) (name string) {
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(authid))
-		if value := b.Get([]byte(token)); value != nil {
-			name = string(value)
+		if b := tx.Bucket([]byte(authid)); b != nil {
+			if value := b.Get([]byte(token)); value != nil {
+				name = string(value)
+			}
 		}
 		return nil
 	})
