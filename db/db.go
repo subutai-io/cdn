@@ -109,6 +109,20 @@ func List() map[string]string {
 	return list
 }
 
+func Info(hash string) map[string]string {
+	list := make(map[string]string)
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket([]byte(bucket)).Bucket([]byte(hash)); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				list[string(k)] = string(v)
+				return nil
+			})
+		}
+		return nil
+	})
+	return list
+}
+
 func Close() {
 	db.Close()
 }
