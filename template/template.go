@@ -112,12 +112,12 @@ func getConf(hash string, config bytes.Buffer) (t *Template) {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
-	var hash string
+	var hash, owner string
 	var config bytes.Buffer
 	if r.Method == "GET" {
 		w.Write([]byte(upload.Page("template")))
 	} else if r.Method == "POST" {
-		if hash = upload.Handler(w, r); len(hash) == 0 {
+		if hash, owner = upload.Handler(w, r); len(hash) == 0 {
 			return
 		}
 		if config = readTempl(hash); len(config.String()) == 0 {
@@ -125,7 +125,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		t := getConf(hash, config)
 		w.Write([]byte("Name: " + t.name + ", version: " + t.version + ", hash: " + t.hash + "\n"))
-		db.Write("", t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
+		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
 			map[string]string{
 				"arch":    t.arch,
 				"version": t.version,

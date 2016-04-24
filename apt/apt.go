@@ -112,13 +112,14 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(upload.Page("apt")))
 	} else if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
-		hash, meta := getControl(readDeb(upload.Handler(w, r)))
+		hash, owner := upload.Handler(w, r)
+		hash, meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(path + hash)
 		meta["MD5sum"] = hash
 		writePackage(meta)
 		w.Write([]byte("Name: " + header.Filename + "\n"))
-		db.Write("", hash, header.Filename, meta)
+		db.Write(owner, hash, header.Filename, meta)
 		w.Write([]byte("Added to db: " + db.Read(hash)))
 	}
 }

@@ -21,26 +21,15 @@ var (
 func initdb() *bolt.DB {
 	db, err := bolt.Open("my.db", 0600, nil)
 	log.Check(log.FatalLevel, "Openning DB: my.db", err)
+
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(bucket))
-		log.Check(log.FatalLevel, "Creating data bucket: "+bucket, err)
-
-		_, err = tx.CreateBucketIfNotExists([]byte(search))
-		log.Check(log.FatalLevel, "Creating search bucket: "+search, err)
-
-		_, err = tx.CreateBucketIfNotExists([]byte(users))
-		log.Check(log.FatalLevel, "Creating users bucket: "+search, err)
-
-		_, err = tx.CreateBucketIfNotExists([]byte(tokens))
-		log.Check(log.FatalLevel, "Creating users bucket: "+search, err)
-
-		_, err = tx.CreateBucketIfNotExists([]byte(authid))
-		log.Check(log.FatalLevel, "Creating users bucket: "+search, err)
-
+		for _, b := range []string{bucket, search, users, tokens, authid} {
+			_, err := tx.CreateBucketIfNotExists([]byte(b))
+			log.Check(log.FatalLevel, "Creating bucket: "+b, err)
+		}
 		return nil
 	})
 	log.Check(log.FatalLevel, "Finishing update transaction"+bucket, err)
-
 	return db
 }
 

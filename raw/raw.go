@@ -16,10 +16,10 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		w.Write([]byte(upload.Page("raw")))
 	} else if r.Method == "POST" {
-		hash := upload.Handler(w, r)
+		hash, owner := upload.Handler(w, r)
 		_, header, _ := r.FormFile("file")
 		w.Write([]byte("Name: " + header.Filename + "\n"))
-		db.Write("", hash, header.Filename)
+		db.Write(owner, hash, header.Filename)
 		w.Write([]byte("Added to db: " + db.Read(hash)))
 	}
 }
