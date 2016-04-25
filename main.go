@@ -21,7 +21,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/template/get", template.Download)
 	http.HandleFunc("/kurjun/rest/template/list", template.List)
 	http.HandleFunc("/kurjun/rest/deb/list", apt.List)
-	http.HandleFunc("/kurjun/rest/file/list", raw.List)
+	http.HandleFunc("/kurjun/rest/file/list", raw.Show)
 	http.HandleFunc("/kurjun/rest/template/md5", template.Md5)
 	http.HandleFunc("/kurjun/rest/deb/md5", template.Md5)
 	http.HandleFunc("/kurjun/rest/file/md5", template.Md5)

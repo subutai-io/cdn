@@ -23,33 +23,6 @@ var (
 	path = "/tmp/"
 )
 
-type ListItem struct {
-	Architecture   string `json:"architecture"`
-	ConfigContents string `json:"configContents"`
-	Extra          struct {
-		Lxc_idMap           string `json:"lxc.id_map"`
-		Lxc_include         string `json:"lxc.include"`
-		Lxc_mount           string `json:"lxc.mount"`
-		Lxc_mount_entry     string `json:"lxc.mount.entry"`
-		Lxc_network_flags   string `json:"lxc.network.flags"`
-		Lxc_network_hwaddr  string `json:"lxc.network.hwaddr"`
-		Lxc_network_link    string `json:"lxc.network.link"`
-		Lxc_network_type    string `json:"lxc.network.type"`
-		Lxc_rootfs          string `json:"lxc.rootfs"`
-		Subutai_config_path string `json:"subutai.config.path"`
-		Subutai_git_branch  string `json:"subutai.git.branch"`
-	} `json:"extra"`
-	ID               string `json:"id"`
-	Md5Sum           string `json:"md5Sum"`
-	Name             string `json:"name"`
-	OwnerFprint      string `json:"ownerFprint"`
-	Package          string `json:"package"`
-	PackagesContents string `json:"packagesContents"`
-	Parent           string `json:"parent"`
-	Size             int64  `json:"size"`
-	Version          string `json:"version"`
-}
-
 type Template struct {
 	hash    string
 	arch    string
@@ -185,26 +158,20 @@ func Md5(w http.ResponseWriter, r *http.Request) {
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
-	list := make([]ListItem, 0)
+	list := make([]download.ListItem, 0)
 	for hash, _ := range db.List() {
-		var item ListItem
-		for k, v := range db.Info(hash) {
-			switch k {
-			case "name":
-				name := strings.Split(v, "-")
-				if len(name) > 0 {
-					item.Name = name[0]
-				}
-			case "arch":
-				item.Architecture = v
-			case "version":
-				item.Version = v
-			case "owner":
-				item.OwnerFprint = v
-			case "parent":
-				item.Parent = v
-			}
+		var item download.ListItem
+		info := db.Info(hash)
+
+		name := strings.Split(info["name"], "-")
+		if len(name) > 0 {
+			item.Name = name[0]
 		}
+		item.Architecture = strings.ToUpper(info["arch"])
+		item.Version = info["version"]
+		item.OwnerFprint = info["owner"]
+		item.Parent = info["parent"]
+
 		f, err := os.Open(path + hash)
 		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
 		fi, _ := f.Stat()

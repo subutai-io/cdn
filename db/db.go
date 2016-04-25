@@ -35,7 +35,7 @@ func initdb() *bolt.DB {
 
 func Write(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
-		owner = "subutai"
+		owner = "public"
 	}
 	err := db.Update(func(tx *bolt.Tx) error {
 		now, _ := time.Now().MarshalText()

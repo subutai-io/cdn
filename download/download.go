@@ -1,6 +1,7 @@
 package download
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,33 @@ import (
 var (
 	path = "/tmp/"
 )
+
+type ListItem struct {
+	Architecture   string `json:"architecture"`
+	ConfigContents string `json:"configContents"`
+	Extra          struct {
+		Lxc_idMap           string `json:"lxc.id_map"`
+		Lxc_include         string `json:"lxc.include"`
+		Lxc_mount           string `json:"lxc.mount"`
+		Lxc_mount_entry     string `json:"lxc.mount.entry"`
+		Lxc_network_flags   string `json:"lxc.network.flags"`
+		Lxc_network_hwaddr  string `json:"lxc.network.hwaddr"`
+		Lxc_network_link    string `json:"lxc.network.link"`
+		Lxc_network_type    string `json:"lxc.network.type"`
+		Lxc_rootfs          string `json:"lxc.rootfs"`
+		Subutai_config_path string `json:"subutai.config.path"`
+		Subutai_git_branch  string `json:"subutai.git.branch"`
+	} `json:"extra"`
+	ID               string `json:"id"`
+	Md5Sum           string `json:"md5Sum"`
+	Name             string `json:"name"`
+	OwnerFprint      string `json:"ownerFprint"`
+	Package          string `json:"package"`
+	PackagesContents string `json:"packagesContents"`
+	Parent           string `json:"parent"`
+	Size             int64  `json:"size"`
+	Version          string `json:"version"`
+}
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
@@ -62,8 +90,16 @@ func Search(repo string, w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(repo string, w http.ResponseWriter, r *http.Request) {
+
 	name := r.URL.Query().Get("name")
 	version := r.URL.Query().Get("version")
+	rtype := r.URL.Query().Get("type")
+
+	id := r.URL.Query().Get("id")
+	ids := strings.Split(id, ".")
+	if len(ids) > 1 {
+		name = db.Read(ids[1])
+	}
 
 	if len(name) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
@@ -73,18 +109,30 @@ func Info(repo string, w http.ResponseWriter, r *http.Request) {
 
 	for k, _ := range db.Search(name) {
 		info := db.Info(k)
-		if strings.HasPrefix(info["name"], name+"-subutai-template") {
-			if len(version) == 0 {
+		if rtype == "text" {
+			if strings.HasPrefix(info["name"], name+"-subutai-template") && (len(version) == 0 || info["version"] == version) {
 				w.Write([]byte(info["owner"] + "." + k))
 				return
-			} else {
-				if info["version"] == version {
-					w.Write([]byte(info["owner"] + "." + k))
-					return
-				}
 			}
+		} else {
+			f, err := os.Open(path + k)
+			log.Check(log.WarnLevel, "Opening file "+path+k, err)
+			fi, _ := f.Stat()
+
+			js, _ := json.Marshal(ListItem{
+				Name:         strings.Split(info["name"], "-")[0],
+				ID:           info["owner"] + "." + k,
+				OwnerFprint:  info["owner"],
+				Parent:       info["parent"],
+				Version:      info["version"],
+				Architecture: strings.ToUpper(info["arch"]),
+				Size:         fi.Size(),
+				Md5Sum:       k,
+			})
+			w.Write(js)
+			return
 		}
-		w.Write([]byte("Template not found"))
-		w.WriteHeader(http.StatusNotFound)
 	}
+	w.Write([]byte("Template not found"))
+	w.WriteHeader(http.StatusNotFound)
 }
