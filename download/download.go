@@ -90,10 +90,9 @@ func Search(repo string, w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(repo string, w http.ResponseWriter, r *http.Request) {
-
 	name := r.URL.Query().Get("name")
-	version := r.URL.Query().Get("version")
 	rtype := r.URL.Query().Get("type")
+	version := r.URL.Query().Get("version")
 
 	id := r.URL.Query().Get("id")
 	ids := strings.Split(id, ".")

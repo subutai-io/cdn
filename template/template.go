@@ -162,6 +162,9 @@ func List(w http.ResponseWriter, r *http.Request) {
 	for hash, _ := range db.List() {
 		var item download.ListItem
 		info := db.Info(hash)
+		if info["type"] != "template" {
+			continue
+		}
 
 		name := strings.Split(info["name"], "-")
 		if len(name) > 0 {
