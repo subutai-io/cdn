@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/optdyn/gorjun/db"
-	"github.com/optdyn/gorjun/pgp"
+	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/gorjun/pgp"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {

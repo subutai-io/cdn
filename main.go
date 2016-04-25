@@ -3,11 +3,11 @@ package main
 import (
 	"net/http"
 
-	"github.com/optdyn/gorjun/apt"
-	"github.com/optdyn/gorjun/auth"
-	"github.com/optdyn/gorjun/db"
-	"github.com/optdyn/gorjun/raw"
-	"github.com/optdyn/gorjun/template"
+	"github.com/subutai-io/gorjun/apt"
+	"github.com/subutai-io/gorjun/auth"
+	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/gorjun/raw"
+	"github.com/subutai-io/gorjun/template"
 )
 
 func main() {

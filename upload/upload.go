@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/optdyn/gorjun/db"
+	"github.com/subutai-io/gorjun/db"
 
 	"github.com/subutai-io/base/agent/log"
 )

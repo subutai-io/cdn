@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/optdyn/gorjun/db"
 	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/gorjun/db"
 )
 
 var (

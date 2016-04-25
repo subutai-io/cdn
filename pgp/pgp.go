@@ -3,7 +3,7 @@ package pgp
 import (
 	"bytes"
 
-	"github.com/optdyn/gorjun/db"
+	"github.com/subutai-io/gorjun/db"
 
 	"github.com/subutai-io/base/agent/log"
 	"golang.org/x/crypto/openpgp"

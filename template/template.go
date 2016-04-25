@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/optdyn/gorjun/db"
-	"github.com/optdyn/gorjun/download"
-	"github.com/optdyn/gorjun/upload"
 	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/gorjun/download"
+	"github.com/subutai-io/gorjun/upload"
 )
 
 var (
