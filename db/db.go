@@ -37,8 +37,8 @@ func Write(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
 		owner = "subutai"
 	}
-	now, _ := time.Now().MarshalText()
 	err := db.Update(func(tx *bolt.Tx) error {
+		now, _ := time.Now().MarshalText()
 
 		b, err := tx.Bucket([]byte(users)).CreateBucketIfNotExists([]byte(owner))
 		log.Check(log.WarnLevel, "Creating users subbucket: "+key, err)
@@ -65,9 +65,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 
 		return nil
 	})
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
 func Delete(key string) (err error) {

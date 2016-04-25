@@ -178,7 +178,6 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Md5(w http.ResponseWriter, r *http.Request) {
-	log.Info("md5")
 	hash := md5.New()
 	hash.Write([]byte(time.Now().String()))
 	// w.Write([]byte("c9684cacea51e32d9304f5290b7e1b5e"))
@@ -186,7 +185,6 @@ func Md5(w http.ResponseWriter, r *http.Request) {
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
-	log.Info("list")
 	list := make([]ListItem, 0)
 	for hash, _ := range db.List() {
 		var item ListItem
