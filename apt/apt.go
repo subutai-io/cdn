@@ -117,6 +117,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(path + hash)
 		meta["MD5sum"] = hash
+		meta["type"] = "apt"
 		writePackage(meta)
 		w.Write([]byte("Name: " + header.Filename + "\n"))
 		db.Write(owner, hash, header.Filename, meta)
@@ -125,14 +126,17 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
-	file := strings.TrimLeft(r.RequestURI, "/apt/")
+	file := r.URL.Query().Get("hash")
 	if len(file) == 0 {
-		download.List("apt", w, r)
-	} else {
-		log.Info("Request: " + r.RequestURI)
+		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 		if file != "Packages.gz" && file != "InRelease" && file != "Release" {
 			file = db.LastHash(file)
 		}
+	}
+	if len(file) == 0 {
+		download.List("apt", w, r)
+	} else {
+		log.Info("Request: " + file)
 		f, err := os.Open(path + file)
 		if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
 			w.WriteHeader(http.StatusNotFound)
@@ -209,4 +213,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Removed"))
 	}
+}
+
+func List(w http.ResponseWriter, r *http.Request) {
+	download.List("apt", w, r)
 }

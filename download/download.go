@@ -26,34 +26,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			hash = tmp[1]
 		}
 	}
-	if len(hash) != 0 {
-		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
-		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
-		f, err := os.Open(path + hash)
-		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
-		fi, _ := f.Stat()
-		w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
-		defer f.Close()
-		io.Copy(w, f)
+	if len(hash) == 0 && len(name) == 0 {
+		w.Write([]byte("Please specify hash or name"))
+		return
 	} else if len(name) != 0 {
 		hash = db.LastHash(name)
-		w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
-		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
-		f, err := os.Open(path + hash)
-		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
-		fi, _ := f.Stat()
-		w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
-		defer f.Close()
-		io.Copy(w, f)
-	} else {
-		w.Write([]byte("Please specify hash"))
 	}
+	w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
+	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+	f, err := os.Open(path + hash)
+	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
+	fi, _ := f.Stat()
+	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
+	defer f.Close()
+	io.Copy(w, f)
 }
 
 func List(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<html><body>"))
 	for k, v := range db.List() {
-		w.Write([]byte("<p><a href=\"/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
+		if db.Info(k)["type"] == repo {
+			w.Write([]byte("<p><a href=\"/kurjun/rest/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
+		}
 	}
 	w.Write([]byte("</body></html>"))
 }
