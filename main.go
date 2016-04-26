@@ -29,7 +29,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/file/md5", template.Md5)
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
 
-	http.HandleFunc("/kurjun/rest/apt", apt.Download)
+	http.HandleFunc("/kurjun/rest/apt/", apt.Download)
 	http.HandleFunc("/kurjun/rest/apt/list", apt.Info)
 	http.HandleFunc("/kurjun/rest/apt/delete", apt.Delete)
 	http.HandleFunc("/kurjun/rest/apt/upload", apt.Upload)

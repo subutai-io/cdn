@@ -129,21 +129,17 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Query().Get("hash")
 	if len(file) == 0 {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
-		if file != "Packages.gz" && file != "InRelease" && file != "Release" {
-			file = db.LastHash(file)
-		}
 	}
-	if len(file) == 0 {
-		download.List("apt", w, r)
-	} else {
-		log.Info("Request: " + file)
-		f, err := os.Open(path + file)
-		if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
-			w.WriteHeader(http.StatusNotFound)
-		}
-		defer f.Close()
-		io.Copy(w, f)
+	if file != "Packages" && file != "InRelease" && file != "Release" {
+		file = db.LastHash(file)
 	}
+	f, err := os.Open(path + file)
+	if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+	io.Copy(w, f)
 }
 
 func readPackages() []string {
