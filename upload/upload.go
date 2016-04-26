@@ -40,6 +40,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
+	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
 	token := r.MultipartForm.Value["token"][0]
 	log.Info("User: " + r.RemoteAddr + " token: " + token)
 
