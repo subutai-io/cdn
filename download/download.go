@@ -157,6 +157,14 @@ func Info(repo string, r *http.Request) []byte {
 					Version:      info["Version"],
 					Size:         fi.Size(),
 				})
+			case "raw":
+				item, _ = json.Marshal(RawItem{
+					Name:    info["name"],
+					Md5Sum:  k,
+					Package: info["package"],
+					Version: info["version"],
+					Size:    fi.Size(),
+				})
 			}
 			if counter > 1 {
 				js = append(js, []byte(",")[0])

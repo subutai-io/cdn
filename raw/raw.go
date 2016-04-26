@@ -72,3 +72,12 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Removed"))
 	}
 }
+
+func Info(w http.ResponseWriter, r *http.Request) {
+	info := download.Info("raw", r)
+	if len(info) != 0 {
+		w.Write(info)
+	} else {
+		w.Write([]byte("Not found"))
+	}
+}
