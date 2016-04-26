@@ -92,22 +92,22 @@ func genHash(file string) string {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) string {
-	r.ParseMultipartForm(32 << 20)
-	if len(r.MultipartForm.Value["id"]) == 0 {
+	hash := r.URL.Query().Get("id")
+	token := r.URL.Query().Get("token")
+	if len(hash) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Empty file id"))
 		log.Warn(r.RemoteAddr + " - empty file id")
 		return ""
 	}
-	if len(r.MultipartForm.Value["token"]) == 0 {
+	if len(token) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Empty token"))
 		log.Warn(r.RemoteAddr + " - empty token")
 		return ""
 	}
-	user := db.CheckToken(r.MultipartForm.Value["token"][0])
-	hash := r.MultipartForm.Value["id"][0]
-	log.Info("User: " + user + " token: " + r.MultipartForm.Value["token"][0])
+	user := db.CheckToken(token)
+	log.Info("User: " + user + " token: " + token)
 	info := db.Info(hash)
 	if len(info) == 0 {
 		log.Warn("File not found by hash")
@@ -121,14 +121,14 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
 		return ""
 	}
-	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(path+hash)) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to remove file"))
-		return ""
-	}
 	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from db", db.Delete(hash)) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to remove db entity"))
+		return ""
+	}
+	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(path+hash)) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to remove file"))
 		return ""
 	}
 	return hash

@@ -48,21 +48,19 @@ func List(w http.ResponseWriter, r *http.Request) {
 	for hash, _ := range db.List() {
 		var item RawItem
 		info := db.Info(hash)
-		if info["type"] != "raw" {
-			continue
+		if info["type"] == "raw" {
+			f, err := os.Open(config.Filepath + hash)
+			log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
+			fi, _ := f.Stat()
+			f.Close()
+
+			item.Fingerprint = info["owner"]
+			item.Name = info["name"]
+			item.Size = fi.Size()
+			item.Md5Sum = hash
+			item.ID = "raw." + item.Md5Sum
+			list = append(list, item)
 		}
-
-		item.Name = info["name"]
-		item.Fingerprint = info["owner"]
-
-		f, err := os.Open(config.Filepath + hash)
-		log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
-		defer f.Close()
-		fi, _ := f.Stat()
-		item.Size = fi.Size()
-		item.Md5Sum = hash
-		item.ID = "raw." + item.Md5Sum
-		list = append(list, item)
 	}
 	js, _ := json.Marshal(list)
 	w.Write(js)

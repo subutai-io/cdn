@@ -71,7 +71,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 func Delete(key string) (err error) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket([]byte(bucket)); b != nil {
-			err = b.Delete([]byte(key))
+			err = b.DeleteBucket([]byte(key))
 		}
 		return nil
 	})
