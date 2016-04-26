@@ -172,7 +172,7 @@ func Info(repo string, r *http.Request) []byte {
 				js = append(js, []byte(",")[0])
 			}
 			js = append(js, item...)
-			if name == strings.Split(info["name"], "-subutai-template")[0] {
+			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
 				return item
 			}
 		}
