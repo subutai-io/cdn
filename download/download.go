@@ -16,6 +16,25 @@ var (
 	path = "/tmp/"
 )
 
+type AptItem struct {
+	Architecture string `json:"architecture,omitempty"`
+	Description  string `json:"description,omitempty"`
+	Filename     string `json:"filename,omitempty"`
+	Md5Sum       string `json:"md5Sum,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Package      string `json:"package,omitempty"`
+	Version      string `json:"version,omitempty"`
+	Size         int64  `json:"size"`
+}
+
+type RawItem struct {
+	Md5Sum  string `json:"md5Sum,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Package string `json:"package,omitempty"`
+	Version string `json:"version,omitempty"`
+	Size    int64  `json:"size"`
+}
+
 type ListItem struct {
 	Architecture   string `json:"architecture"`
 	ConfigContents string `json:"configContents"`
@@ -66,7 +85,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
 	fi, _ := f.Stat()
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
-
 	defer f.Close()
 	io.Copy(w, f)
 }
@@ -90,49 +108,64 @@ func Search(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("</body></html>"))
 }
 
-func Info(repo string, w http.ResponseWriter, r *http.Request) {
+func Info(repo string, r *http.Request) []byte {
+	var item, js []byte
 	name := r.URL.Query().Get("name")
-	rtype := r.URL.Query().Get("type")
 	version := r.URL.Query().Get("version")
-
+	rtype := r.URL.Query().Get("type")
 	id := r.URL.Query().Get("id")
+
 	ids := strings.Split(id, ".")
 	if len(ids) > 1 {
 		name = db.Read(ids[1])
 	}
 
-	if len(name) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Please specify template name"))
-		return
-	}
-
+	counter := 0
 	for k, _ := range db.Search(name) {
 		info := db.Info(k)
-		if rtype == "text" {
-			if strings.HasPrefix(info["name"], name+"-subutai-template") && (len(version) == 0 || info["version"] == version) {
-				w.Write([]byte(info["owner"] + "." + k))
-				return
+		if info["type"] == repo {
+			counter++
+			if rtype == "text" && repo == "template" {
+				if strings.HasPrefix(info["name"], name) && (len(version) == 0 || info["version"] == version) {
+					return ([]byte(info["owner"] + "." + k))
+				}
 			}
-		} else {
 			f, err := os.Open(path + k)
+			defer f.Close()
 			log.Check(log.WarnLevel, "Opening file "+path+k, err)
 			fi, _ := f.Stat()
-
-			js, _ := json.Marshal(ListItem{
-				Name:         strings.Split(info["name"], "-")[0],
-				ID:           info["owner"] + "." + k,
-				OwnerFprint:  info["owner"],
-				Parent:       info["parent"],
-				Version:      info["version"],
-				Architecture: strings.ToUpper(info["arch"]),
-				Size:         fi.Size(),
-				Md5Sum:       k,
-			})
-			w.Write(js)
-			return
+			switch repo {
+			case "template":
+				item, _ = json.Marshal(ListItem{
+					Name:         strings.Split(info["name"], "-")[0],
+					ID:           info["owner"] + "." + k,
+					OwnerFprint:  info["owner"],
+					Parent:       info["parent"],
+					Version:      info["version"],
+					Architecture: strings.ToUpper(info["arch"]),
+					Size:         fi.Size(),
+					Md5Sum:       k,
+				})
+			case "apt":
+				item, _ = json.Marshal(AptItem{
+					Name:         info["name"],
+					Md5Sum:       info["Md5Sum"],
+					Description:  info["Description"],
+					Architecture: info["Architecture"],
+					Package:      info["Package"],
+					Version:      info["Version"],
+					Size:         fi.Size(),
+				})
+			}
+			if counter > 1 {
+				js = append(js, []byte(",")[0])
+			}
+			js = append(js, item...)
 		}
 	}
-	w.Write([]byte("Template not found"))
-	w.WriteHeader(http.StatusNotFound)
+	if counter > 1 {
+		js = append([]byte("["), js...)
+		js = append(js, []byte("]")[0])
+	}
+	return js
 }

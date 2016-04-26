@@ -30,12 +30,13 @@ func main() {
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
 
 	http.HandleFunc("/kurjun/rest/apt", apt.Download)
+	http.HandleFunc("/kurjun/rest/apt/list", apt.Info)
 	http.HandleFunc("/kurjun/rest/apt/delete", apt.Delete)
 	http.HandleFunc("/kurjun/rest/apt/upload", apt.Upload)
 	http.HandleFunc("/kurjun/rest/apt/download", apt.Download)
 	http.HandleFunc("/kurjun/rest/deb/md5", template.Md5)
+	http.HandleFunc("/kurjun/rest/deb/list", apt.Info)
 
-	http.HandleFunc("/kurjun/rest/deb/list", apt.List)
 	http.HandleFunc("/kurjun/rest/auth/register", auth.Register)
 	http.HandleFunc("/kurjun/rest/auth/token", auth.Token)
 	http.ListenAndServe(":8080", nil)

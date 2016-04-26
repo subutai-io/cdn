@@ -215,6 +215,11 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func List(w http.ResponseWriter, r *http.Request) {
-	download.List("apt", w, r)
+func Info(w http.ResponseWriter, r *http.Request) {
+	info := download.Info("apt", r)
+	if len(info) != 0 {
+		w.Write(info)
+	} else {
+		w.Write([]byte("Not found"))
+	}
 }
