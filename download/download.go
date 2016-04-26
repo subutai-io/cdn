@@ -130,7 +130,7 @@ func Info(repo string, r *http.Request) []byte {
 				if strings.HasPrefix(info["name"], name) && (len(version) == 0 || info["version"] == version) {
 					return ([]byte("public." + k))
 				}
-				return []byte("")
+				continue
 			}
 			f, err := os.Open(path + k)
 			defer f.Close()
@@ -173,7 +173,9 @@ func Info(repo string, r *http.Request) []byte {
 			}
 			js = append(js, item...)
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
-				return item
+				if len(version) == 0 || info["version"] == version {
+					return item
+				}
 			}
 		}
 	}
