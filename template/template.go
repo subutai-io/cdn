@@ -134,7 +134,12 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		log.Warn("Incorrect method")
 		return
 	}
-	download.Info("template", w, r)
+	info := download.Info("template", r)
+	if len(info) != 0 {
+		w.Write(info)
+	} else {
+		w.Write([]byte("Not found"))
+	}
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
