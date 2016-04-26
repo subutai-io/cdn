@@ -1,5 +1,5 @@
 package config
 
 const (
-	Filepath = "/tmp"
+	Filepath = "/tmp/"
 )

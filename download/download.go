@@ -66,6 +66,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
 	fi, _ := f.Stat()
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
+
 	defer f.Close()
 	io.Copy(w, f)
 }

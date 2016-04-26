@@ -1,16 +1,25 @@
 package raw
 
 import (
+	"encoding/json"
 	"net/http"
+	"os"
 
+	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
 )
 
-var (
-	path = "/tmp/"
-)
+type RawItem struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Size        int64  `json:"size"`
+	Md5Sum      string `json:"md5Sum"`
+	Version     string `json:"version"`
+	Fingerprint string `json:"fingerprint"`
+}
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
@@ -32,6 +41,31 @@ func Download(w http.ResponseWriter, r *http.Request) {
 func Show(w http.ResponseWriter, r *http.Request) {
 	//raw-files list handler will be here
 	download.List("raw", w, r)
+}
+
+func List(w http.ResponseWriter, r *http.Request) {
+	list := make([]RawItem, 0)
+	for hash, _ := range db.List() {
+		var item RawItem
+		info := db.Info(hash)
+		if info["type"] != "raw" {
+			continue
+		}
+
+		item.Name = info["name"]
+		item.Fingerprint = info["owner"]
+
+		f, err := os.Open(config.Filepath + hash)
+		log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
+		defer f.Close()
+		fi, _ := f.Stat()
+		item.Size = fi.Size()
+		item.Md5Sum = hash
+		item.ID = "raw." + item.Md5Sum
+		list = append(list, item)
+	}
+	js, _ := json.Marshal(list)
+	w.Write(js)
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
