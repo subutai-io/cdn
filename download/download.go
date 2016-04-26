@@ -33,6 +33,7 @@ type RawItem struct {
 	Package string `json:"package,omitempty"`
 	Version string `json:"version,omitempty"`
 	Size    int64  `json:"size"`
+	ID      string `json:"id"`
 }
 
 type ListItem struct {
@@ -160,6 +161,7 @@ func Info(repo string, r *http.Request) []byte {
 			case "raw":
 				item, _ = json.Marshal(RawItem{
 					Name:    info["name"],
+					ID:      k,
 					Md5Sum:  k,
 					Package: info["package"],
 					Version: info["version"],
@@ -170,6 +172,9 @@ func Info(repo string, r *http.Request) []byte {
 				js = append(js, []byte(",")[0])
 			}
 			js = append(js, item...)
+			if name == strings.Split(info["name"], "-subutai-template")[0] {
+				return item
+			}
 		}
 	}
 	if counter > 1 {
