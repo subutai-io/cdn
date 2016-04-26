@@ -129,6 +129,7 @@ func Info(repo string, r *http.Request) []byte {
 				if strings.HasPrefix(info["name"], name) && (len(version) == 0 || info["version"] == version) {
 					return ([]byte("public." + k))
 				}
+				return []byte("")
 			}
 			f, err := os.Open(path + k)
 			defer f.Close()
