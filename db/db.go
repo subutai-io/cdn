@@ -2,7 +2,11 @@ package db
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"time"
+
+	"github.com/subutai-io/gorjun/config"
 
 	"github.com/boltdb/bolt"
 
@@ -51,6 +55,13 @@ func Write(owner, key, value string, options ...map[string]string) {
 		b.Put([]byte("date"), now)
 		b.Put([]byte("name"), []byte(value))
 		b.Put([]byte("owner"), []byte(owner))
+
+		f, err := os.Open(config.Filepath + key)
+		if !log.Check(log.WarnLevel, "Opening file "+config.Filepath+key, err) {
+			fi, _ := f.Stat()
+			f.Close()
+			b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
+		}
 
 		for i, _ := range options {
 			for k, v := range options[i] {
