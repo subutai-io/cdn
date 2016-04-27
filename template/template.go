@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -174,17 +175,11 @@ func List(w http.ResponseWriter, r *http.Request) {
 		if len(name) > 0 {
 			item.Name = name[0]
 		}
+		item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 		item.Architecture = strings.ToUpper(info["arch"])
 		item.Version = info["version"]
 		item.OwnerFprint = info["owner"]
 		item.Parent = info["parent"]
-
-		f, err := os.Open(path + hash)
-		if !log.Check(log.WarnLevel, "Opening file "+path+hash, err) {
-			fi, _ := f.Stat()
-			item.Size = fi.Size()
-			f.Close()
-		}
 		item.Md5Sum = hash
 		item.ID = item.OwnerFprint + "." + item.Md5Sum
 		list = append(list, item)

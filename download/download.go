@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/subutai-io/base/agent/log"
@@ -132,10 +133,7 @@ func Info(repo string, r *http.Request) []byte {
 				}
 				continue
 			}
-			f, err := os.Open(path + k)
-			log.Check(log.WarnLevel, "Opening file "+path+k, err)
-			fi, _ := f.Stat()
-			f.Close()
+			size, _ := strconv.ParseInt(info["size"], 10, 64)
 			switch repo {
 			case "template":
 				item, _ = json.Marshal(ListItem{
@@ -145,8 +143,8 @@ func Info(repo string, r *http.Request) []byte {
 					Parent:       info["parent"],
 					Version:      info["version"],
 					Architecture: strings.ToUpper(info["arch"]),
-					Size:         fi.Size(),
 					Md5Sum:       k,
+					Size:         size,
 				})
 			case "apt":
 				item, _ = json.Marshal(AptItem{
@@ -156,7 +154,7 @@ func Info(repo string, r *http.Request) []byte {
 					Architecture: info["Architecture"],
 					Package:      info["Package"],
 					Version:      info["Version"],
-					Size:         fi.Size(),
+					Size:         size,
 				})
 			case "raw":
 				item, _ = json.Marshal(RawItem{
@@ -165,7 +163,7 @@ func Info(repo string, r *http.Request) []byte {
 					Md5Sum:  k,
 					Package: info["package"],
 					Version: info["version"],
-					Size:    fi.Size(),
+					Size:    size,
 				})
 			}
 			if counter > 1 {

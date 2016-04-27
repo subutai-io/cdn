@@ -12,7 +12,6 @@ import (
 
 func main() {
 	defer db.Close()
-
 	http.HandleFunc("/kurjun/rest/template", template.Show)
 	http.HandleFunc("/kurjun/rest/template/info", template.Info)
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)

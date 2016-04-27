@@ -3,10 +3,9 @@ package raw
 import (
 	"encoding/json"
 	"net/http"
-	"os"
+	"strconv"
 
 	"github.com/subutai-io/base/agent/log"
-	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
@@ -49,12 +48,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 		var item RawItem
 		info := db.Info(hash)
 		if info["type"] == "raw" {
-			f, err := os.Open(config.Filepath + hash)
-			if !log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) {
-				fi, _ := f.Stat()
-				f.Close()
-				item.Size = fi.Size()
-			}
+			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 
 			item.Fingerprint = info["owner"]
 			item.Name = info["name"]
