@@ -119,9 +119,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
 		writePackage(meta)
-		w.Write([]byte("Name: " + header.Filename + "\n"))
 		db.Write(owner, hash, header.Filename, meta)
-		w.Write([]byte("Added to db: " + db.Read(hash)))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(hash))
 	}
 }
 

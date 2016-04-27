@@ -23,9 +23,8 @@ type AptItem struct {
 	Filename     string `json:"filename,omitempty"`
 	Md5Sum       string `json:"md5Sum,omitempty"`
 	Name         string `json:"name,omitempty"`
-	Package      string `json:"package,omitempty"`
 	Version      string `json:"version,omitempty"`
-	Size         int64  `json:"size"`
+	Size         string `json:"size"`
 }
 
 type RawItem struct {
@@ -149,12 +148,11 @@ func Info(repo string, r *http.Request) []byte {
 			case "apt":
 				item, _ = json.Marshal(AptItem{
 					Name:         info["name"],
-					Md5Sum:       info["Md5Sum"],
+					Md5Sum:       info["MD5sum"],
 					Description:  info["Description"],
 					Architecture: info["Architecture"],
-					Package:      info["Package"],
 					Version:      info["Version"],
-					Size:         size,
+					Size:         info["Size"],
 				})
 			case "raw":
 				item, _ = json.Marshal(RawItem{
