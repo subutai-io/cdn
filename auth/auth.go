@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/subutai-io/gorjun/db"
@@ -11,21 +12,21 @@ import (
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		w.Write([]byte(`<html><title>Registration</title><body>
-			<form action="/auth/register" method="post">
-				Name: <input type="text" name="name"><br>
-				PGP public key: <textarea cols="63" rows="30" name="key"></textarea><br>
-				<input type="submit" name="submit" value="Submit">
-			</form></body></html>`))
-	} else if r.Method == "POST" {
+	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" && r.Method == "POST" {
 		r.ParseMultipartForm(32 << 20)
-		name := r.MultipartForm.Value["name"][0]
-		key := r.MultipartForm.Value["key"][0]
-		w.Write([]byte("Name: " + name + "\n"))
-		w.Write([]byte("PGP key: " + key + "\n"))
-		db.RegisterUser([]byte(name), []byte(key))
+		if len(r.MultipartForm.Value["name"]) > 0 && len(r.MultipartForm.Value["key"]) > 0 {
+			name := r.MultipartForm.Value["name"][0]
+			key := r.MultipartForm.Value["key"][0]
+
+			w.Write([]byte("Name: " + name + "\n"))
+			w.Write([]byte("PGP key: " + key + "\n"))
+
+			db.RegisterUser([]byte(name), []byte(key))
+			return
+		}
 	}
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte("Not allowed"))
 }
 
 func Token(w http.ResponseWriter, r *http.Request) {

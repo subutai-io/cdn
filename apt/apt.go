@@ -117,6 +117,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(path + hash)
 		meta["MD5sum"] = hash
+		meta["type"] = "apt"
 		writePackage(meta)
 		w.Write([]byte("Name: " + header.Filename + "\n"))
 		db.Write(owner, hash, header.Filename, meta)
@@ -125,21 +126,20 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
-	file := strings.TrimLeft(r.RequestURI, "/apt/")
+	file := r.URL.Query().Get("hash")
 	if len(file) == 0 {
-		download.List("apt", w, r)
-	} else {
-		log.Info("Request: " + r.RequestURI)
-		if file != "Packages.gz" && file != "InRelease" && file != "Release" {
-			file = db.LastHash(file)
-		}
-		f, err := os.Open(path + file)
-		if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
-			w.WriteHeader(http.StatusNotFound)
-		}
-		defer f.Close()
-		io.Copy(w, f)
+		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
+	if file != "Packages" && file != "InRelease" && file != "Release" {
+		file = db.LastHash(file)
+	}
+	f, err := os.Open(path + file)
+	if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	defer f.Close()
+	io.Copy(w, f)
 }
 
 func readPackages() []string {
@@ -208,5 +208,14 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		deleteInfo(hash)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Removed"))
+	}
+}
+
+func Info(w http.ResponseWriter, r *http.Request) {
+	info := download.Info("apt", r)
+	if len(info) != 0 {
+		w.Write(info)
+	} else {
+		w.Write([]byte("Not found"))
 	}
 }
