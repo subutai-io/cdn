@@ -41,8 +41,6 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 
 	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
-	token := r.MultipartForm.Value["token"][0]
-	log.Info("User: " + r.RemoteAddr + " token: " + token)
 
 	file, header, err := r.FormFile("file")
 	defer file.Close()
@@ -108,7 +106,6 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 	user := db.CheckToken(token)
-	log.Info("User: " + user + " token: " + token)
 	info := db.Info(hash)
 	if len(info) == 0 {
 		log.Warn("File not found by hash")
