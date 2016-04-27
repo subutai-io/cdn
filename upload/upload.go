@@ -32,17 +32,17 @@ func Page(repo string) string {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
-	r.ParseMultipartForm(32 << 20)
-	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Not authorized"))
-		log.Warn(r.RemoteAddr + " - rejecting unauthorized upload request")
-		return
-	}
+	// r.ParseMultipartForm(32 << 20)
+	// if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
+	// 	w.WriteHeader(http.StatusUnauthorized)
+	// 	w.Write([]byte("Not authorized"))
+	// 	log.Warn(r.RemoteAddr + " - rejecting unauthorized upload request")
+	// 	return
+	// }
 
-	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
-	token := r.MultipartForm.Value["token"][0]
-	log.Info("User: " + r.RemoteAddr + " token: " + token)
+	// owner = db.CheckToken(r.MultipartForm.Value["token"][0])
+	// token := r.MultipartForm.Value["token"][0]
+	// log.Info("User: " + r.RemoteAddr + " token: " + token)
 
 	file, header, err := r.FormFile("file")
 	defer file.Close()

@@ -22,3 +22,13 @@ func Verify(name, message string) string {
 	}
 	return string(block.Bytes)
 }
+
+func Fingerprint(key string) []byte {
+	entity, err := openpgp.ReadArmoredKeyRing(bytes.NewBufferString(key))
+	log.Check(log.WarnLevel, "Reading user public key", err)
+
+	for _, v := range entity {
+		return v.PrimaryKey.Fingerprint[:]
+	}
+	return []byte("")
+}
