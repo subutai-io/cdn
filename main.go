@@ -27,6 +27,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/raw/download", raw.Download)
 	http.HandleFunc("/kurjun/rest/raw/delete", raw.Delete)
 	http.HandleFunc("/kurjun/rest/raw/info", raw.Info)
+	http.HandleFunc("/kurjun/rest/raw/list", raw.List)
 	http.HandleFunc("/kurjun/rest/file/info", raw.Info)
 	http.HandleFunc("/kurjun/rest/file/list", raw.List)
 	http.HandleFunc("/kurjun/rest/file/md5", template.Md5)
