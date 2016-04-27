@@ -180,9 +180,11 @@ func List(w http.ResponseWriter, r *http.Request) {
 		item.Parent = info["parent"]
 
 		f, err := os.Open(path + hash)
-		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
-		fi, _ := f.Stat()
-		item.Size = fi.Size()
+		if !log.Check(log.WarnLevel, "Opening file "+path+hash, err) {
+			fi, _ := f.Stat()
+			item.Size = fi.Size()
+			f.Close()
+		}
 		item.Md5Sum = hash
 		item.ID = item.OwnerFprint + "." + item.Md5Sum
 		list = append(list, item)

@@ -111,14 +111,14 @@ func Search(repo string, w http.ResponseWriter, r *http.Request) {
 
 func Info(repo string, r *http.Request) []byte {
 	var item, js []byte
-	name := r.URL.Query().Get("name")
-	version := r.URL.Query().Get("version")
-	rtype := r.URL.Query().Get("type")
-	id := r.URL.Query().Get("id")
 
-	ids := strings.Split(id, ".")
-	if len(ids) > 1 {
-		name = db.Read(ids[1])
+	id := r.URL.Query().Get("id")
+	name := r.URL.Query().Get("name")
+	rtype := r.URL.Query().Get("type")
+	version := r.URL.Query().Get("version")
+
+	if len(strings.Split(id, ".")) > 1 {
+		name = db.Read(strings.Split(id, ".")[1])
 	}
 
 	counter := 0
@@ -133,9 +133,9 @@ func Info(repo string, r *http.Request) []byte {
 				continue
 			}
 			f, err := os.Open(path + k)
-			defer f.Close()
 			log.Check(log.WarnLevel, "Opening file "+path+k, err)
 			fi, _ := f.Stat()
+			f.Close()
 			switch repo {
 			case "template":
 				item, _ = json.Marshal(ListItem{

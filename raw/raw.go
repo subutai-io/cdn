@@ -50,13 +50,14 @@ func List(w http.ResponseWriter, r *http.Request) {
 		info := db.Info(hash)
 		if info["type"] == "raw" {
 			f, err := os.Open(config.Filepath + hash)
-			log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
-			fi, _ := f.Stat()
-			f.Close()
+			if !log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) {
+				fi, _ := f.Stat()
+				f.Close()
+				item.Size = fi.Size()
+			}
 
 			item.Fingerprint = info["owner"]
 			item.Name = info["name"]
-			item.Size = fi.Size()
 			item.Md5Sum = hash
 			item.ID = "raw." + item.Md5Sum
 			list = append(list, item)
@@ -67,6 +68,12 @@ func List(w http.ResponseWriter, r *http.Request) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "DELETE" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		log.Warn("Incorrect method")
+		return
+	}
 	if len(upload.Delete(w, r)) != 0 {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Removed"))
