@@ -42,6 +42,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/deb/list", apt.Info)
 
 	http.HandleFunc("/kurjun/rest/auth/register", auth.Register)
+	http.HandleFunc("/kurjun/rest/auth/validate", auth.Validate)
 	http.HandleFunc("/kurjun/rest/auth/token", auth.Token)
 	http.ListenAndServe(":8080", nil)
 }

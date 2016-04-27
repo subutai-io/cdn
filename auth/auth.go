@@ -36,9 +36,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			fmt.Println("Registering: " + fmt.Sprintf("%x", fingerprint) + "\nKey: " + key)
 			db.RegisterUser([]byte(fmt.Sprintf("%x", fingerprint)), []byte(key))
-			fmt.Println("Registered key: " + db.UserKey(fmt.Sprintf("%x", fingerprint)))
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -73,5 +71,20 @@ func Token(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Signature verification failed"))
 		}
 	}
+}
 
+func Validate(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if len(token) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Empty token"))
+		return
+	}
+	if len(db.CheckToken(token)) == 0 {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Forbidden"))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Success"))
 }
