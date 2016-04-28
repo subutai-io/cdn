@@ -58,25 +58,23 @@ func readTempl(hash string) bytes.Buffer {
 }
 
 func getConf(hash string, configfile bytes.Buffer) (t *Template) {
-	t = &Template{
-		arch:    "lxc.arch",
-		name:    "lxc.utsname",
-		hash:    hash,
-		parent:  "subutai.parent",
-		version: "subutai.template.version",
-	}
+	t = &Template{hash: hash}
 
 	for _, v := range strings.Split(configfile.String(), "\n") {
-		line := strings.Split(v, "=")
-		switch strings.Trim(line[0], " ") {
-		case t.arch:
-			t.arch = strings.Trim(line[1], " ")
-		case t.name:
-			t.name = strings.Trim(line[1], " ")
-		case t.parent:
-			t.parent = strings.Trim(line[1], " ")
-		case t.version:
-			t.version = strings.Trim(line[1], " ")
+		if line := strings.Split(v, "="); len(line) > 1 {
+			line[0] = strings.TrimSpace(line[0])
+			line[1] = strings.TrimSpace(line[1])
+
+			switch line[0] {
+			case "lxc.arch":
+				t.arch = line[1]
+			case "lxc.utsname":
+				t.name = line[1]
+			case "subutai.parent":
+				t.parent = line[1]
+			case "subutai.template.version":
+				t.version = line[1]
+			}
 		}
 	}
 	return
