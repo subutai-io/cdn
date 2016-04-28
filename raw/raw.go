@@ -21,9 +21,7 @@ type RawItem struct {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		w.Write([]byte(upload.Page("raw")))
-	} else if r.Method == "POST" {
+	if r.Method == "POST" {
 		hash, owner := upload.Handler(w, r)
 		_, header, _ := r.FormFile("file")
 		db.Write(owner, hash, header.Filename, map[string]string{"type": "raw"})
@@ -58,6 +56,8 @@ func List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	js, _ := json.Marshal(list)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Write(js)
 }
 

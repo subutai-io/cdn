@@ -15,13 +15,10 @@ import (
 	"time"
 
 	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
-)
-
-var (
-	path = "/tmp/"
 )
 
 type Template struct {
@@ -33,9 +30,9 @@ type Template struct {
 }
 
 func readTempl(hash string) bytes.Buffer {
-	var config bytes.Buffer
-	f, err := os.Open(path + hash)
-	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
+	var configfile bytes.Buffer
+	f, err := os.Open(config.Filepath + hash)
+	log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
 	defer f.Close()
 
 	gzf, err := gzip.NewReader(f)
@@ -51,16 +48,16 @@ func readTempl(hash string) bytes.Buffer {
 		log.Check(log.WarnLevel, "Reading tar content", err)
 
 		if hdr.Name == "config" {
-			if _, err := io.Copy(&config, tr); err != nil {
+			if _, err := io.Copy(&configfile, tr); err != nil {
 				log.Warn(err.Error())
 			}
 			break
 		}
 	}
-	return config
+	return configfile
 }
 
-func getConf(hash string, config bytes.Buffer) (t *Template) {
+func getConf(hash string, configfile bytes.Buffer) (t *Template) {
 	t = &Template{
 		arch:    "lxc.arch",
 		name:    "lxc.utsname",
@@ -69,7 +66,7 @@ func getConf(hash string, config bytes.Buffer) (t *Template) {
 		version: "subutai.template.version",
 	}
 
-	for _, v := range strings.Split(config.String(), "\n") {
+	for _, v := range strings.Split(configfile.String(), "\n") {
 		line := strings.Split(v, "=")
 		switch strings.Trim(line[0], " ") {
 		case t.arch:
@@ -87,17 +84,15 @@ func getConf(hash string, config bytes.Buffer) (t *Template) {
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	var hash, owner string
-	var config bytes.Buffer
-	if r.Method == "GET" {
-		w.Write([]byte(upload.Page("template")))
-	} else if r.Method == "POST" {
+	var configfile bytes.Buffer
+	if r.Method == "POST" {
 		if hash, owner = upload.Handler(w, r); len(hash) == 0 {
 			return
 		}
-		if config = readTempl(hash); len(config.String()) == 0 {
+		if configfile = readTempl(hash); len(configfile.String()) == 0 {
 			return
 		}
-		t := getConf(hash, config)
+		t := getConf(hash, configfile)
 		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
 			map[string]string{
 				"arch":    t.arch,
@@ -185,5 +180,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 		list = append(list, item)
 	}
 	js, _ := json.Marshal(list)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Write(js)
 }

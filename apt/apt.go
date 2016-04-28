@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
@@ -19,13 +20,9 @@ import (
 	"github.com/subutai-io/base/agent/log"
 )
 
-var (
-	path = "/tmp/"
-)
-
 func readDeb(hash string) (string, bytes.Buffer) {
 	var control bytes.Buffer
-	file, err := os.Open(path + hash)
+	file, err := os.Open(config.Filepath + hash)
 	log.Check(log.WarnLevel, "Opening deb package", err)
 
 	defer file.Close()
@@ -87,12 +84,12 @@ func getSize(file string) string {
 
 func writePackage(meta map[string]string) {
 	var f *os.File
-	if _, err := os.Stat(path + "Packages"); os.IsNotExist(err) {
-		f, err = os.Create(path + "Packages")
+	if _, err := os.Stat(config.Filepath + "Packages"); os.IsNotExist(err) {
+		f, err = os.Create(config.Filepath + "Packages")
 		log.Check(log.WarnLevel, "Creating packages file", err)
 		defer f.Close()
 	} else if err == nil {
-		f, err = os.OpenFile(path+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
+		f, err = os.OpenFile(config.Filepath+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
 		log.Check(log.WarnLevel, "Opening packages file", err)
 		defer f.Close()
 	} else {
@@ -108,14 +105,12 @@ func writePackage(meta map[string]string) {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		w.Write([]byte(upload.Page("apt")))
-	} else if r.Method == "POST" {
+	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
 		hash, owner := upload.Handler(w, r)
 		hash, meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
-		meta["Size"] = getSize(path + hash)
+		meta["Size"] = getSize(config.Filepath + hash)
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
 		writePackage(meta)
@@ -133,8 +128,8 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if file != "Packages" && file != "InRelease" && file != "Release" {
 		file = db.LastHash(file)
 	}
-	f, err := os.Open(path + file)
-	if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
+	f, err := os.Open(config.Filepath + file)
+	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+file, err) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -143,7 +138,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 }
 
 func readPackages() []string {
-	file, err := os.Open(path + "Packages")
+	file, err := os.Open(config.Filepath + "Packages")
 	log.Check(log.WarnLevel, "Opening packages file", err)
 	defer file.Close()
 
@@ -186,14 +181,14 @@ func deleteInfo(hash string) {
 	}
 	if changed {
 		log.Info("Updating packages list")
-		file, err := os.Create(path + "Packages.new")
+		file, err := os.Create(config.Filepath + "Packages.new")
 		log.Check(log.WarnLevel, "Opening packages file", err)
 		defer file.Close()
 
 		_, err = file.WriteString(newlist)
 		log.Check(log.WarnLevel, "Writing new list", err)
 		log.Check(log.WarnLevel, "Replacing old list",
-			os.Rename(path+"Packages.new", path+"Packages"))
+			os.Rename(config.Filepath+"Packages.new", config.Filepath+"Packages"))
 	}
 }
 
@@ -213,6 +208,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 
 func Info(w http.ResponseWriter, r *http.Request) {
 	info := download.Info("apt", r)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	if len(info) != 0 {
 		w.Write(info)
 	} else {
