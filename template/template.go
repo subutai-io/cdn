@@ -91,13 +91,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		t := getConf(hash, configfile)
-		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
-			map[string]string{
-				"arch":    t.arch,
-				"version": t.version,
-				"parent":  t.parent,
-				"type":    "template",
-			})
+		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", map[string]string{
+			"type":    "template",
+			"arch":    t.arch,
+			"parent":  t.parent,
+			"version": t.version,
+		})
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(t.hash))
 	}
@@ -112,24 +111,22 @@ func Show(w http.ResponseWriter, r *http.Request) {
 }
 
 func Search(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
+	if r.Method == "GET" {
+		download.Search("template", w, r)
 		return
 	}
-	download.Search("template", w, r)
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Incorrect method"))
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
 		return
 	}
-	info := download.Info("template", r)
-	if len(info) != 0 {
+
+	if info := download.Info("template", r); len(info) != 0 {
 		w.Write(info)
 	} else {
 		w.Write([]byte("Not found"))
@@ -137,16 +134,13 @@ func Info(w http.ResponseWriter, r *http.Request) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "DELETE" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
-		return
-	}
-	if len(upload.Delete(w, r)) != 0 {
+	if r.Method == "DELETE" && len(upload.Delete(w, r)) != 0 {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Removed"))
+		return
 	}
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Incorrect method"))
 }
 
 func Md5(w http.ResponseWriter, r *http.Request) {
@@ -164,10 +158,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		name := strings.Split(info["name"], "-")
-		if len(name) > 0 {
-			item.Name = name[0]
-		}
+		item.Name = strings.Split(info["name"], "-")[0]
 		item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 		item.Architecture = strings.ToUpper(info["arch"])
 		item.Version = info["version"]
