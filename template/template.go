@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/subutai-io/base/agent/log"
+
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
@@ -29,8 +30,7 @@ type Template struct {
 	version string
 }
 
-func readTempl(hash string) bytes.Buffer {
-	var configfile bytes.Buffer
+func readTempl(hash string) (configfile bytes.Buffer) {
 	f, err := os.Open(config.Filepath + hash)
 	log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
 	defer f.Close()
@@ -40,13 +40,7 @@ func readTempl(hash string) bytes.Buffer {
 
 	tr := tar.NewReader(gzf)
 
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		log.Check(log.WarnLevel, "Reading tar content", err)
-
+	for hdr, err := tr.Next(); err != io.EOF; hdr, err = tr.Next() {
 		if hdr.Name == "config" {
 			if _, err := io.Copy(&configfile, tr); err != nil {
 				log.Warn(err.Error())
@@ -152,21 +146,20 @@ func Md5(w http.ResponseWriter, r *http.Request) {
 func List(w http.ResponseWriter, r *http.Request) {
 	list := make([]download.ListItem, 0)
 	for hash, _ := range db.List() {
-		var item download.ListItem
-		info := db.Info(hash)
-		if info["type"] != "template" {
-			continue
+		if info := db.Info(hash); info["type"] == "template" {
+			size, _ := strconv.ParseInt(info["size"], 10, 64)
+			item := download.ListItem{
+				ID:           info["owner"] + "." + hash,
+				Name:         strings.Split(info["name"], "-")[0],
+				Size:         size,
+				Md5Sum:       hash,
+				Parent:       info["parent"],
+				Version:      info["version"],
+				OwnerFprint:  info["owner"],
+				Architecture: strings.ToUpper(info["arch"]),
+			}
+			list = append(list, item)
 		}
-
-		item.Name = strings.Split(info["name"], "-")[0]
-		item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
-		item.Architecture = strings.ToUpper(info["arch"])
-		item.Version = info["version"]
-		item.OwnerFprint = info["owner"]
-		item.Parent = info["parent"]
-		item.Md5Sum = hash
-		item.ID = item.OwnerFprint + "." + item.Md5Sum
-		list = append(list, item)
 	}
 	js, _ := json.Marshal(list)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
