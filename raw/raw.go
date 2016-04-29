@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/subutai-io/base/agent/log"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
@@ -41,17 +40,16 @@ func Show(w http.ResponseWriter, r *http.Request) {
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
-	list := make([]RawItem, 0)
+	list := []RawItem{}
 	for hash, _ := range db.List() {
-		var item RawItem
-		info := db.Info(hash)
-		if info["type"] == "raw" {
+		if info := db.Info(hash); info["type"] == "raw" {
+			item := RawItem{
+				ID:          "raw." + hash,
+				Name:        info["name"],
+				Fingerprint: info["owner"],
+				Md5Sum:      hash,
+			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
-
-			item.Fingerprint = info["owner"]
-			item.Name = info["name"]
-			item.Md5Sum = hash
-			item.ID = "raw." + item.Md5Sum
 			list = append(list, item)
 		}
 	}
@@ -62,23 +60,19 @@ func List(w http.ResponseWriter, r *http.Request) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "DELETE" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
-		return
-	}
-	if len(upload.Delete(w, r)) != 0 {
+	if r.Method == "DELETE" && len(upload.Delete(w, r)) != 0 {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Removed"))
 	}
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Bad Request"))
+	return
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
 	info := download.Info("raw", r)
-	if len(info) != 0 {
-		w.Write(info)
-	} else {
+	if len(info) == 0 {
 		w.Write([]byte("Not found"))
 	}
+	w.Write(info)
 }
