@@ -37,7 +37,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			db.RegisterUser([]byte(fmt.Sprintf("%x", fingerprint)), []byte(key))
-			w.WriteHeader(http.StatusOK)
 			return
 		}
 	}
@@ -85,6 +84,5 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Forbidden"))
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Success"))
 }

@@ -28,13 +28,7 @@ func readDeb(hash string) (string, bytes.Buffer) {
 	defer file.Close()
 
 	library := ar.NewReader(file)
-	for {
-		header, err := library.Next()
-		if err == io.EOF {
-			break
-		}
-		log.Check(log.WarnLevel, "Reading deb content", err)
-
+	for header, err := library.Next(); err != io.EOF; header, err = library.Next() {
 		if header.Name == "control.tar.gz" {
 			ungzip, err := gzip.NewReader(library)
 			log.Check(log.WarnLevel, "Ungziping control file", err)
@@ -42,13 +36,7 @@ func readDeb(hash string) (string, bytes.Buffer) {
 			defer ungzip.Close()
 
 			tr := tar.NewReader(ungzip)
-			for {
-				tarHeader, err := tr.Next()
-				if err == io.EOF {
-					break
-				}
-				log.Check(log.WarnLevel, "Reading control tar", err)
-
+			for tarHeader, err := tr.Next(); err != io.EOF; tarHeader, err = tr.Next() {
 				if tarHeader.Name == "./control" {
 					if _, err := io.Copy(&control, tr); err != nil {
 						log.Warn(err.Error())
@@ -61,15 +49,14 @@ func readDeb(hash string) (string, bytes.Buffer) {
 	return hash, control
 }
 
-func getControl(hash string, control bytes.Buffer) (string, map[string]string) {
-	d := make(map[string]string)
+func getControl(hash string, control bytes.Buffer) (d map[string]string) {
 	for _, v := range strings.Split(control.String(), "\n") {
 		line := strings.Split(v, ":")
-		if len(line) == 2 {
-			d[line[0]] = strings.TrimLeft(line[1], " ")
+		if len(line) > 1 {
+			d[line[0]] = strings.TrimPrefix(line[1], " ")
 		}
 	}
-	return hash, d
+	return d
 }
 
 func getSize(file string) string {
@@ -108,14 +95,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
 		hash, owner := upload.Handler(w, r)
-		hash, meta := getControl(readDeb(hash))
+		meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(config.Filepath + hash)
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
 		writePackage(meta)
 		db.Write(owner, hash, header.Filename, meta)
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(hash))
 	}
 }
@@ -193,17 +179,15 @@ func deleteInfo(hash string) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "DELETE" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
-		return
+	if r.Method == "DELETE" {
+		if hash := upload.Delete(w, r); len(hash) != 0 {
+			deleteInfo(hash)
+			w.Write([]byte("Removed"))
+		}
 	}
-	if hash := upload.Delete(w, r); len(hash) != 0 {
-		deleteInfo(hash)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Removed"))
-	}
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Incorrect method"))
+	return
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {

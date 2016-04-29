@@ -91,7 +91,6 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			"parent":  t.parent,
 			"version": t.version,
 		})
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(t.hash))
 	}
 }
@@ -129,7 +128,6 @@ func Info(w http.ResponseWriter, r *http.Request) {
 
 func Delete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "DELETE" && len(upload.Delete(w, r)) != 0 {
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Removed"))
 		return
 	}

@@ -25,7 +25,6 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		_, header, _ := r.FormFile("file")
 		db.Write(owner, hash, header.Filename, map[string]string{"type": "raw"})
 		w.Write([]byte(hash))
-		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -61,12 +60,11 @@ func List(w http.ResponseWriter, r *http.Request) {
 
 func Delete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "DELETE" && len(upload.Delete(w, r)) != 0 {
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Removed"))
+		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
 	w.Write([]byte("Bad Request"))
-	return
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
