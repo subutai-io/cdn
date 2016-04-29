@@ -91,7 +91,8 @@ func Read(key string) (val string) {
 	return val
 }
 
-func List() (list map[string]string) {
+func List() map[string]string {
+	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
 		b.ForEach(func(k, v []byte) error {
@@ -105,7 +106,8 @@ func List() (list map[string]string) {
 	return list
 }
 
-func Info(hash string) (list map[string]string) {
+func Info(hash string) map[string]string {
+	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			b.ForEach(func(k, v []byte) error {

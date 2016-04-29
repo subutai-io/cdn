@@ -59,14 +59,14 @@ func getControl(hash string, control bytes.Buffer) (d map[string]string) {
 	return d
 }
 
-func getSize(file string) string {
+func getSize(file string) (size string) {
 	f, err := os.Open(file)
-	log.Check(log.WarnLevel, "Opening file "+file, err)
-	defer f.Close()
-
-	stat, err := f.Stat()
-	log.Check(log.WarnLevel, "Getting file stat", err)
-	return strconv.Itoa(int(stat.Size()))
+	if !log.Check(log.WarnLevel, "Opening file "+file, err) {
+		stat, _ := f.Stat()
+		f.Close()
+		size := strconv.Itoa(int(stat.Size()))
+	}
+	return size
 }
 
 func writePackage(meta map[string]string) {

@@ -81,7 +81,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(path + hash)
 	defer f.Close()
-	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
+	if log.Check(log.WarnLevel, "Opening file "+path+hash, err) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 	fi, _ := f.Stat()
 
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
