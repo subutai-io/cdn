@@ -179,24 +179,21 @@ func deleteInfo(hash string) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "DELETE" {
-		if hash := upload.Delete(w, r); len(hash) != 0 {
-			deleteInfo(hash)
-			w.Write([]byte("Removed"))
-		}
+	if hash := upload.Delete(w, r); len(hash) != 0 && r.Method == "DELETE" {
+		deleteInfo(hash)
+		w.Write([]byte("Removed"))
+		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
 	w.Write([]byte("Incorrect method"))
-	return
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
-	info := download.Info("apt", r)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	if len(info) != 0 {
+	if info := download.Info("apt", r); len(info) != 0 {
 		w.Write(info)
-	} else {
-		w.Write([]byte("Not found"))
+		return
 	}
+	w.Write([]byte("Not found"))
 }
