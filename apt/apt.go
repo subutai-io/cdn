@@ -64,7 +64,7 @@ func getSize(file string) (size string) {
 	if !log.Check(log.WarnLevel, "Opening file "+file, err) {
 		stat, _ := f.Stat()
 		f.Close()
-		size := strconv.Itoa(int(stat.Size()))
+		size = strconv.Itoa(int(stat.Size()))
 	}
 	return size
 }
