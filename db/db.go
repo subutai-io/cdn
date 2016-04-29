@@ -73,14 +73,10 @@ func Write(owner, key, value string, options ...map[string]string) {
 	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
-func Delete(key string) (err error) {
+func Delete(key string) {
 	db.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket); b != nil {
-			err = b.DeleteBucket([]byte(key))
-		}
-		return nil
+		return tx.Bucket(bucket).DeleteBucket([]byte(key))
 	})
-	return err
 }
 
 func Read(key string) (val string) {
@@ -95,24 +91,21 @@ func Read(key string) (val string) {
 	return val
 }
 
-func List() map[string]string {
-	list := make(map[string]string)
+func List() (list map[string]string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket); b != nil {
-			b.ForEach(func(k, v []byte) error {
-				if value := b.Bucket(k).Get([]byte("name")); value != nil {
-					list[string(k)] = string(value)
-				}
-				return nil
-			})
-		}
+		b := tx.Bucket(bucket)
+		b.ForEach(func(k, v []byte) error {
+			if value := b.Bucket(k).Get([]byte("name")); value != nil {
+				list[string(k)] = string(value)
+			}
+			return nil
+		})
 		return nil
 	})
 	return list
 }
 
-func Info(hash string) map[string]string {
-	list := make(map[string]string)
+func Info(hash string) (list map[string]string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			b.ForEach(func(k, v []byte) error {
@@ -132,14 +125,13 @@ func Close() {
 func Search(query string) map[string]string {
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(search); b != nil {
-			c := b.Cursor()
-			for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
-				b.Bucket(k).ForEach(func(kk, vv []byte) error {
-					list[string(vv)] = string(k)
-					return nil
-				})
-			}
+		b := tx.Bucket(search)
+		c := b.Cursor()
+		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
+			b.Bucket(k).ForEach(func(kk, vv []byte) error {
+				list[string(vv)] = string(k)
+				return nil
+			})
 		}
 		return nil
 	})
@@ -210,20 +202,17 @@ func CheckToken(token string) (name string) {
 
 func SaveAuthID(name, token string) {
 	db.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(authid); b != nil {
-			b.Put([]byte(token), []byte(name))
-		}
+		tx.Bucket(authid).Put([]byte(token), []byte(name))
 		return nil
 	})
 }
 
 func CheckAuthID(token string) (name string) {
 	db.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(authid); b != nil {
-			if value := b.Get([]byte(token)); value != nil {
-				name = string(value)
-				b.Delete([]byte(token))
-			}
+		b := tx.Bucket(authid)
+		if value := b.Get([]byte(token)); value != nil {
+			name = string(value)
+			b.Delete([]byte(token))
 		}
 		return nil
 	})

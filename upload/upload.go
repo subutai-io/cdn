@@ -100,11 +100,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
 		return ""
 	}
-	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from db", db.Delete(hash)) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to remove db entity"))
-		return ""
-	}
+	db.Delete(hash)
 	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Filepath+hash)) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to remove file"))
