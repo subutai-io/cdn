@@ -10,17 +10,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/subutai-io/base/agent/log"
+
+	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
-)
-
-var (
-	path = "/tmp/"
 )
 
 type Template struct {
@@ -31,10 +30,9 @@ type Template struct {
 	version string
 }
 
-func readTempl(hash string) bytes.Buffer {
-	var config bytes.Buffer
-	f, err := os.Open(path + hash)
-	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
+func readTempl(hash string) (configfile bytes.Buffer) {
+	f, err := os.Open(config.Filepath + hash)
+	log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
 	defer f.Close()
 
 	gzf, err := gzip.NewReader(f)
@@ -42,43 +40,35 @@ func readTempl(hash string) bytes.Buffer {
 
 	tr := tar.NewReader(gzf)
 
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		log.Check(log.WarnLevel, "Reading tar content", err)
-
+	for hdr, err := tr.Next(); err != io.EOF; hdr, err = tr.Next() {
 		if hdr.Name == "config" {
-			if _, err := io.Copy(&config, tr); err != nil {
+			if _, err := io.Copy(&configfile, tr); err != nil {
 				log.Warn(err.Error())
 			}
 			break
 		}
 	}
-	return config
+	return configfile
 }
 
-func getConf(hash string, config bytes.Buffer) (t *Template) {
-	t = &Template{
-		arch:    "lxc.arch",
-		name:    "lxc.utsname",
-		hash:    hash,
-		parent:  "subutai.parent",
-		version: "subutai.template.version",
-	}
+func getConf(hash string, configfile bytes.Buffer) (t *Template) {
+	t = &Template{hash: hash}
 
-	for _, v := range strings.Split(config.String(), "\n") {
-		line := strings.Split(v, "=")
-		switch strings.Trim(line[0], " ") {
-		case t.arch:
-			t.arch = strings.Trim(line[1], " ")
-		case t.name:
-			t.name = strings.Trim(line[1], " ")
-		case t.parent:
-			t.parent = strings.Trim(line[1], " ")
-		case t.version:
-			t.version = strings.Trim(line[1], " ")
+	for _, v := range strings.Split(configfile.String(), "\n") {
+		if line := strings.Split(v, "="); len(line) > 1 {
+			line[0] = strings.TrimSpace(line[0])
+			line[1] = strings.TrimSpace(line[1])
+
+			switch line[0] {
+			case "lxc.arch":
+				t.arch = line[1]
+			case "lxc.utsname":
+				t.name = line[1]
+			case "subutai.parent":
+				t.parent = line[1]
+			case "subutai.template.version":
+				t.version = line[1]
+			}
 		}
 	}
 	return
@@ -86,26 +76,22 @@ func getConf(hash string, config bytes.Buffer) (t *Template) {
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	var hash, owner string
-	var config bytes.Buffer
-	if r.Method == "GET" {
-		w.Write([]byte(upload.Page("template")))
-	} else if r.Method == "POST" {
+	var configfile bytes.Buffer
+	if r.Method == "POST" {
 		if hash, owner = upload.Handler(w, r); len(hash) == 0 {
 			return
 		}
-		if config = readTempl(hash); len(config.String()) == 0 {
+		if configfile = readTempl(hash); len(configfile.String()) == 0 {
 			return
 		}
-		t := getConf(hash, config)
-		w.Write([]byte("Name: " + t.name + ", version: " + t.version + ", hash: " + t.hash + "\n"))
-		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz",
-			map[string]string{
-				"arch":    t.arch,
-				"version": t.version,
-				"parent":  t.parent,
-				"type":    "template",
-			})
-		w.Write([]byte("Added to db: " + db.Read(t.hash)))
+		t := getConf(hash, configfile)
+		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", map[string]string{
+			"type":    "template",
+			"arch":    t.arch,
+			"parent":  t.parent,
+			"version": t.version,
+		})
+		w.Write([]byte(t.hash))
 	}
 }
 
@@ -113,29 +99,14 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	download.Handler(w, r)
 }
 
-func Show(w http.ResponseWriter, r *http.Request) {
-	download.List("template", w, r)
-}
-
-func Search(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
-		return
-	}
-	download.Search("template", w, r)
-}
-
 func Info(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
 		return
 	}
-	info := download.Info("template", r)
-	if len(info) != 0 {
+
+	if info := download.Info("template", r); len(info) != 0 {
 		w.Write(info)
 	} else {
 		w.Write([]byte("Not found"))
@@ -143,16 +114,12 @@ func Info(w http.ResponseWriter, r *http.Request) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "DELETE" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
+	if r.Method == "DELETE" && len(upload.Delete(w, r)) != 0 {
+		w.Write([]byte("Removed"))
 		return
 	}
-	if len(upload.Delete(w, r)) != 0 {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Removed"))
-	}
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Incorrect method"))
 }
 
 func Md5(w http.ResponseWriter, r *http.Request) {
@@ -164,29 +131,22 @@ func Md5(w http.ResponseWriter, r *http.Request) {
 func List(w http.ResponseWriter, r *http.Request) {
 	list := make([]download.ListItem, 0)
 	for hash, _ := range db.List() {
-		var item download.ListItem
-		info := db.Info(hash)
-		if info["type"] != "template" {
-			continue
+		if info := db.Info(hash); info["type"] == "template" {
+			item := download.ListItem{
+				ID:           info["owner"] + "." + hash,
+				Name:         strings.Split(info["name"], "-")[0],
+				Md5Sum:       hash,
+				Parent:       info["parent"],
+				Version:      info["version"],
+				OwnerFprint:  info["owner"],
+				Architecture: strings.ToUpper(info["arch"]),
+			}
+			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
+			list = append(list, item)
 		}
-
-		name := strings.Split(info["name"], "-")
-		if len(name) > 0 {
-			item.Name = name[0]
-		}
-		item.Architecture = strings.ToUpper(info["arch"])
-		item.Version = info["version"]
-		item.OwnerFprint = info["owner"]
-		item.Parent = info["parent"]
-
-		f, err := os.Open(path + hash)
-		log.Check(log.WarnLevel, "Opening file "+path+hash, err)
-		fi, _ := f.Stat()
-		item.Size = fi.Size()
-		item.Md5Sum = hash
-		item.ID = item.OwnerFprint + "." + item.Md5Sum
-		list = append(list, item)
 	}
 	js, _ := json.Marshal(list)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Write(js)
 }

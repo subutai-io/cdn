@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/subutai-io/base/agent/log"
@@ -22,9 +23,8 @@ type AptItem struct {
 	Filename     string `json:"filename,omitempty"`
 	Md5Sum       string `json:"md5Sum,omitempty"`
 	Name         string `json:"name,omitempty"`
-	Package      string `json:"package,omitempty"`
 	Version      string `json:"version,omitempty"`
-	Size         int64  `json:"size"`
+	Size         string `json:"size"`
 }
 
 type RawItem struct {
@@ -66,11 +66,9 @@ type ListItem struct {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
 	name := r.URL.Query().Get("name")
-	id := r.URL.Query().Get("id")
-	if len(id) > 0 {
-		hash = id
-		tmp := strings.Split(id, ".")
-		if len(tmp) == 2 {
+	if len(r.URL.Query().Get("id")) > 0 {
+		hash = r.URL.Query().Get("id")
+		if tmp := strings.Split(hash, "."); len(tmp) > 1 {
 			hash = tmp[1]
 		}
 	}
@@ -80,45 +78,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else if len(name) != 0 {
 		hash = db.LastHash(name)
 	}
-	w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
-	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+
 	f, err := os.Open(path + hash)
-	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
-	fi, _ := f.Stat()
-	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
 	defer f.Close()
+	if log.Check(log.WarnLevel, "Opening file "+path+hash, err) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	fi, _ := f.Stat()
+
+	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
+	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+	w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
+
 	io.Copy(w, f)
-}
-
-func List(repo string, w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("<html><body>"))
-	for k, v := range db.List() {
-		if db.Info(k)["type"] == repo {
-			w.Write([]byte("<p><a href=\"/kurjun/rest/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
-		}
-	}
-	w.Write([]byte("</body></html>"))
-}
-
-func Search(repo string, w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
-	w.Write([]byte("<html><body>"))
-	for k, v := range db.Search(query) {
-		w.Write([]byte("<p><a href=\"/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
-	}
-	w.Write([]byte("</body></html>"))
 }
 
 func Info(repo string, r *http.Request) []byte {
 	var item, js []byte
-	name := r.URL.Query().Get("name")
-	version := r.URL.Query().Get("version")
-	rtype := r.URL.Query().Get("type")
-	id := r.URL.Query().Get("id")
 
-	ids := strings.Split(id, ".")
-	if len(ids) > 1 {
-		name = db.Read(ids[1])
+	id := r.URL.Query().Get("id")
+	name := r.URL.Query().Get("name")
+	rtype := r.URL.Query().Get("type")
+	version := r.URL.Query().Get("version")
+
+	if len(strings.Split(id, ".")) > 1 {
+		name = db.Read(strings.Split(id, ".")[1])
 	}
 
 	counter := 0
@@ -132,10 +117,7 @@ func Info(repo string, r *http.Request) []byte {
 				}
 				continue
 			}
-			f, err := os.Open(path + k)
-			defer f.Close()
-			log.Check(log.WarnLevel, "Opening file "+path+k, err)
-			fi, _ := f.Stat()
+			size, _ := strconv.ParseInt(info["size"], 10, 64)
 			switch repo {
 			case "template":
 				item, _ = json.Marshal(ListItem{
@@ -145,18 +127,17 @@ func Info(repo string, r *http.Request) []byte {
 					Parent:       info["parent"],
 					Version:      info["version"],
 					Architecture: strings.ToUpper(info["arch"]),
-					Size:         fi.Size(),
 					Md5Sum:       k,
+					Size:         size,
 				})
 			case "apt":
 				item, _ = json.Marshal(AptItem{
 					Name:         info["name"],
-					Md5Sum:       info["Md5Sum"],
+					Md5Sum:       info["MD5sum"],
 					Description:  info["Description"],
 					Architecture: info["Architecture"],
-					Package:      info["Package"],
 					Version:      info["Version"],
-					Size:         fi.Size(),
+					Size:         info["Size"],
 				})
 			case "raw":
 				item, _ = json.Marshal(RawItem{
@@ -165,7 +146,7 @@ func Info(repo string, r *http.Request) []byte {
 					Md5Sum:  k,
 					Package: info["package"],
 					Version: info["version"],
-					Size:    fi.Size(),
+					Size:    size,
 				})
 			}
 			if counter > 1 {

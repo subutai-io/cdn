@@ -7,29 +7,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/subutai-io/gorjun/db"
-
 	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/gorjun/config"
+	"github.com/subutai-io/gorjun/db"
 )
-
-var (
-	path = "/tmp/"
-)
-
-func Page(repo string) string {
-	return `
-  <html>
-  <title>Go upload</title>
-  <body>
-  <form action="/kurjun/rest/` + repo + `/upload" method="post" enctype="multipart/form-data">
-  <label for="file">Filename:</label>
-  <input type="file" name="file" id="file">
-  <input type="submit" name="submit" value="Submit">
-  </form>
-  </body>
-  </html>
-`
-}
 
 func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	r.ParseMultipartForm(32 << 20)
@@ -41,8 +22,6 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 
 	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
-	token := r.MultipartForm.Value["token"][0]
-	log.Info("User: " + r.RemoteAddr + " token: " + token)
 
 	file, header, err := r.FormFile("file")
 	defer file.Close()
@@ -52,7 +31,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
-	out, err := os.Create(path + header.Filename)
+	out, err := os.Create(config.Filepath + header.Filename)
 	defer out.Close()
 	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -68,14 +47,14 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
-	hash = genHash(path + header.Filename)
+	hash = genHash(config.Filepath + header.Filename)
 	if len(hash) == 0 {
 		log.Warn("Failed to calculate hash for " + header.Filename)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to calculate hash"))
 		return
 	}
-	os.Rename(path+header.Filename, path+hash)
+	os.Rename(config.Filepath+header.Filename, config.Filepath+hash)
 	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
 	return hash, owner
 }
@@ -108,7 +87,6 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 	user := db.CheckToken(token)
-	log.Info("User: " + user + " token: " + token)
 	info := db.Info(hash)
 	if len(info) == 0 {
 		log.Warn("File not found by hash")
@@ -122,12 +100,8 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
 		return ""
 	}
-	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from db", db.Delete(hash)) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to remove db entity"))
-		return ""
-	}
-	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(path+hash)) {
+	db.Delete(hash)
+	if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Filepath+hash)) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to remove file"))
 		return ""

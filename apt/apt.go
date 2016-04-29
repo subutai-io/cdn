@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
@@ -19,25 +20,15 @@ import (
 	"github.com/subutai-io/base/agent/log"
 )
 
-var (
-	path = "/tmp/"
-)
-
 func readDeb(hash string) (string, bytes.Buffer) {
 	var control bytes.Buffer
-	file, err := os.Open(path + hash)
+	file, err := os.Open(config.Filepath + hash)
 	log.Check(log.WarnLevel, "Opening deb package", err)
 
 	defer file.Close()
 
 	library := ar.NewReader(file)
-	for {
-		header, err := library.Next()
-		if err == io.EOF {
-			break
-		}
-		log.Check(log.WarnLevel, "Reading deb content", err)
-
+	for header, err := library.Next(); err != io.EOF; header, err = library.Next() {
 		if header.Name == "control.tar.gz" {
 			ungzip, err := gzip.NewReader(library)
 			log.Check(log.WarnLevel, "Ungziping control file", err)
@@ -45,13 +36,7 @@ func readDeb(hash string) (string, bytes.Buffer) {
 			defer ungzip.Close()
 
 			tr := tar.NewReader(ungzip)
-			for {
-				tarHeader, err := tr.Next()
-				if err == io.EOF {
-					break
-				}
-				log.Check(log.WarnLevel, "Reading control tar", err)
-
+			for tarHeader, err := tr.Next(); err != io.EOF; tarHeader, err = tr.Next() {
 				if tarHeader.Name == "./control" {
 					if _, err := io.Copy(&control, tr); err != nil {
 						log.Warn(err.Error())
@@ -64,35 +49,34 @@ func readDeb(hash string) (string, bytes.Buffer) {
 	return hash, control
 }
 
-func getControl(hash string, control bytes.Buffer) (string, map[string]string) {
-	d := make(map[string]string)
+func getControl(hash string, control bytes.Buffer) (d map[string]string) {
 	for _, v := range strings.Split(control.String(), "\n") {
 		line := strings.Split(v, ":")
-		if len(line) == 2 {
-			d[line[0]] = strings.TrimLeft(line[1], " ")
+		if len(line) > 1 {
+			d[line[0]] = strings.TrimPrefix(line[1], " ")
 		}
 	}
-	return hash, d
+	return d
 }
 
-func getSize(file string) string {
+func getSize(file string) (size string) {
 	f, err := os.Open(file)
-	log.Check(log.WarnLevel, "Opening file "+file, err)
-	defer f.Close()
-
-	stat, err := f.Stat()
-	log.Check(log.WarnLevel, "Getting file stat", err)
-	return strconv.Itoa(int(stat.Size()))
+	if !log.Check(log.WarnLevel, "Opening file "+file, err) {
+		stat, _ := f.Stat()
+		f.Close()
+		size = strconv.Itoa(int(stat.Size()))
+	}
+	return size
 }
 
 func writePackage(meta map[string]string) {
 	var f *os.File
-	if _, err := os.Stat(path + "Packages"); os.IsNotExist(err) {
-		f, err = os.Create(path + "Packages")
+	if _, err := os.Stat(config.Filepath + "Packages"); os.IsNotExist(err) {
+		f, err = os.Create(config.Filepath + "Packages")
 		log.Check(log.WarnLevel, "Creating packages file", err)
 		defer f.Close()
 	} else if err == nil {
-		f, err = os.OpenFile(path+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
+		f, err = os.OpenFile(config.Filepath+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
 		log.Check(log.WarnLevel, "Opening packages file", err)
 		defer f.Close()
 	} else {
@@ -108,20 +92,17 @@ func writePackage(meta map[string]string) {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		w.Write([]byte(upload.Page("apt")))
-	} else if r.Method == "POST" {
+	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
 		hash, owner := upload.Handler(w, r)
-		hash, meta := getControl(readDeb(hash))
+		meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
-		meta["Size"] = getSize(path + hash)
+		meta["Size"] = getSize(config.Filepath + hash)
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
 		writePackage(meta)
-		w.Write([]byte("Name: " + header.Filename + "\n"))
 		db.Write(owner, hash, header.Filename, meta)
-		w.Write([]byte("Added to db: " + db.Read(hash)))
+		w.Write([]byte(hash))
 	}
 }
 
@@ -133,8 +114,8 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if file != "Packages" && file != "InRelease" && file != "Release" {
 		file = db.LastHash(file)
 	}
-	f, err := os.Open(path + file)
-	if log.Check(log.WarnLevel, "Opening file "+path+file, err) {
+	f, err := os.Open(config.Filepath + file)
+	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+file, err) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -143,7 +124,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 }
 
 func readPackages() []string {
-	file, err := os.Open(path + "Packages")
+	file, err := os.Open(config.Filepath + "Packages")
 	log.Check(log.WarnLevel, "Opening packages file", err)
 	defer file.Close()
 
@@ -186,36 +167,33 @@ func deleteInfo(hash string) {
 	}
 	if changed {
 		log.Info("Updating packages list")
-		file, err := os.Create(path + "Packages.new")
+		file, err := os.Create(config.Filepath + "Packages.new")
 		log.Check(log.WarnLevel, "Opening packages file", err)
 		defer file.Close()
 
 		_, err = file.WriteString(newlist)
 		log.Check(log.WarnLevel, "Writing new list", err)
 		log.Check(log.WarnLevel, "Replacing old list",
-			os.Rename(path+"Packages.new", path+"Packages"))
+			os.Rename(config.Filepath+"Packages.new", config.Filepath+"Packages"))
 	}
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "DELETE" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		log.Warn("Incorrect method")
+	if hash := upload.Delete(w, r); len(hash) != 0 && r.Method == "DELETE" {
+		deleteInfo(hash)
+		w.Write([]byte("Removed"))
 		return
 	}
-	if hash := upload.Delete(w, r); len(hash) != 0 {
-		deleteInfo(hash)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Removed"))
-	}
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write([]byte("Incorrect method"))
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
-	info := download.Info("apt", r)
-	if len(info) != 0 {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	if info := download.Info("apt", r); len(info) != 0 {
 		w.Write(info)
-	} else {
-		w.Write([]byte("Not found"))
+		return
 	}
+	w.Write([]byte("Not found"))
 }
