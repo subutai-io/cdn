@@ -99,19 +99,6 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	download.Handler(w, r)
 }
 
-func Show(w http.ResponseWriter, r *http.Request) {
-	download.List("template", w, r)
-}
-
-func Search(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
-		download.Search("template", w, r)
-		return
-	}
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte("Incorrect method"))
-}
-
 func Info(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)

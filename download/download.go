@@ -66,11 +66,9 @@ type ListItem struct {
 func Handler(w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
 	name := r.URL.Query().Get("name")
-	id := r.URL.Query().Get("id")
-	if len(id) > 0 {
-		hash = id
-		tmp := strings.Split(id, ".")
-		if len(tmp) == 2 {
+	if len(r.URL.Query().Get("id")) > 0 {
+		hash = r.URL.Query().Get("id")
+		if tmp := strings.Split(hash, "."); len(tmp) > 1 {
 			hash = tmp[1]
 		}
 	}
@@ -80,33 +78,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	} else if len(name) != 0 {
 		hash = db.LastHash(name)
 	}
-	w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
-	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+
 	f, err := os.Open(path + hash)
+	defer f.Close()
 	log.Check(log.WarnLevel, "Opening file "+path+hash, err)
 	fi, _ := f.Stat()
+
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
-	defer f.Close()
+	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+	w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
+
 	io.Copy(w, f)
-}
-
-func List(repo string, w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("<html><body>"))
-	for k, v := range db.List() {
-		if db.Info(k)["type"] == repo {
-			w.Write([]byte("<p><a href=\"/kurjun/rest/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
-		}
-	}
-	w.Write([]byte("</body></html>"))
-}
-
-func Search(repo string, w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
-	w.Write([]byte("<html><body>"))
-	for k, v := range db.Search(query) {
-		w.Write([]byte("<p><a href=\"/" + repo + "/download?hash=" + k + "\">" + v + "</a></p>"))
-	}
-	w.Write([]byte("</body></html>"))
 }
 
 func Info(repo string, r *http.Request) []byte {
