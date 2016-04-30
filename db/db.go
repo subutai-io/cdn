@@ -153,12 +153,11 @@ func LastHash(name string) (hash string) {
 
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
-
-		b, err := tx.Bucket(users).CreateBucketIfNotExists([]byte(name))
-		log.Check(log.WarnLevel, "Creating users subbucket: "+string(name), err)
-		b.Put([]byte("key"), key)
-
-		return nil
+		b, err := tx.Bucket(users).CreateBucket([]byte(name))
+		if !log.Check(log.WarnLevel, "Creating users subbucket: "+string(name), err) {
+			b.Put([]byte("key"), key)
+		}
+		return err
 	})
 }
 
