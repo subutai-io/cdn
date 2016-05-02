@@ -36,6 +36,24 @@ func initdb() *bolt.DB {
 	return db
 }
 
+// Temporary solution for updating db schema on production nodes
+// Should be deleted when all nodes will be updated
+func AlterDB() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucket)
+		b.ForEach(func(k, v []byte) error {
+			b := b.Bucket(k)
+			if value := b.Get([]byte("owner")); value != nil {
+				b.Delete([]byte("owner"))
+				b, _ := b.CreateBucket([]byte("owner"))
+				b.Put(value, []byte("w"))
+			}
+			return nil
+		})
+		return nil
+	})
+}
+
 func Write(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
 		owner = "public"
@@ -43,40 +61,87 @@ func Write(owner, key, value string, options ...map[string]string) {
 	err := db.Update(func(tx *bolt.Tx) error {
 		now, _ := time.Now().MarshalText()
 
+		// Associating files with user
 		b, _ := tx.Bucket(users).CreateBucketIfNotExists([]byte(owner))
-		b, _ = b.CreateBucketIfNotExists([]byte("files"))
-		b.Put([]byte(key), []byte(value))
-
-		b, _ = tx.Bucket(bucket).CreateBucketIfNotExists([]byte(key))
-		b.Put([]byte("date"), now)
-		b.Put([]byte("name"), []byte(value))
-		b.Put([]byte("owner"), []byte(owner))
-
-		f, err := os.Open(config.Filepath + key)
-		if !log.Check(log.WarnLevel, "Opening file "+config.Filepath+key, err) {
-			fi, _ := f.Stat()
-			f.Close()
-			b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
+		if b, err := b.CreateBucket([]byte("files")); err == nil {
+			b.Put([]byte(key), []byte(value))
 		}
 
-		for i, _ := range options {
-			for k, v := range options[i] {
-				b.Put([]byte(k), []byte(v))
+		// Creating new record about file
+		if b, err := tx.Bucket(bucket).CreateBucket([]byte(key)); err == nil {
+			b.Put([]byte("date"), now)
+			b.Put([]byte("name"), []byte(value))
+
+			// Getting file size
+			if f, err := os.Open(config.Filepath + key); err == nil {
+				fi, _ := f.Stat()
+				f.Close()
+				b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
+			}
+
+			// Writing optional parameters for file
+			for i, _ := range options {
+				for k, v := range options[i] {
+					b.Put([]byte(k), []byte(v))
+				}
+			}
+
+			// Adding search index for files
+			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(value))
+			b.Put(now, []byte(key))
+		}
+
+		// Adding owners to files
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if b, _ = b.CreateBucketIfNotExists([]byte("owner")); b != nil {
+				b.Put([]byte(owner), []byte("w"))
 			}
 		}
-
-		b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(value))
-		b.Put(now, []byte(key))
 
 		return nil
 	})
 	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
-func Delete(key string) {
+func Delete(owner, key string) (remains int) {
 	db.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(bucket).DeleteBucket([]byte(key))
+		var filename []byte
+
+		// Deleting file association with user
+		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
+			if b := b.Bucket([]byte("files")); b != nil {
+				filename = b.Get([]byte(key))
+				b.Delete([]byte(key))
+			}
+		}
+
+		// Deleting user association with file
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if b := b.Bucket([]byte("owner")); b != nil {
+				b.Delete([]byte(owner))
+				remains = b.Stats().KeyN - 1
+			}
+		}
+
+		// Removing indexes and file only if no file owners left
+		if remains <= 0 {
+			// Deleting search index
+			if b := tx.Bucket(search).Bucket([]byte(filename)); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					if string(v) == key {
+						b.Delete(k)
+					}
+					return nil
+				})
+			}
+
+			// Removing file from DB
+			tx.Bucket(bucket).DeleteBucket([]byte(key))
+		}
+		return nil
 	})
+
+	return
 }
 
 func Read(key string) (val string) {
@@ -153,12 +218,11 @@ func LastHash(name string) (hash string) {
 
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
-
-		b, err := tx.Bucket(users).CreateBucketIfNotExists([]byte(name))
-		log.Check(log.WarnLevel, "Creating users subbucket: "+string(name), err)
-		b.Put([]byte("key"), key)
-
-		return nil
+		b, err := tx.Bucket(users).CreateBucket([]byte(name))
+		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
+			b.Put([]byte("key"), key)
+		}
+		return err
 	})
 }
 
@@ -219,4 +283,19 @@ func CheckAuthID(token string) (name string) {
 		return nil
 	})
 	return name
+}
+
+// CheckOwner checks if user owns particular file
+func CheckOwner(owner, hash string) (res bool) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("owner")); b != nil {
+				if b.Get([]byte(owner)) != nil {
+					res = true
+				}
+			}
+		}
+		return nil
+	})
+	return res
 }

@@ -14,13 +14,14 @@ func Verify(name, message string) string {
 	entity, err := openpgp.ReadArmoredKeyRing(bytes.NewBufferString(db.UserKey(name)))
 	log.Check(log.WarnLevel, "Reading user public key", err)
 
-	block, _ := clearsign.Decode([]byte(message))
-
-	_, err = openpgp.CheckDetachedSignature(entity, bytes.NewBuffer(block.Bytes), block.ArmoredSignature.Body)
-	if log.Check(log.WarnLevel, "Checking signature", err) {
-		return ""
+	if block, _ := clearsign.Decode([]byte(message)); block != nil {
+		_, err = openpgp.CheckDetachedSignature(entity, bytes.NewBuffer(block.Bytes), block.ArmoredSignature.Body)
+		if log.Check(log.WarnLevel, "Checking signature", err) {
+			return ""
+		}
+		return string(block.Bytes)
 	}
-	return string(block.Bytes)
+	return ""
 }
 
 func Fingerprint(key string) []byte {
