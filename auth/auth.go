@@ -2,7 +2,9 @@ package auth
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -45,14 +47,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func Token(w http.ResponseWriter, r *http.Request) {
+	rand.Seed(time.Now().UnixNano())
 	if r.Method == http.MethodGet {
 		name := r.URL.Query().Get("user")
 		if len(name) != 0 {
 			hash := md5.New()
-			hash.Write([]byte(time.Now().String() + name))
-			token := fmt.Sprintf("%x", hash.Sum(nil))
-			db.SaveAuthID(name, token)
-			w.Write([]byte(token))
+			hash.Write([]byte(fmt.Sprint(time.Now().String(), name, rand.Float64())))
+			authID := fmt.Sprintf("%x", hash.Sum(nil))
+			db.SaveAuthID(name, authID)
+			w.Write([]byte(authID))
 		}
 	} else if r.Method == http.MethodPost {
 		r.ParseMultipartForm(32 << 20)
@@ -60,10 +63,13 @@ func Token(w http.ResponseWriter, r *http.Request) {
 		message := r.MultipartForm.Value["message"][0]
 		authid := pgp.Verify(name, message)
 		if db.CheckAuthID(authid) == name {
-			hash := md5.New()
-			hash.Write([]byte(time.Now().String() + name))
+			hash := sha256.New()
+			hash.Write([]byte(fmt.Sprint(time.Now().String(), name, rand.Float64())))
 			token := fmt.Sprintf("%x", hash.Sum(nil))
-			db.SaveToken(name, token)
+			hash.Reset()
+			hash.Write([]byte(token))
+
+			db.SaveToken(name, fmt.Sprintf("%x", hash.Sum(nil)))
 			w.Write([]byte(token))
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)

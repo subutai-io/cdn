@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"time"
@@ -250,6 +251,10 @@ func SaveToken(name, token string) {
 }
 
 func CheckToken(token string) (name string) {
+	hash := sha256.New()
+	hash.Write([]byte(token))
+	token = fmt.Sprintf("%x", hash.Sum(nil))
+
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(tokens).Bucket([]byte(token)); b != nil {
 			date := new(time.Time)
@@ -289,10 +294,8 @@ func CheckAuthID(token string) (name string) {
 func CheckOwner(owner, hash string) (res bool) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
-			if b := b.Bucket([]byte("owner")); b != nil {
-				if b.Get([]byte(owner)) != nil {
-					res = true
-				}
+			if b := b.Bucket([]byte("owner")); b != nil && b.Get([]byte(owner)) != nil {
+				res = true
 			}
 		}
 		return nil
