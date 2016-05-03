@@ -112,7 +112,7 @@ func Info(repo string, r *http.Request) []byte {
 		if info["type"] == repo {
 			counter++
 			if rtype == "text" && repo == "template" {
-				if strings.HasPrefix(info["name"], name) && (len(version) == 0 || info["version"] == version) {
+				if name == strings.Split(info["name"], "-subutai-template")[0] && (len(version) == 0 || info["version"] == version) {
 					return ([]byte("public." + k))
 				}
 				continue

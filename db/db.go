@@ -183,6 +183,7 @@ func Info(hash string) map[string]string {
 		}
 		return nil
 	})
+	list["owner"] = "public"
 	return list
 }
 
