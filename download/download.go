@@ -155,7 +155,9 @@ func Info(repo string, r *http.Request) []byte {
 			js = append(js, item...)
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
 				if len(version) == 0 || info["version"] == version {
-					return item
+					if k == db.LastHash(name) {
+						return item
+					}
 				}
 			}
 		}
