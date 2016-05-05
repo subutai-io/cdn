@@ -135,13 +135,14 @@ func List(w http.ResponseWriter, r *http.Request) {
 	for hash, _ := range db.List() {
 		if info := db.Info(hash); info["type"] == "template" {
 			item := download.ListItem{
-				ID:           info["owner"] + "." + hash,
+				ID:           "public." + hash,
 				Name:         strings.Split(info["name"], "-")[0],
 				Md5Sum:       hash,
 				Parent:       info["parent"],
 				Version:      info["version"],
 				OwnerFprint:  info["owner"],
 				Architecture: strings.ToUpper(info["arch"]),
+				Owner:        db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			list = append(list, item)
