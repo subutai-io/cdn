@@ -183,6 +183,7 @@ func Info(hash string) map[string]string {
 		}
 		return nil
 	})
+	list["owner"] = "public"
 	return list
 }
 
@@ -288,6 +289,23 @@ func CheckAuthID(token string) (name string) {
 		return nil
 	})
 	return name
+}
+
+// FileOwner provides list of file owners
+func FileOwner(hash string) (list []string) {
+	list = []string{}
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("owner")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					list = append(list, string(k))
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return list
 }
 
 // CheckOwner checks if user owns particular file

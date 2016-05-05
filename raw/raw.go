@@ -22,8 +22,15 @@ type RawItem struct {
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		hash, owner := upload.Handler(w, r)
+		info := map[string]string{
+			"type": "raw",
+		}
+		r.ParseMultipartForm(32 << 20)
+		if len(r.MultipartForm.Value["version"]) != 0 {
+			info["version"] = r.MultipartForm.Value["version"][0]
+		}
 		_, header, _ := r.FormFile("file")
-		db.Write(owner, hash, header.Filename, map[string]string{"type": "raw"})
+		db.Write(owner, hash, header.Filename, info)
 		w.Write([]byte(hash))
 	}
 }
@@ -44,6 +51,9 @@ func List(w http.ResponseWriter, r *http.Request) {
 				Md5Sum:      hash,
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
+			if version, exists := info["version"]; exists {
+				item.Version = version
+			}
 			list = append(list, item)
 		}
 	}
