@@ -37,24 +37,6 @@ func initdb() *bolt.DB {
 	return db
 }
 
-// Temporary solution for updating db schema on production nodes
-// Should be deleted when all nodes will be updated
-func AlterDB() {
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bucket)
-		b.ForEach(func(k, v []byte) error {
-			b := b.Bucket(k)
-			if value := b.Get([]byte("owner")); value != nil {
-				b.Delete([]byte("owner"))
-				b, _ := b.CreateBucket([]byte("owner"))
-				b.Put(value, []byte("w"))
-			}
-			return nil
-		})
-		return nil
-	})
-}
-
 func Write(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
 		owner = "public"

@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/subutai-io/base/agent/log"
 	"github.com/subutai-io/gorjun/db"
@@ -75,8 +76,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 	fi, _ := f.Stat()
 
+	if t, err := time.Parse(http.TimeFormat, r.Header.Get("If-Modified-Since")); err == nil && fi.ModTime().Unix() <= t.Unix() {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
 	w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
 
 	io.Copy(w, f)
