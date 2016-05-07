@@ -63,13 +63,8 @@ func Token(w http.ResponseWriter, r *http.Request) {
 		message := r.MultipartForm.Value["message"][0]
 		authid := pgp.Verify(name, message)
 		if db.CheckAuthID(authid) == name {
-			hash := sha256.New()
-			hash.Write([]byte(fmt.Sprint(time.Now().String(), name, rand.Float64())))
-			token := fmt.Sprintf("%x", hash.Sum(nil))
-			hash.Reset()
-			hash.Write([]byte(token))
-
-			db.SaveToken(name, fmt.Sprintf("%x", hash.Sum(nil)))
+			token := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(time.Now().String(), name, rand.Float64()))))
+			db.SaveToken(name, fmt.Sprintf("%x", sha256.Sum256([]byte(token))))
 			w.Write([]byte(token))
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)

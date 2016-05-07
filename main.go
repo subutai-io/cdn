@@ -12,7 +12,7 @@ import (
 
 func main() {
 	defer db.Close()
-	db.AlterDB()
+
 	http.HandleFunc("/kurjun/rest/template/info", template.Info)
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)
 	http.HandleFunc("/kurjun/rest/template/download", template.Download)
