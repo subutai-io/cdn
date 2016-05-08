@@ -49,7 +49,8 @@ func readDeb(hash string) (string, bytes.Buffer) {
 	return hash, control
 }
 
-func getControl(hash string, control bytes.Buffer) (d map[string]string) {
+func getControl(hash string, control bytes.Buffer) map[string]string {
+	d := make(map[string]string)
 	for _, v := range strings.Split(control.String(), "\n") {
 		line := strings.Split(v, ":")
 		if len(line) > 1 {
