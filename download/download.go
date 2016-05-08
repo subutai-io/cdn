@@ -97,12 +97,16 @@ func Info(repo string, r *http.Request) []byte {
 	rtype := r.URL.Query().Get("type")
 	version := r.URL.Query().Get("version")
 
-	if len(strings.Split(id, ".")) > 1 {
-		name = db.Read(strings.Split(id, ".")[1])
+	list := db.Search(name)
+	if len(id) > 0 {
+		if len(strings.Split(id, ".")) > 1 {
+			id = strings.Split(id, ".")[1]
+		}
+		list = map[string]string{id: ""}
 	}
 
 	counter := 0
-	for k, _ := range db.Search(name) {
+	for k, _ := range list {
 		info := db.Info(k)
 		if info["type"] == repo {
 			counter++
