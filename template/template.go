@@ -109,6 +109,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	if info := download.Info("template", r); len(info) != 0 {
 		w.Write(info)
 	} else {
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	}
 }
