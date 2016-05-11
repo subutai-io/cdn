@@ -49,7 +49,7 @@ type ListItem struct {
 	Parent           string   `json:"parent"`
 	Size             int64    `json:"size"`
 	Version          string   `json:"version"`
-	Owner            []string `json:"owner"`
+	Owner            []string `json:"owner,omitempty"`
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -109,14 +109,8 @@ func Info(repo string, r *http.Request) []byte {
 	for k, _ := range list {
 		info := db.Info(k)
 		if info["type"] == repo {
-			counter++
-			if rtype == "text" && repo == "template" {
-				if name == strings.Split(info["name"], "-subutai-template")[0] && (len(version) == 0 || info["version"] == version) {
-					return ([]byte("public." + k))
-				}
-				continue
-			}
 			size, _ := strconv.ParseInt(info["size"], 10, 64)
+
 			switch repo {
 			case "template":
 				item, _ = json.Marshal(ListItem{
@@ -148,17 +142,22 @@ func Info(repo string, r *http.Request) []byte {
 					Size:    size,
 				})
 			}
-			if counter > 1 {
-				js = append(js, []byte(",")[0])
-			}
-			js = append(js, item...)
+
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
-				if len(version) == 0 || info["version"] == version {
-					if k == db.LastHash(info["name"]) {
+				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"]) {
+					if rtype == "text" {
+						return ([]byte("public." + k))
+					} else {
 						return item
 					}
 				}
+				continue
 			}
+
+			if counter++; counter > 1 {
+				js = append(js, []byte(",")[0])
+			}
+			js = append(js, item...)
 		}
 	}
 	if counter > 1 {
