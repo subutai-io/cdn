@@ -10,15 +10,6 @@ import (
 	"github.com/subutai-io/gorjun/upload"
 )
 
-type RawItem struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Size        int64  `json:"size"`
-	Md5Sum      string `json:"md5Sum"`
-	Version     string `json:"version"`
-	Fingerprint string `json:"fingerprint"`
-}
-
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		hash, owner := upload.Handler(w, r)
@@ -41,14 +32,15 @@ func Download(w http.ResponseWriter, r *http.Request) {
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
-	list := []RawItem{}
+	list := []download.RawItem{}
 	for hash, _ := range db.List() {
 		if info := db.Info(hash); info["type"] == "raw" {
-			item := RawItem{
+			item := download.RawItem{
 				ID:          "raw." + hash,
 				Name:        info["name"],
 				Fingerprint: info["owner"],
 				Md5Sum:      hash,
+				Owner:       db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			if version, exists := info["version"]; exists {
