@@ -113,7 +113,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
 	if file != "Packages" && file != "InRelease" && file != "Release" {
-		file = db.LastHash(file)
+		file = db.LastHash(file, "apt")
 	}
 	f, err := os.Open(config.Filepath + file)
 	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+file, err) {

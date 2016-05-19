@@ -68,7 +68,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Please specify hash or name"))
 		return
 	} else if len(name) != 0 {
-		hash = db.LastHash(name)
+		hash = db.LastHash(name, "")
 	}
 
 	f, err := os.Open(path + hash)
@@ -150,7 +150,7 @@ func Info(repo string, r *http.Request) []byte {
 			}
 
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
-				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"]) {
+				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"], info["type"]) {
 					if rtype == "text" {
 						return ([]byte("public." + k))
 					} else {
