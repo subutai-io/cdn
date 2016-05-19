@@ -189,11 +189,15 @@ func Search(query string) map[string]string {
 	return list
 }
 
-func LastHash(name string) (hash string) {
+func LastHash(name, t string) (hash string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(search).Bucket([]byte(name)); b != nil {
-			_, v := b.Cursor().Last()
-			hash = string(v)
+			c := b.Cursor()
+			for k, v := c.Last(); k != nil; k, v = c.Prev() {
+				if t == "" || t == Info(string(v))["type"] {
+					hash = string(v)
+				}
+			}
 		}
 		return nil
 	})

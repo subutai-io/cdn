@@ -19,22 +19,25 @@ var (
 )
 
 type AptItem struct {
-	Architecture string `json:"architecture,omitempty"`
-	Description  string `json:"description,omitempty"`
-	Filename     string `json:"filename,omitempty"`
-	Md5Sum       string `json:"md5Sum,omitempty"`
-	Name         string `json:"name,omitempty"`
-	Version      string `json:"version,omitempty"`
-	Size         string `json:"size"`
+	Architecture string   `json:"architecture,omitempty"`
+	Description  string   `json:"description,omitempty"`
+	Filename     string   `json:"filename,omitempty"`
+	Md5Sum       string   `json:"md5Sum,omitempty"`
+	Name         string   `json:"name,omitempty"`
+	Version      string   `json:"version,omitempty"`
+	Size         string   `json:"size"`
+	Owner        []string `json:"owner,omitempty"`
 }
 
 type RawItem struct {
-	Md5Sum  string `json:"md5Sum,omitempty"`
-	Name    string `json:"name,omitempty"`
-	Package string `json:"package,omitempty"`
-	Version string `json:"version,omitempty"`
-	Size    int64  `json:"size"`
-	ID      string `json:"id"`
+	Md5Sum      string   `json:"md5Sum,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	Package     string   `json:"package,omitempty"`
+	Version     string   `json:"version,omitempty"`
+	Fingerprint string   `json:"fingerprint"`
+	Size        int64    `json:"size"`
+	ID          string   `json:"id"`
+	Owner       []string `json:"owner,omitempty"`
 }
 
 type ListItem struct {
@@ -65,7 +68,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Please specify hash or name"))
 		return
 	} else if len(name) != 0 {
-		hash = db.LastHash(name)
+		hash = db.LastHash(name, "")
 	}
 
 	f, err := os.Open(path + hash)
@@ -122,6 +125,7 @@ func Info(repo string, r *http.Request) []byte {
 					Architecture: strings.ToUpper(info["arch"]),
 					Md5Sum:       k,
 					Size:         size,
+					Owner:        db.FileOwner(k),
 				})
 			case "apt":
 				item, _ = json.Marshal(AptItem{
@@ -131,6 +135,7 @@ func Info(repo string, r *http.Request) []byte {
 					Architecture: info["Architecture"],
 					Version:      info["Version"],
 					Size:         info["Size"],
+					Owner:        db.FileOwner(k),
 				})
 			case "raw":
 				item, _ = json.Marshal(RawItem{
@@ -140,11 +145,12 @@ func Info(repo string, r *http.Request) []byte {
 					Package: info["package"],
 					Version: info["version"],
 					Size:    size,
+					Owner:   db.FileOwner(k),
 				})
 			}
 
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
-				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"]) {
+				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"], info["type"]) {
 					if rtype == "text" {
 						return ([]byte("public." + k))
 					} else {
