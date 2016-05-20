@@ -28,7 +28,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 func Download(w http.ResponseWriter, r *http.Request) {
 	//raw-files download handler will be here
-	download.Handler(w, r)
+	download.Handler("raw", w, r)
 }
 
 func List(w http.ResponseWriter, r *http.Request) {

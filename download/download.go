@@ -55,7 +55,7 @@ type ListItem struct {
 	Owner            []string `json:"owner,omitempty"`
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
 	name := r.URL.Query().Get("name")
 	if len(r.URL.Query().Get("id")) > 0 {
@@ -68,7 +68,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Please specify hash or name"))
 		return
 	} else if len(name) != 0 {
-		hash = db.LastHash(name, "")
+		hash = db.LastHash(name, repo)
 	}
 
 	f, err := os.Open(path + hash)

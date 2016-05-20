@@ -96,7 +96,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
-	download.Handler(w, r)
+	download.Handler("template", w, r)
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
