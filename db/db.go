@@ -196,6 +196,7 @@ func LastHash(name, t string) (hash string) {
 			for k, v := c.Last(); k != nil; k, v = c.Prev() {
 				if t == "" || t == Info(string(v))["type"] {
 					hash = string(v)
+					break
 				}
 			}
 		}
