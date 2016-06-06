@@ -190,8 +190,6 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	if info := download.Info("apt", r); len(info) != 0 {
 		w.Write(info)
 		return

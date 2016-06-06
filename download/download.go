@@ -11,11 +11,8 @@ import (
 	"time"
 
 	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
-)
-
-var (
-	path = "/tmp/"
 )
 
 type AptItem struct {
@@ -71,9 +68,9 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		hash = db.LastHash(name, repo)
 	}
 
-	f, err := os.Open(path + hash)
+	f, err := os.Open(config.Filepath + hash)
 	defer f.Close()
-	if log.Check(log.WarnLevel, "Opening file "+path+hash, err) {
+	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
