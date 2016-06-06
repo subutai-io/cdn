@@ -50,8 +50,6 @@ func List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	js, _ := json.Marshal(list)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Write(js)
 }
 
