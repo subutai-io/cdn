@@ -70,8 +70,9 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(config.Filepath + hash)
 	defer f.Close()
-	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) {
+	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) || len(hash) == 0 {
 		w.WriteHeader(http.StatusNotFound)
+		io.WriteString(w, "File not found")
 		return
 	}
 	fi, _ := f.Stat()
