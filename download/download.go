@@ -62,7 +62,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(hash) == 0 && len(name) == 0 {
-		w.Write([]byte("Please specify hash or name"))
+		io.WriteString(w, "Please specify hash or name")
 		return
 	} else if len(name) != 0 {
 		hash = db.LastHash(name, repo)
@@ -70,8 +70,9 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(config.Filepath + hash)
 	defer f.Close()
-	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) {
+	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) || len(hash) == 0 {
 		w.WriteHeader(http.StatusNotFound)
+		io.WriteString(w, "File not found")
 		return
 	}
 	fi, _ := f.Stat()
@@ -114,7 +115,7 @@ func Info(repo string, r *http.Request) []byte {
 			switch repo {
 			case "template":
 				item, _ = json.Marshal(ListItem{
-					Name:         strings.Split(info["name"], "-")[0],
+					Name:         strings.Split(info["name"], "-subutai-template")[0],
 					ID:           info["owner"] + "." + k,
 					OwnerFprint:  info["owner"],
 					Parent:       info["parent"],
