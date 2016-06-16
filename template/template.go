@@ -137,7 +137,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 		if info := db.Info(hash); info["type"] == "template" {
 			item := download.ListItem{
 				ID:           "public." + hash,
-				Name:         strings.Split(info["name"], "-")[0],
+				Name:         strings.Split(info["name"], "-subutai-template")[0],
 				Md5Sum:       hash,
 				Parent:       info["parent"],
 				Version:      info["version"],
