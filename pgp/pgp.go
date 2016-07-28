@@ -2,7 +2,6 @@ package pgp
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 

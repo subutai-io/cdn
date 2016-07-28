@@ -95,12 +95,13 @@ func writePackage(meta map[string]string) {
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
-		hash, owner := upload.Handler(w, r)
+		hash, owner, signature := upload.Handler(w, r)
 		meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(config.Filepath + hash)
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
+		meta["signature"] = signature
 		writePackage(meta)
 		db.Write(owner, hash, header.Filename, meta)
 		w.Write([]byte(hash))

@@ -14,7 +14,7 @@ import (
 )
 
 //Handler function works with income upload requests, makes sanity checks, etc
-func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
+func Handler(w http.ResponseWriter, r *http.Request) (hash, owner, signature string) {
 	r.ParseMultipartForm(32 << 20)
 	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -59,7 +59,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 
 	//Here need to add hash signing via e2e plugin using Hub integration
 	//Signed hash should be stored in database and must be retrieved during import operation with owner public key
-	signature := pgp.SignHub(owner, hash)
+	signature = pgp.SignHub(owner, hash)
 	if len(signature) == 0 {
 		log.Warn("Failed to sign " + header.Filename + " via Hub")
 		w.WriteHeader(http.StatusInternalServerError)
