@@ -87,3 +87,19 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte("Success"))
 }
+
+func Key(w http.ResponseWriter, r *http.Request) {
+	user := r.URL.Query().Get("user")
+	if len(user) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Empty user"))
+		return
+	}
+	key := db.UserKey(user)
+	if len(key) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("User key not found"))
+		return
+	}
+	w.Write([]byte(key))
+}

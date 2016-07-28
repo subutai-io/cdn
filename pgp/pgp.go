@@ -36,6 +36,7 @@ func Fingerprint(key string) []byte {
 	return []byte("")
 }
 
+//Until we get in coordination with Hub's devs this is only theoretical dummy function
 func SignHub(owner, hash string) string {
 	//Here some authorization to HUB should be added
 
