@@ -170,3 +170,5 @@ func Info(repo string, r *http.Request) []byte {
 	}
 	return js
 }
+
+//Here need to add new REST endpoint which should receive owner fingerprint as argument and return user's public key to verify artifact's ownership

@@ -2,6 +2,9 @@ package pgp
 
 import (
 	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/subutai-io/gorjun/db"
 
@@ -32,4 +35,19 @@ func Fingerprint(key string) []byte {
 		return v.PrimaryKey.Fingerprint[:]
 	}
 	return []byte("")
+}
+
+func SignHub(owner, hash string) string {
+	//Here some authorization to HUB should be added
+
+	resp, err := http.Get("https://hub.subut.ai/some/e2e/endpoint?owner" + owner + "&hash=" + hash)
+	if log.Check(log.WarnLevel, "Sending sign request", err) || resp.StatusCode != 200 {
+		return ""
+	}
+	signature, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if log.Check(log.WarnLevel, "Reading response body", err) {
+		return ""
+	}
+	return string(signature)
 }
