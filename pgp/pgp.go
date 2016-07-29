@@ -2,8 +2,8 @@ package pgp
 
 import (
 	"bytes"
-	"io/ioutil"
-	"net/http"
+	// "io/ioutil"
+	// "net/http"
 
 	"github.com/subutai-io/gorjun/db"
 
@@ -40,14 +40,30 @@ func Fingerprint(key string) []byte {
 func SignHub(owner, hash string) string {
 	//Here some authorization to HUB should be added
 
-	resp, err := http.Get("https://hub.subut.ai/some/e2e/endpoint?owner" + owner + "&hash=" + hash)
-	if log.Check(log.WarnLevel, "Sending sign request", err) || resp.StatusCode != 200 {
-		return ""
-	}
-	signature, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if log.Check(log.WarnLevel, "Reading response body", err) {
-		return ""
-	}
-	return string(signature)
+	// resp, err := http.Get("https://hub.subut.ai/some/e2e/endpoint?owner" + owner + "&hash=" + hash)
+	// if log.Check(log.WarnLevel, "Sending sign request", err) || resp.StatusCode != 200 {
+	// return ""
+	// }
+	// signature, err := ioutil.ReadAll(resp.Body)
+	// resp.Body.Close()
+	// if log.Check(log.WarnLevel, "Reading response body", err) {
+	// return ""
+	// }
+	// return string(signature)
+	return `-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+e3fc50a88d0a364313df4b21ef20c29e
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBAgAGBQJXmzTXAAoJEMke5E6pQEpU1MYH+gIRKzDxYBtE6v4gI/eifjT2
+tHEyNZEF1Oi7fIngtj7ZKnVYC7Yfgjxi7+49MbJchGtHDP2pYQNBo+aAUgGaRShq
+DT5/Xnnx9K3gVY5lGzDdHCHUI+uICjaHrg0LpG+CbIoSNy51Jzmey2s4yTPkxg0u
+lKboTv4/k5BBFGxRdGhT9AVKDFurcmHwCkcCMr8eQ3hO9+Gvc4UVN8mGM0i7tR/4
+EmZhKgbtgc1IQcPqAbDaXtFPuZFLo+CJPBTLQWEHqsGlB9GnDy4sf0AV1Wox69oN
+Mi5hnC7esCsXzC4ZBwegpIyJmXTKT8+2ErZoqrCM9H73UP+C3LGof5AJ+SoFuzo=
+=DETD
+-----END PGP SIGNATURE-----
+`
 }

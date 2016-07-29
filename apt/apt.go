@@ -101,10 +101,10 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["Size"] = getSize(config.Filepath + hash)
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
-		meta["signature"] = signature
+		// meta["signature"] = signature
 		writePackage(meta)
 		db.Write(owner, hash, header.Filename, meta)
-		w.Write([]byte(hash))
+		w.Write([]byte(hash + "\n" + signature))
 	}
 }
 

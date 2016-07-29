@@ -86,13 +86,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		t := getConf(hash, configfile)
 		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", map[string]string{
-			"type":      "template",
-			"arch":      t.arch,
-			"parent":    t.parent,
-			"version":   t.version,
-			"signature": signature,
+			"type":    "template",
+			"arch":    t.arch,
+			"parent":  t.parent,
+			"version": t.version,
+			// "signature": signature,
 		})
-		w.Write([]byte(t.hash))
+		w.Write([]byte(t.hash + "\n" + signature))
 	}
 }
 

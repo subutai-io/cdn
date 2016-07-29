@@ -20,10 +20,10 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		if len(r.MultipartForm.Value["version"]) != 0 {
 			info["version"] = r.MultipartForm.Value["version"][0]
 		}
-		info["signature"] = signature
+		// info["signature"] = signature
 		_, header, _ := r.FormFile("file")
 		db.Write(owner, hash, header.Filename, info)
-		w.Write([]byte(hash))
+		w.Write([]byte(hash + "\n" + signature))
 	}
 }
 
