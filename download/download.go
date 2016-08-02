@@ -16,40 +16,43 @@ import (
 )
 
 type AptItem struct {
-	Architecture string   `json:"architecture,omitempty"`
-	Description  string   `json:"description,omitempty"`
-	Filename     string   `json:"filename,omitempty"`
-	Md5Sum       string   `json:"md5Sum,omitempty"`
-	Name         string   `json:"name,omitempty"`
-	Version      string   `json:"version,omitempty"`
-	Size         string   `json:"size"`
-	Owner        []string `json:"owner,omitempty"`
+	Architecture string            `json:"architecture,omitempty"`
+	Description  string            `json:"description,omitempty"`
+	Filename     string            `json:"filename,omitempty"`
+	Md5Sum       string            `json:"md5Sum,omitempty"`
+	Name         string            `json:"name,omitempty"`
+	Version      string            `json:"version,omitempty"`
+	Size         string            `json:"size"`
+	Owner        []string          `json:"owner,omitempty"`
+	Signature    map[string]string `json:"signature,omitempty"`
 }
 
 type RawItem struct {
-	Md5Sum      string   `json:"md5Sum,omitempty"`
-	Name        string   `json:"name,omitempty"`
-	Package     string   `json:"package,omitempty"`
-	Version     string   `json:"version,omitempty"`
-	Fingerprint string   `json:"fingerprint"`
-	Size        int64    `json:"size"`
-	ID          string   `json:"id"`
-	Owner       []string `json:"owner,omitempty"`
+	Md5Sum      string            `json:"md5Sum,omitempty"`
+	Name        string            `json:"name,omitempty"`
+	Package     string            `json:"package,omitempty"`
+	Version     string            `json:"version,omitempty"`
+	Fingerprint string            `json:"fingerprint"`
+	Size        int64             `json:"size"`
+	ID          string            `json:"id"`
+	Owner       []string          `json:"owner,omitempty"`
+	Signature   map[string]string `json:"signature,omitempty"`
 }
 
 type ListItem struct {
-	Architecture     string   `json:"architecture"`
-	ConfigContents   string   `json:"configContents"`
-	ID               string   `json:"id"`
-	Md5Sum           string   `json:"md5Sum"`
-	Name             string   `json:"name"`
-	OwnerFprint      string   `json:"ownerFprint"`
-	Package          string   `json:"package"`
-	PackagesContents string   `json:"packagesContents"`
-	Parent           string   `json:"parent"`
-	Size             int64    `json:"size"`
-	Version          string   `json:"version"`
-	Owner            []string `json:"owner,omitempty"`
+	Architecture     string            `json:"architecture"`
+	ConfigContents   string            `json:"configContents"`
+	ID               string            `json:"id"`
+	Md5Sum           string            `json:"md5Sum"`
+	Name             string            `json:"name"`
+	OwnerFprint      string            `json:"ownerFprint"`
+	Package          string            `json:"package"`
+	PackagesContents string            `json:"packagesContents"`
+	Parent           string            `json:"parent"`
+	Size             int64             `json:"size"`
+	Version          string            `json:"version"`
+	Owner            []string          `json:"owner,omitempty"`
+	Signature        map[string]string `json:"signature,omitempty"`
 }
 
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
@@ -123,7 +126,9 @@ func Info(repo string, r *http.Request) []byte {
 					Architecture: strings.ToUpper(info["arch"]),
 					Md5Sum:       k,
 					Size:         size,
-					Owner:        db.FileOwner(k),
+					// Owner:        db.FileSignatures(k),
+					Owner:     db.FileOwner(k),
+					Signature: db.FileSignatures(k),
 				})
 			case "apt":
 				item, _ = json.Marshal(AptItem{
@@ -133,7 +138,9 @@ func Info(repo string, r *http.Request) []byte {
 					Architecture: info["Architecture"],
 					Version:      info["Version"],
 					Size:         info["Size"],
-					Owner:        db.FileOwner(k),
+					// Owner:        db.FileSignatures(k),
+					Owner:     db.FileOwner(k),
+					Signature: db.FileSignatures(k),
 				})
 			case "raw":
 				item, _ = json.Marshal(RawItem{
@@ -143,7 +150,9 @@ func Info(repo string, r *http.Request) []byte {
 					Package: info["package"],
 					Version: info["version"],
 					Size:    size,
-					Owner:   db.FileOwner(k),
+					// Owner:   db.FileSignatures(k),
+					Owner:     db.FileOwner(k),
+					Signature: db.FileSignatures(k),
 				})
 			}
 

@@ -12,18 +12,18 @@ import (
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		hash, owner, signature := upload.Handler(w, r)
+		hash, owner := upload.Handler(w, r)
 		info := map[string]string{
 			"type": "raw",
+			// "signature": signature,
 		}
 		r.ParseMultipartForm(32 << 20)
 		if len(r.MultipartForm.Value["version"]) != 0 {
 			info["version"] = r.MultipartForm.Value["version"][0]
 		}
-		// info["signature"] = signature
 		_, header, _ := r.FormFile("file")
 		db.Write(owner, hash, header.Filename, info)
-		w.Write([]byte(hash + "\n" + signature))
+		w.Write([]byte(hash))
 	}
 }
 
@@ -41,7 +41,8 @@ func List(w http.ResponseWriter, r *http.Request) {
 				Name:        info["name"],
 				Fingerprint: info["owner"],
 				Md5Sum:      hash,
-				Owner:       db.FileOwner(hash),
+				// Owner:       db.FileSignatures(hash),
+				Owner: db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			if version, exists := info["version"]; exists {

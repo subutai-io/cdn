@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/subutai-io/base/agent/log"
+
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/pgp"
 )
@@ -59,6 +61,12 @@ func Token(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == http.MethodPost {
 		r.ParseMultipartForm(32 << 20)
+		if len(r.MultipartForm.Value["user"]) == 0 || len(r.MultipartForm.Value["message"]) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Please specify user name and auth message"))
+			log.Warn(r.RemoteAddr + " - empty user name or message filed")
+			return
+		}
 		name := r.MultipartForm.Value["user"][0]
 		message := r.MultipartForm.Value["message"][0]
 		authid := pgp.Verify(name, message)
@@ -102,4 +110,40 @@ func Key(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte(key))
+}
+
+func Sign(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(32 << 20)
+	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Not authorized"))
+		log.Warn(r.RemoteAddr + " - rejecting unauthorized sign request")
+		return
+	}
+	owner := db.CheckToken(r.MultipartForm.Value["token"][0])
+	if len(r.MultipartForm.Value["signature"]) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Empty signature"))
+		log.Warn("auth.Sign received empty signature")
+		return
+	}
+	signature := r.MultipartForm.Value["signature"][0]
+	hash := pgp.Verify(owner, signature)
+	if len(hash) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Failed to verify signature with user key"))
+		log.Warn("Failed to verify signature with user key")
+		return
+	}
+	if !db.CheckOwner(owner, hash) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("File and signature have different owner"))
+		log.Warn("File and signature have different owner")
+		return
+	}
+	db.Write(owner, hash, signature)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("File has been signed"))
+	log.Warn("File " + hash + " has been signed by " + owner)
+	return
 }

@@ -10,11 +10,10 @@ import (
 	"github.com/subutai-io/base/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/pgp"
 )
 
 //Handler function works with income upload requests, makes sanity checks, etc
-func Handler(w http.ResponseWriter, r *http.Request) (hash, owner, signature string) {
+func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	r.ParseMultipartForm(32 << 20)
 	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -57,19 +56,10 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner, signature str
 		return
 	}
 
-	//Here need to add hash signing via e2e plugin using Hub integration
-	//Signed hash should be stored in database and must be retrieved during import operation with owner public key
-	signature = pgp.SignHub(owner, hash)
-	if len(signature) == 0 {
-		log.Warn("Failed to sign " + header.Filename + " via Hub")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to sign artifact"))
-		return
-	}
-
 	os.Rename(config.Filepath+header.Filename, config.Filepath+hash)
 	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
-	return hash, owner, signature
+	// log.Info("Signature: " + signature)
+	return hash, owner
 }
 
 func genHash(file string) string {
@@ -120,5 +110,6 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 			return ""
 		}
 	}
+	log.Info("Removing " + info["name"])
 	return hash
 }

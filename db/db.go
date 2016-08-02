@@ -77,7 +77,13 @@ func Write(owner, key, value string, options ...map[string]string) {
 		// Adding owners to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
 			if b, _ = b.CreateBucketIfNotExists([]byte("owner")); b != nil {
-				b.Put([]byte(owner), []byte("w"))
+				//If value is not empty, we are assuming that it is a signature (or any other personal info)
+				//Otherwise we are just adding new owner
+				if len(value) != 0 && len(options) == 0 {
+					b.Put([]byte(owner), []byte(value))
+				} else if len(value) == 0 {
+					b.Put([]byte(owner), []byte("w"))
+				}
 			}
 		}
 
@@ -304,4 +310,22 @@ func CheckOwner(owner, hash string) (res bool) {
 		return nil
 	})
 	return res
+}
+
+func FileSignatures(hash string) (list map[string]string) {
+	list = map[string]string{}
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("owner")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					if string(v) != "w" {
+						list[string(k)] = string(v)
+					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return list
 }

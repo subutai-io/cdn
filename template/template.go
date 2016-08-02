@@ -75,10 +75,10 @@ func getConf(hash string, configfile bytes.Buffer) (t *Template) {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
-	var hash, owner, signature string
+	var hash, owner string
 	var configfile bytes.Buffer
 	if r.Method == "POST" {
-		if hash, owner, signature = upload.Handler(w, r); len(hash) == 0 {
+		if hash, owner = upload.Handler(w, r); len(hash) == 0 {
 			return
 		}
 		if configfile = readTempl(hash); len(configfile.String()) == 0 {
@@ -90,9 +90,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			"arch":    t.arch,
 			"parent":  t.parent,
 			"version": t.version,
-			// "signature": signature,
 		})
-		w.Write([]byte(t.hash + "\n" + signature))
+		w.Write([]byte(t.hash))
 	}
 }
 
@@ -144,7 +143,8 @@ func List(w http.ResponseWriter, r *http.Request) {
 				Version:      info["version"],
 				OwnerFprint:  info["owner"],
 				Architecture: strings.ToUpper(info["arch"]),
-				Owner:        db.FileOwner(hash),
+				// Owner:        db.FileSignatures(hash),
+				Owner: db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			list = append(list, item)
