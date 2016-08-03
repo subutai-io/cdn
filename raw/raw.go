@@ -15,6 +15,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		hash, owner := upload.Handler(w, r)
 		info := map[string]string{
 			"type": "raw",
+			// "signature": signature,
 		}
 		r.ParseMultipartForm(32 << 20)
 		if len(r.MultipartForm.Value["version"]) != 0 {
@@ -40,7 +41,8 @@ func List(w http.ResponseWriter, r *http.Request) {
 				Name:        info["name"],
 				Fingerprint: info["owner"],
 				Md5Sum:      hash,
-				Owner:       db.FileOwner(hash),
+				// Owner:       db.FileSignatures(hash),
+				Owner: db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			if version, exists := info["version"]; exists {

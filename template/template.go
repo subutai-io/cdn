@@ -143,7 +143,8 @@ func List(w http.ResponseWriter, r *http.Request) {
 				Version:      info["version"],
 				OwnerFprint:  info["owner"],
 				Architecture: strings.ToUpper(info["arch"]),
-				Owner:        db.FileOwner(hash),
+				// Owner:        db.FileSignatures(hash),
+				Owner: db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			list = append(list, item)

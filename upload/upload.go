@@ -12,6 +12,7 @@ import (
 	"github.com/subutai-io/gorjun/db"
 )
 
+//Handler function works with income upload requests, makes sanity checks, etc
 func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	r.ParseMultipartForm(32 << 20)
 	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
@@ -54,8 +55,10 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		w.Write([]byte("Failed to calculate hash"))
 		return
 	}
+
 	os.Rename(config.Filepath+header.Filename, config.Filepath+hash)
 	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
+	// log.Info("Signature: " + signature)
 	return hash, owner
 }
 
@@ -107,5 +110,6 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 			return ""
 		}
 	}
+	log.Info("Removing " + info["name"])
 	return hash
 }

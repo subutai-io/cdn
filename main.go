@@ -44,5 +44,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/auth/register", auth.Register)
 	http.HandleFunc("/kurjun/rest/auth/validate", auth.Validate)
 	http.HandleFunc("/kurjun/rest/auth/token", auth.Token)
+	http.HandleFunc("/kurjun/rest/auth/key", auth.Key)
+	http.HandleFunc("/kurjun/rest/auth/sign", auth.Sign)
 	http.ListenAndServe(":8080", nil)
 }

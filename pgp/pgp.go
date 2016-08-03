@@ -2,6 +2,8 @@ package pgp
 
 import (
 	"bytes"
+	// "io/ioutil"
+	// "net/http"
 
 	"github.com/subutai-io/gorjun/db"
 
