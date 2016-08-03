@@ -1,9 +1,11 @@
 package download
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -15,44 +17,42 @@ import (
 	"github.com/subutai-io/gorjun/db"
 )
 
+type listItem struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type AptItem struct {
-	Architecture string            `json:"architecture,omitempty"`
-	Description  string            `json:"description,omitempty"`
-	Filename     string            `json:"filename,omitempty"`
-	Md5Sum       string            `json:"md5Sum,omitempty"`
-	Name         string            `json:"name,omitempty"`
-	Version      string            `json:"version,omitempty"`
+	ID           string            `json:"id"`
 	Size         string            `json:"size"`
+	Name         string            `json:"name,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`
+	Md5Sum       string            `json:"md5Sum,omitempty"`
+	Version      string            `json:"version,omitempty"`
+	Filename     string            `json:"filename,omitempty"`
 	Signature    map[string]string `json:"signature,omitempty"`
+	Description  string            `json:"description,omitempty"`
+	Architecture string            `json:"architecture,omitempty"`
 }
 
 type RawItem struct {
-	Md5Sum      string            `json:"md5Sum,omitempty"`
-	Name        string            `json:"name,omitempty"`
-	Package     string            `json:"package,omitempty"`
-	Version     string            `json:"version,omitempty"`
-	Fingerprint string            `json:"fingerprint"`
-	Size        int64             `json:"size"`
-	ID          string            `json:"id"`
-	Owner       []string          `json:"owner,omitempty"`
-	Signature   map[string]string `json:"signature,omitempty"`
+	ID        string            `json:"id"`
+	Size      int64             `json:"size"`
+	Name      string            `json:"name,omitempty"`
+	Owner     []string          `json:"owner,omitempty"`
+	Version   string            `json:"version,omitempty"`
+	Signature map[string]string `json:"signature,omitempty"`
 }
 
 type ListItem struct {
-	Architecture     string            `json:"architecture"`
-	ConfigContents   string            `json:"configContents"`
-	ID               string            `json:"id"`
-	Md5Sum           string            `json:"md5Sum"`
-	Name             string            `json:"name"`
-	OwnerFprint      string            `json:"ownerFprint"`
-	Package          string            `json:"package"`
-	PackagesContents string            `json:"packagesContents"`
-	Parent           string            `json:"parent"`
-	Size             int64             `json:"size"`
-	Version          string            `json:"version"`
-	Owner            []string          `json:"owner,omitempty"`
-	Signature        map[string]string `json:"signature,omitempty"`
+	ID           string            `json:"id"`
+	Size         int64             `json:"size"`
+	Name         string            `json:"name"`
+	Parent       string            `json:"parent"`
+	Version      string            `json:"version"`
+	Owner        []string          `json:"owner,omitempty"`
+	Architecture string            `json:"architecture"`
+	Signature    map[string]string `json:"signature,omitempty"`
 }
 
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
@@ -73,7 +73,21 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.Open(config.Filepath + hash)
 	defer f.Close()
+
 	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) || len(hash) == 0 {
+		client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+		resp, err := client.Get(config.CDN + r.URL.RequestURI())
+		if !log.Check(log.WarnLevel, "Getting file from CDN", err) {
+			w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+			w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+			w.Header().Set("Last-Modified", resp.Header.Get("Last-Modified"))
+			w.Header().Set("Content-Disposition", resp.Header.Get("Content-Disposition"))
+
+			io.Copy(w, resp.Body)
+			resp.Body.Close()
+			return
+		}
+
 		w.WriteHeader(http.StatusNotFound)
 		io.WriteString(w, "File not found")
 		return
@@ -103,9 +117,6 @@ func Info(repo string, r *http.Request) []byte {
 
 	list := db.Search(name)
 	if len(id) > 0 {
-		if len(strings.Split(id, ".")) > 1 {
-			id = strings.Split(id, ".")[1]
-		}
 		list = map[string]string{id: ""}
 	}
 
@@ -118,22 +129,20 @@ func Info(repo string, r *http.Request) []byte {
 			switch repo {
 			case "template":
 				item, _ = json.Marshal(ListItem{
+					ID:           k,
+					Size:         size,
 					Name:         strings.Split(info["name"], "-subutai-template")[0],
-					ID:           info["owner"] + "." + k,
-					OwnerFprint:  info["owner"],
 					Parent:       info["parent"],
 					Version:      info["version"],
 					Architecture: strings.ToUpper(info["arch"]),
-					Md5Sum:       k,
-					Size:         size,
 					// Owner:        db.FileSignatures(k),
 					Owner:     db.FileOwner(k),
 					Signature: db.FileSignatures(k),
 				})
 			case "apt":
 				item, _ = json.Marshal(AptItem{
+					ID:           info["MD5sum"],
 					Name:         info["name"],
-					Md5Sum:       info["MD5sum"],
 					Description:  info["Description"],
 					Architecture: info["Architecture"],
 					Version:      info["Version"],
@@ -144,12 +153,10 @@ func Info(repo string, r *http.Request) []byte {
 				})
 			case "raw":
 				item, _ = json.Marshal(RawItem{
-					Name:    info["name"],
 					ID:      k,
-					Md5Sum:  k,
-					Package: info["package"],
-					Version: info["version"],
 					Size:    size,
+					Name:    info["name"],
+					Version: info["version"],
 					// Owner:   db.FileSignatures(k),
 					Owner:     db.FileOwner(k),
 					Signature: db.FileSignatures(k),
@@ -163,19 +170,65 @@ func Info(repo string, r *http.Request) []byte {
 					} else {
 						return item
 					}
+
 				}
 				continue
 			}
 
 			if counter++; counter > 1 {
-				js = append(js, []byte(",")[0])
+				js = append(js, []byte(",")...)
 			}
 			js = append(js, item...)
 		}
 	}
 	if counter > 1 {
 		js = append([]byte("["), js...)
-		js = append(js, []byte("]")[0])
+		js = append(js, []byte("]")...)
 	}
 	return js
+}
+
+// ProxyList retrieves list of artifacts from main CDN nodes if no data found in local database
+// It creates simple JSON list of artifacts to provide it to Subutai Social.
+func ProxyList(t string) []byte {
+	list := make([]listItem, 0)
+
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	resp, err := client.Get(config.CDN + "/kurjun/rest/" + t + "/list")
+	defer resp.Body.Close()
+	if log.Check(log.WarnLevel, "Getting list from CDN", err) {
+		return nil
+	}
+
+	rsp, err := ioutil.ReadAll(resp.Body)
+	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
+		return nil
+	}
+
+	if log.Check(log.WarnLevel, "Decrypting request", json.Unmarshal([]byte(rsp), &list)) {
+		return nil
+	}
+
+	output, err := json.Marshal(list)
+	if log.Check(log.WarnLevel, "Marshaling list", err) {
+		return nil
+	}
+	return output
+}
+
+// ProxyInfo retrieves information from main CDN nodes if no data found in local database
+// It creates simple info JSON to provide it to Subutai Social.
+func ProxyInfo(uri string) []byte {
+	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	resp, err := client.Get(config.CDN + uri)
+	defer resp.Body.Close()
+	if log.Check(log.WarnLevel, "Getting list of templates from CDN", err) {
+		return nil
+	}
+
+	rsp, err := ioutil.ReadAll(resp.Body)
+	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
+		return nil
+	}
+	return rsp
 }

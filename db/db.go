@@ -23,7 +23,7 @@ var (
 )
 
 func initdb() *bolt.DB {
-	db, err := bolt.Open("my.db", 0600, nil)
+	db, err := bolt.Open(config.Path+"my.db", 0600, nil)
 	log.Check(log.FatalLevel, "Openning DB: my.db", err)
 
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -34,6 +34,7 @@ func initdb() *bolt.DB {
 		return nil
 	})
 	log.Check(log.FatalLevel, "Finishing update transaction", err)
+
 	return db
 }
 
@@ -46,7 +47,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 
 		// Associating files with user
 		b, _ := tx.Bucket(users).CreateBucketIfNotExists([]byte(owner))
-		if b, err := b.CreateBucket([]byte("files")); err == nil {
+		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
 			b.Put([]byte(key), []byte(value))
 		}
 
@@ -81,7 +82,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 				//Otherwise we are just adding new owner
 				if len(value) != 0 && len(options) == 0 {
 					b.Put([]byte(owner), []byte(value))
-				} else if len(value) == 0 {
+				} else {
 					b.Put([]byte(owner), []byte("w"))
 				}
 			}
@@ -321,6 +322,28 @@ func FileSignatures(hash string) (list map[string]string) {
 					if string(v) != "w" {
 						list[string(k)] = string(v)
 					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return list
+}
+
+// UserFile searching file at particular user. It returns list of hashes of files with required name.
+func UserFile(owner, file string) (list []string) {
+	if len(owner) == 0 {
+		owner = "public"
+	}
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
+			if files := b.Bucket([]byte("files")); files != nil {
+				files.ForEach(func(k, v []byte) error {
+					if string(v) == file {
+						list = append(list, string(k))
+					}
+					fmt.Println(string(k), string(v))
 					return nil
 				})
 			}
