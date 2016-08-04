@@ -13,17 +13,16 @@ import (
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		hash, owner := upload.Handler(w, r)
+		hash, owner, private := upload.Handler(w, r)
 		info := map[string]string{
 			"type": "raw",
-			// "signature": signature,
 		}
 		r.ParseMultipartForm(32 << 20)
 		if len(r.MultipartForm.Value["version"]) != 0 {
 			info["version"] = r.MultipartForm.Value["version"][0]
 		}
 		_, header, _ := r.FormFile("file")
-		db.Write(owner, hash, header.Filename, info)
+		db.Write(owner, hash, header.Filename, private, info)
 		w.Write([]byte(hash))
 	}
 }

@@ -38,7 +38,7 @@ func initdb() *bolt.DB {
 	return db
 }
 
-func Write(owner, key, value string, options ...map[string]string) {
+func Write(owner, key, value string, private bool, options ...map[string]string) {
 	if len(owner) == 0 {
 		owner = "public"
 	}
@@ -84,6 +84,16 @@ func Write(owner, key, value string, options ...map[string]string) {
 					b.Put([]byte(owner), []byte(value))
 				} else {
 					b.Put([]byte(owner), []byte("w"))
+				}
+			}
+		}
+
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if b, _ = b.CreateBucketIfNotExists([]byte("scope")); b != nil {
+				if b, _ = b.CreateBucketIfNotExists([]byte(owner)); b != nil {
+					if private {
+						b.Put([]byte(owner), []byte("w"))
+					}
 				}
 			}
 		}
@@ -351,4 +361,73 @@ func UserFile(owner, file string) (list []string) {
 		return nil
 	})
 	return list
+}
+
+func GetScope(hash, owner string) (scope []string) {
+	scope = []string{}
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				if b := b.Bucket([]byte(owner)); b != nil {
+					b.ForEach(func(k, v []byte) error {
+						scope = append(scope, string(k))
+						return nil
+					})
+				}
+			}
+		}
+		return nil
+	})
+	return scope
+}
+
+func ShareWith(hash, owner, user string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				if b := b.Bucket([]byte(owner)); b != nil {
+					b.Put([]byte(user), []byte("w"))
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func UnshareWith(hash, owner, user string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				if b := b.Bucket([]byte(owner)); b != nil {
+					b.Delete([]byte(user))
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func CheckShare(hash, user string) bool {
+	shared := false
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					if b := b.Bucket(k); b != nil {
+						b.ForEach(func(k1, v1 []byte) error {
+							if string(k1) == user {
+								shared = true
+								return nil
+							}
+							return nil
+						})
+					}
+					return nil
+				})
+
+			}
+		}
+		return nil
+	})
+	return shared
 }
