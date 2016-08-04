@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
@@ -15,6 +16,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		hash, owner := upload.Handler(w, r)
 		info := map[string]string{
 			"type": "raw",
+			// "signature": signature,
 		}
 		r.ParseMultipartForm(32 << 20)
 		if len(r.MultipartForm.Value["version"]) != 0 {
@@ -27,8 +29,19 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
-	//raw-files download handler will be here
-	download.Handler("raw", w, r)
+	uri := strings.Replace(r.RequestURI, "/kurjun/rest/file/", "/kurjun/rest/raw/", 1)
+	uri = strings.Replace(uri, "/kurjun/rest/raw/get", "/kurjun/rest/raw/download", 1)
+
+	args := strings.Split(strings.TrimPrefix(uri, "/kurjun/rest/raw/"), "/")
+	if len(args) > 0 && strings.HasPrefix(args[0], "download") {
+		download.Handler("raw", w, r)
+		return
+	}
+	if len(args) > 1 {
+		if list := db.UserFile(args[0], args[1]); len(list) > 0 {
+			http.Redirect(w, r, "/kurjun/rest/raw/download?id="+list[0], 302)
+		}
+	}
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
@@ -36,11 +49,10 @@ func List(w http.ResponseWriter, r *http.Request) {
 	for hash, _ := range db.List() {
 		if info := db.Info(hash); info["type"] == "raw" {
 			item := download.RawItem{
-				ID:          "raw." + hash,
-				Name:        info["name"],
-				Fingerprint: info["owner"],
-				Md5Sum:      hash,
-				Owner:       db.FileOwner(hash),
+				ID:   hash,
+				Name: info["name"],
+				// Owner:       db.FileSignatures(hash),
+				Owner: db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			if version, exists := info["version"]; exists {
@@ -49,8 +61,15 @@ func List(w http.ResponseWriter, r *http.Request) {
 			list = append(list, item)
 		}
 	}
+	if len(list) == 0 {
+		if js := download.ProxyList("raw"); js != nil {
+			w.Write(js)
+		}
+		return
+	}
 	js, _ := json.Marshal(list)
 	w.Write(js)
+
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {

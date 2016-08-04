@@ -4,15 +4,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"crypto/md5"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/subutai-io/base/agent/log"
 
@@ -96,7 +93,17 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
-	download.Handler("template", w, r)
+	uri := strings.Replace(r.RequestURI, "/kurjun/rest/template/get", "/kurjun/rest/template/download", 1)
+	args := strings.Split(strings.TrimPrefix(uri, "/kurjun/rest/template/"), "/")
+	if len(args) > 0 && strings.HasPrefix(args[0], "download") {
+		download.Handler("template", w, r)
+		return
+	}
+	if len(args) > 1 {
+		if list := db.UserFile(args[0], args[1]); len(list) > 0 {
+			http.Redirect(w, r, "/kurjun/rest/template/download?id="+list[0], 302)
+		}
+	}
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +116,10 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	if info := download.Info("template", r); len(info) != 0 {
 		w.Write(info)
 	} else {
+		if output := download.ProxyInfo(r.URL.RequestURI()); len(output) > 0 {
+			w.Write(output)
+			return
+		}
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	}
@@ -125,29 +136,28 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Incorrect method"))
 }
 
-func Md5(w http.ResponseWriter, r *http.Request) {
-	hash := md5.New()
-	hash.Write([]byte(time.Now().String()))
-	w.Write([]byte(fmt.Sprintf("%x", hash.Sum(nil))))
-}
-
 func List(w http.ResponseWriter, r *http.Request) {
 	list := make([]download.ListItem, 0)
 	for hash, _ := range db.List() {
 		if info := db.Info(hash); info["type"] == "template" {
 			item := download.ListItem{
-				ID:           "public." + hash,
+				ID:           hash,
 				Name:         strings.Split(info["name"], "-subutai-template")[0],
-				Md5Sum:       hash,
 				Parent:       info["parent"],
 				Version:      info["version"],
-				OwnerFprint:  info["owner"],
 				Architecture: strings.ToUpper(info["arch"]),
-				Owner:        db.FileOwner(hash),
+				// Owner:        db.FileSignatures(hash),
+				Owner: db.FileOwner(hash),
 			}
 			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
 			list = append(list, item)
 		}
+	}
+	if len(list) == 0 {
+		if js := download.ProxyList("template"); js != nil {
+			w.Write(js)
+		}
+		return
 	}
 	js, _ := json.Marshal(list)
 	w.Write(js)
