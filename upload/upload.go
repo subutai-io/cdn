@@ -21,7 +21,7 @@ type share struct {
 }
 
 //Handler function works with income upload requests, makes sanity checks, etc
-func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string, private bool) {
+func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	r.ParseMultipartForm(32 << 20)
 	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -67,12 +67,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string, privat
 	os.Rename(config.Filepath+header.Filename, config.Filepath+hash)
 	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
 
-	private = false
-	if len(r.MultipartForm.Value["private"]) != 0 && r.MultipartForm.Value["private"][0] == "true" {
-		private = true
-	}
-
-	return hash, owner, private
+	return hash, owner
 }
 
 func genHash(file string) string {

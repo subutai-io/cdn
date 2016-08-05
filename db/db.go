@@ -38,7 +38,7 @@ func initdb() *bolt.DB {
 	return db
 }
 
-func Write(owner, key, value string, private bool, options ...map[string]string) {
+func Write(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
 		owner = "public"
 	}
@@ -73,9 +73,10 @@ func Write(owner, key, value string, private bool, options ...map[string]string)
 			// Adding search index for files
 			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(value))
 			b.Put(now, []byte(key))
+
 		}
 
-		// Adding owners to files
+		// Adding owners and shares to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
 			if b, _ = b.CreateBucketIfNotExists([]byte("owner")); b != nil {
 				//If value is not empty, we are assuming that it is a signature (or any other personal info)
@@ -86,18 +87,11 @@ func Write(owner, key, value string, private bool, options ...map[string]string)
 					b.Put([]byte(owner), []byte("w"))
 				}
 			}
-		}
-
-		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
 			if b, _ = b.CreateBucketIfNotExists([]byte("scope")); b != nil {
 				if b, _ = b.CreateBucketIfNotExists([]byte(owner)); b != nil {
-					if private {
-						b.Put([]byte(owner), []byte("w"))
-					}
 				}
 			}
 		}
-
 		return nil
 	})
 	log.Check(log.WarnLevel, "Writing data to db", err)
@@ -430,4 +424,25 @@ func CheckShare(hash, user string) bool {
 		return nil
 	})
 	return shared
+}
+
+func Public(hash string) bool {
+	public := false
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					if b := b.Bucket([]byte(k)); b != nil {
+						k, _ := b.Cursor().First()
+						if k == nil {
+							public = true
+						}
+					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return public
 }

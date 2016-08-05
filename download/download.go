@@ -122,6 +122,9 @@ func Info(repo string, r *http.Request) []byte {
 
 	counter := 0
 	for k, _ := range list {
+		if !db.Public(k) {
+			continue
+		}
 		info := db.Info(k)
 		if info["type"] == repo {
 			size, _ := strconv.ParseInt(info["size"], 10, 64)

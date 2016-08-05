@@ -73,17 +73,16 @@ func getConf(hash string, configfile bytes.Buffer) (t *Template) {
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	var hash, owner string
-	var private bool
 	var configfile bytes.Buffer
 	if r.Method == "POST" {
-		if hash, owner, private = upload.Handler(w, r); len(hash) == 0 {
+		if hash, owner = upload.Handler(w, r); len(hash) == 0 {
 			return
 		}
 		if configfile = readTempl(hash); len(configfile.String()) == 0 {
 			return
 		}
 		t := getConf(hash, configfile)
-		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", private, map[string]string{
+		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", map[string]string{
 			"type":    "template",
 			"arch":    t.arch,
 			"parent":  t.parent,
