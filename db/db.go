@@ -343,7 +343,6 @@ func UserFile(owner, file string) (list []string) {
 					if string(v) == file {
 						list = append(list, string(k))
 					}
-					fmt.Println(string(k), string(v))
 					return nil
 				})
 			}
