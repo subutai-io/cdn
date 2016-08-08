@@ -401,8 +401,7 @@ func UnshareWith(hash, owner, user string) {
 	})
 }
 
-func CheckShare(hash, user string) bool {
-	shared := false
+func CheckShare(hash, user string) (shared bool) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
@@ -411,23 +410,21 @@ func CheckShare(hash, user string) bool {
 						b.ForEach(func(k1, v1 []byte) error {
 							if string(k1) == user {
 								shared = true
-								return nil
+								// return nil
 							}
 							return nil
 						})
 					}
 					return nil
 				})
-
 			}
 		}
 		return nil
 	})
-	return shared
+	return
 }
 
-func Public(hash string) bool {
-	public := false
+func Public(hash string) (public bool) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
@@ -444,5 +441,5 @@ func Public(hash string) bool {
 		}
 		return nil
 	})
-	return public
+	return
 }
