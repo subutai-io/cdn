@@ -71,6 +71,12 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		hash = db.LastHash(name, repo)
 	}
 
+	if !db.Public(hash) && !db.CheckShare(hash, db.CheckToken(r.URL.Query().Get("token"))) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not found"))
+		return
+	}
+
 	f, err := os.Open(config.Filepath + hash)
 	defer f.Close()
 
