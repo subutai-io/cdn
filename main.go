@@ -13,6 +13,7 @@ import (
 func main() {
 	defer db.Close()
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
+	http.HandleFunc("/kurjun/rest/file/info", raw.Info)
 	http.HandleFunc("/kurjun/rest/raw/get", raw.Download)
 	http.HandleFunc("/kurjun/rest/template/get", template.Download)
 

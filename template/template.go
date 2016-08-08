@@ -143,6 +143,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 			item := download.ListItem{
 				ID:           hash,
 				Name:         strings.Split(info["name"], "-subutai-template")[0],
+				Filename:     info["name"],
 				Parent:       info["parent"],
 				Version:      info["version"],
 				Architecture: strings.ToUpper(info["arch"]),

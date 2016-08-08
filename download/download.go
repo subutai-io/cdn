@@ -27,7 +27,6 @@ type AptItem struct {
 	Size         string            `json:"size"`
 	Name         string            `json:"name,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`
-	Md5Sum       string            `json:"md5Sum,omitempty"`
 	Version      string            `json:"version,omitempty"`
 	Filename     string            `json:"filename,omitempty"`
 	Signature    map[string]string `json:"signature,omitempty"`
@@ -48,6 +47,7 @@ type ListItem struct {
 	ID           string            `json:"id"`
 	Size         int64             `json:"size"`
 	Name         string            `json:"name"`
+	Filename     string            `json:"filename"`
 	Parent       string            `json:"parent"`
 	Version      string            `json:"version"`
 	Owner        []string          `json:"owner,omitempty"`
@@ -75,17 +75,19 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 
 	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) || len(hash) == 0 {
-		client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-		resp, err := client.Get(config.CDN + r.URL.RequestURI())
-		if !log.Check(log.WarnLevel, "Getting file from CDN", err) {
-			w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
-			w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-			w.Header().Set("Last-Modified", resp.Header.Get("Last-Modified"))
-			w.Header().Set("Content-Disposition", resp.Header.Get("Content-Disposition"))
+		if len(config.CDN) > 0 {
+			client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+			resp, err := client.Get(config.CDN + r.URL.RequestURI())
+			if !log.Check(log.WarnLevel, "Getting file from CDN", err) {
+				w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+				w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+				w.Header().Set("Last-Modified", resp.Header.Get("Last-Modified"))
+				w.Header().Set("Content-Disposition", resp.Header.Get("Content-Disposition"))
 
-			io.Copy(w, resp.Body)
-			resp.Body.Close()
-			return
+				io.Copy(w, resp.Body)
+				resp.Body.Close()
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusNotFound)
@@ -135,6 +137,7 @@ func Info(repo string, r *http.Request) []byte {
 					ID:           k,
 					Size:         size,
 					Name:         strings.Split(info["name"], "-subutai-template")[0],
+					Filename:     info["name"],
 					Parent:       info["parent"],
 					Version:      info["version"],
 					Architecture: strings.ToUpper(info["arch"]),
@@ -194,6 +197,9 @@ func Info(repo string, r *http.Request) []byte {
 // ProxyList retrieves list of artifacts from main CDN nodes if no data found in local database
 // It creates simple JSON list of artifacts to provide it to Subutai Social.
 func ProxyList(t string) []byte {
+	if len(config.CDN) == 0 {
+		return nil
+	}
 	list := make([]listItem, 0)
 
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
@@ -222,6 +228,9 @@ func ProxyList(t string) []byte {
 // ProxyInfo retrieves information from main CDN nodes if no data found in local database
 // It creates simple info JSON to provide it to Subutai Social.
 func ProxyInfo(uri string) []byte {
+	if len(config.CDN) == 0 {
+		return nil
+	}
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	resp, err := client.Get(config.CDN + uri)
 	defer resp.Body.Close()
