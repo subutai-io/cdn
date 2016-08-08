@@ -375,7 +375,7 @@ func GetScope(hash, owner string) (scope []string) {
 }
 
 func ShareWith(hash, owner, user string) {
-	db.View(func(tx *bolt.Tx) error {
+	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				if b := b.Bucket([]byte(owner)); b != nil {
@@ -388,7 +388,7 @@ func ShareWith(hash, owner, user string) {
 }
 
 func UnshareWith(hash, owner, user string) {
-	db.View(func(tx *bolt.Tx) error {
+	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				if b := b.Bucket([]byte(owner)); b != nil {
@@ -436,6 +436,8 @@ func Public(hash string) (public bool) {
 					}
 					return nil
 				})
+			} else {
+				public = true
 			}
 		}
 		return nil

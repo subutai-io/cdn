@@ -8,6 +8,7 @@ import (
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/raw"
 	"github.com/subutai-io/gorjun/template"
+	"github.com/subutai-io/gorjun/upload"
 )
 
 func main() {
@@ -44,8 +45,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/auth/register", auth.Register)
 	http.HandleFunc("/kurjun/rest/auth/validate", auth.Validate)
 
-	// http.HandleFunc("/kurjun/rest/share", upload.Share)
-	// http.HandleFunc("/kurjun/rest/unshare", upload.Unshare)
+	http.HandleFunc("/kurjun/rest/share", upload.Share)
 
 	http.ListenAndServe(":8080", nil)
 }
