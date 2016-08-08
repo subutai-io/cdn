@@ -16,7 +16,6 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		hash, owner := upload.Handler(w, r)
 		info := map[string]string{
 			"type": "raw",
-			// "signature": signature,
 		}
 		r.ParseMultipartForm(32 << 20)
 		if len(r.MultipartForm.Value["version"]) != 0 {

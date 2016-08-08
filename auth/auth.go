@@ -135,6 +135,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		log.Warn("Failed to verify signature with user key")
 		return
 	}
+	info := db.Info(hash)
 	if !db.CheckOwner(owner, hash) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("File and signature have different owner"))
@@ -144,6 +145,6 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 	db.Write(owner, hash, signature)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File has been signed"))
-	log.Warn("File " + hash + " has been signed by " + owner)
+	log.Warn("File " + info["Name"] + "(" + hash + ")" + " has been signed by " + owner)
 	return
 }

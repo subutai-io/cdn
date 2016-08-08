@@ -73,21 +73,25 @@ func Write(owner, key, value string, options ...map[string]string) {
 			// Adding search index for files
 			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(value))
 			b.Put(now, []byte(key))
+
 		}
 
-		// Adding owners to files
+		// Adding owners and shares to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
-			if b, _ = b.CreateBucketIfNotExists([]byte("owner")); b != nil {
+			if c, _ := b.CreateBucketIfNotExists([]byte("owner")); c != nil {
 				//If value is not empty, we are assuming that it is a signature (or any other personal info)
 				//Otherwise we are just adding new owner
 				if len(value) != 0 && len(options) == 0 {
-					b.Put([]byte(owner), []byte(value))
+					c.Put([]byte(owner), []byte(value))
 				} else {
-					b.Put([]byte(owner), []byte("w"))
+					c.Put([]byte(owner), []byte("w"))
+				}
+			}
+			if b, _ = b.CreateBucketIfNotExists([]byte("scope")); b != nil {
+				if b, _ = b.CreateBucketIfNotExists([]byte(owner)); b != nil {
 				}
 			}
 		}
-
 		return nil
 	})
 	log.Check(log.WarnLevel, "Writing data to db", err)
@@ -350,4 +354,93 @@ func UserFile(owner, file string) (list []string) {
 		return nil
 	})
 	return list
+}
+
+func GetScope(hash, owner string) (scope []string) {
+	scope = []string{}
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				if b := b.Bucket([]byte(owner)); b != nil {
+					b.ForEach(func(k, v []byte) error {
+						scope = append(scope, string(k))
+						return nil
+					})
+				}
+			}
+		}
+		return nil
+	})
+	return scope
+}
+
+func ShareWith(hash, owner, user string) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				if b := b.Bucket([]byte(owner)); b != nil {
+					b.Put([]byte(user), []byte("w"))
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func UnshareWith(hash, owner, user string) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				if b := b.Bucket([]byte(owner)); b != nil {
+					b.Delete([]byte(user))
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func CheckShare(hash, user string) (shared bool) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					if b := b.Bucket(k); b != nil {
+						b.ForEach(func(k1, v1 []byte) error {
+							if string(k1) == user {
+								shared = true
+								// return nil
+							}
+							return nil
+						})
+					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return
+}
+
+func Public(hash string) (public bool) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("scope")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					if b := b.Bucket([]byte(k)); b != nil {
+						k, _ := b.Cursor().First()
+						if k == nil {
+							public = true
+						}
+					}
+					return nil
+				})
+			} else {
+				public = true
+			}
+		}
+		return nil
+	})
+	return
 }
