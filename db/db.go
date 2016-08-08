@@ -78,13 +78,13 @@ func Write(owner, key, value string, options ...map[string]string) {
 
 		// Adding owners and shares to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
-			if b, _ = b.CreateBucketIfNotExists([]byte("owner")); b != nil {
+			if c, _ := b.CreateBucketIfNotExists([]byte("owner")); c != nil {
 				//If value is not empty, we are assuming that it is a signature (or any other personal info)
 				//Otherwise we are just adding new owner
 				if len(value) != 0 && len(options) == 0 {
-					b.Put([]byte(owner), []byte(value))
+					c.Put([]byte(owner), []byte(value))
 				} else {
-					b.Put([]byte(owner), []byte("w"))
+					c.Put([]byte(owner), []byte("w"))
 				}
 			}
 			if b, _ = b.CreateBucketIfNotExists([]byte("scope")); b != nil {

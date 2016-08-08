@@ -111,17 +111,11 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 
 func Info(repo string, r *http.Request) []byte {
 	var item, js []byte
-	var user string
 
 	id := r.URL.Query().Get("id")
 	name := r.URL.Query().Get("name")
 	rtype := r.URL.Query().Get("type")
-	token := r.URL.Query().Get("token")
 	version := r.URL.Query().Get("version")
-
-	if len(token) != 0 {
-		user = db.CheckToken(token)
-	}
 
 	list := db.Search(name)
 	if len(id) > 0 {
@@ -130,7 +124,7 @@ func Info(repo string, r *http.Request) []byte {
 
 	counter := 0
 	for k, _ := range list {
-		if !db.Public(k) || !db.CheckShare(k, user) {
+		if !db.Public(k) && !db.CheckShare(k, db.CheckToken(r.URL.Query().Get("token"))) {
 			continue
 		}
 		info := db.Info(k)

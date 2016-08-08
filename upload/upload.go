@@ -41,12 +41,12 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 
 	out, err := os.Create(config.Filepath + header.Filename)
-	defer out.Close()
 	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Cannot create file"))
 		return
 	}
+	defer out.Close()
 
 	// write the content from POST to the file
 	_, err = io.Copy(out, file)
@@ -105,6 +105,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		w.Write([]byte("File not found"))
 		return ""
 	}
+
 	if !db.CheckOwner(user, hash) {
 		log.Warn("File " + info["name"] + "(" + hash + ") is not owned by " + user + ", rejecting deletion request")
 		w.WriteHeader(http.StatusForbidden)
