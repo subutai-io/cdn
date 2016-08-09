@@ -124,50 +124,79 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 }
 
 func Share(w http.ResponseWriter, r *http.Request) {
-	r.ParseMultipartForm(32 << 20)
-	if len(r.MultipartForm.Value["json"]) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Empty json"))
-		log.Warn("Share request: empty json, nothing to do")
-		return
-	}
-
-	var data share
-
-	if log.Check(log.WarnLevel, "Parsing share request json", json.Unmarshal([]byte(r.MultipartForm.Value["json"][0]), &data)) {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Failed to parse json body"))
-		return
-	}
-
-	if len(data.Token) == 0 || len(db.CheckToken(data.Token)) == 0 {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Not authorized"))
-		log.Warn("Empty or invalid token, rejecting share request")
-		return
-	}
-
-	owner := db.CheckToken(data.Token)
-
-	if len(data.Id) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Empty file id"))
-		log.Warn("Empty file id, rejecting share request")
-		return
-	}
-
-	if !db.CheckOwner(owner, data.Id) {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("File is not owned by authorized user"))
-		log.Warn("User " + owner + " tried to share another's file, rejecting")
-		return
-	}
-
-	for _, v := range data.Add {
-		db.ShareWith(data.Id, owner, v)
-	}
-
-	for _, v := range data.Remove {
-		db.UnshareWith(data.Id, owner, v)
+	if r.Method == "POST" {
+		r.ParseMultipartForm(32 << 20)
+		if len(r.MultipartForm.Value["json"]) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Empty json"))
+			log.Warn("Share request: empty json, nothing to do")
+			return
+		}
+		var data share
+		if log.Check(log.WarnLevel, "Parsing share request json", json.Unmarshal([]byte(r.MultipartForm.Value["json"][0]), &data)) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Failed to parse json body"))
+			return
+		}
+		if len(data.Token) == 0 || len(db.CheckToken(data.Token)) == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Not authorized"))
+			log.Warn("Empty or invalid token, rejecting share request")
+			return
+		}
+		if len(data.Id) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Empty file id"))
+			log.Warn("Empty file id, rejecting share request")
+			return
+		}
+		owner := db.CheckToken(data.Token)
+		if !db.CheckOwner(owner, data.Id) {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("File is not owned by authorized user"))
+			log.Warn("User tried to share another's file, rejecting")
+			return
+		}
+		for _, v := range data.Add {
+			db.ShareWith(data.Id, owner, v)
+		}
+		for _, v := range data.Remove {
+			db.UnshareWith(data.Id, owner, v)
+		}
+	} else if r.Method == "GET" {
+		request := r.URL.Query().Get("json")
+		if len(request) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Empty json"))
+			log.Warn("Share request: empty json, nothing to do")
+			return
+		}
+		var data share
+		if log.Check(log.WarnLevel, "Parsing share request json", json.Unmarshal([]byte(request), &data)) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Failed to parse json body"))
+			return
+		}
+		if len(data.Token) == 0 || len(db.CheckToken(data.Token)) == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Not authorized"))
+			log.Warn("Empty or invalid token, rejecting scope list request")
+			return
+		}
+		if len(data.Id) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Empty file id"))
+			log.Warn("Empty file id, rejecting scope list request")
+			return
+		}
+		owner := db.CheckToken(data.Token)
+		if !db.CheckOwner(owner, data.Id) {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("File is not owned by authorized user"))
+			log.Warn("User tried to request scope of another's file, rejecting")
+			return
+		}
+		js, _ := json.Marshal(db.GetScope(data.Id, owner))
+		w.Write(js)
 	}
 }
