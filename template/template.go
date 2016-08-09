@@ -27,31 +27,35 @@ type Template struct {
 	version string
 }
 
-func readTempl(hash string) (configfile bytes.Buffer) {
+func readTempl(hash string) (configfile string, err error) {
+	var file bytes.Buffer
 	f, err := os.Open(config.Filepath + hash)
 	log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
 	defer f.Close()
 
 	gzf, err := gzip.NewReader(f)
-	log.Check(log.WarnLevel, "Creating gzip reader", err)
+	if err != nil {
+		return "", err
+	}
 
 	tr := tar.NewReader(gzf)
 
 	for hdr, err := tr.Next(); err != io.EOF; hdr, err = tr.Next() {
 		if hdr.Name == "config" {
-			if _, err := io.Copy(&configfile, tr); err != nil {
-				log.Warn(err.Error())
+			if _, err := io.Copy(&file, tr); err != nil {
+				return "", err
 			}
 			break
 		}
 	}
-	return configfile
+	configfile = file.String()
+	return configfile, nil
 }
 
-func getConf(hash string, configfile bytes.Buffer) (t *Template) {
+func getConf(hash string, configfile string) (t *Template) {
 	t = &Template{hash: hash}
 
-	for _, v := range strings.Split(configfile.String(), "\n") {
+	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.TrimSpace(line[0])
 			line[1] = strings.TrimSpace(line[1])
@@ -73,12 +77,18 @@ func getConf(hash string, configfile bytes.Buffer) (t *Template) {
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	var hash, owner string
-	var configfile bytes.Buffer
 	if r.Method == "POST" {
 		if hash, owner = upload.Handler(w, r); len(hash) == 0 {
 			return
 		}
-		if configfile = readTempl(hash); len(configfile.String()) == 0 {
+		configfile, err := readTempl(hash)
+		if err != nil {
+			log.Warn("Unable to read template config, err: " + err.Error())
+			w.WriteHeader(http.StatusNotAcceptable)
+			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
+			if db.Delete(owner, hash) <= 0 {
+				os.Remove(config.Filepath + hash)
+			}
 			return
 		}
 		t := getConf(hash, configfile)
