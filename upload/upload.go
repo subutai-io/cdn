@@ -164,39 +164,26 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			db.UnshareWith(data.Id, owner, v)
 		}
 	} else if r.Method == "GET" {
-		request := r.URL.Query().Get("json")
-		if len(request) == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Empty json"))
-			log.Warn("Share request: empty json, nothing to do")
-			return
-		}
-		var data share
-		if log.Check(log.WarnLevel, "Parsing share request json", json.Unmarshal([]byte(request), &data)) {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Failed to parse json body"))
-			return
-		}
-		if len(data.Token) == 0 || len(db.CheckToken(data.Token)) == 0 {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Not authorized"))
-			log.Warn("Empty or invalid token, rejecting scope list request")
-			return
-		}
-		if len(data.Id) == 0 {
+		id := r.URL.Query().Get("id")
+		if len(id) == 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Empty file id"))
-			log.Warn("Empty file id, rejecting scope list request")
 			return
 		}
-		owner := db.CheckToken(data.Token)
-		if !db.CheckOwner(owner, data.Id) {
+		token := r.URL.Query().Get("token")
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Not authorized"))
+			return
+		}
+		owner := db.CheckToken(token)
+		if !db.CheckOwner(owner, id) {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
 			log.Warn("User tried to request scope of another's file, rejecting")
 			return
 		}
-		js, _ := json.Marshal(db.GetScope(data.Id, owner))
+		js, _ := json.Marshal(db.GetScope(id, owner))
 		w.Write(js)
 	}
 }
