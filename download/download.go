@@ -110,7 +110,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
-	w.Header().Set("Content-Disposition", "attachment; filename="+db.Read(hash))
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+db.Read(hash)+"\"")
 
 	io.Copy(w, f)
 }
