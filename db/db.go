@@ -409,7 +409,9 @@ func CheckShare(hash, user string) (shared bool) {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				b.ForEach(func(k, v []byte) error {
 					// log.Warn("Owner: " + string(k))
-					if b := b.Bucket(k); b != nil {
+					if strings.EqualFold(string(k), user) {
+						shared = true
+					} else if b := b.Bucket(k); b != nil {
 						b.ForEach(func(k1, v1 []byte) error {
 							// log.Warn("+++" + string(k1))
 							if strings.EqualFold(string(k1), user) {
