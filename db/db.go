@@ -49,7 +49,9 @@ func Write(owner, key, value string, options ...map[string]string) {
 		// Associating files with user
 		b, _ := tx.Bucket(users).CreateBucketIfNotExists([]byte(owner))
 		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
-			b.Put([]byte(key), []byte(value))
+			if k, _ := b.Cursor().Seek([]byte(key)); k == nil {
+				b.Put([]byte(key), []byte(value))
+			}
 		}
 
 		// Creating new record about file
@@ -112,7 +114,9 @@ func Delete(owner, key string) (remains int) {
 
 		// Deleting user association with file
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
-			b.Bucket([]byte("scope")).DeleteBucket([]byte(owner))
+			if c := b.Bucket([]byte("scope")); c != nil {
+				c.Delete([]byte(owner))
+			}
 			if b := b.Bucket([]byte("owner")); b != nil {
 				b.Delete([]byte(owner))
 				remains = b.Stats().KeyN - 1
