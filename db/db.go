@@ -112,6 +112,7 @@ func Delete(owner, key string) (remains int) {
 
 		// Deleting user association with file
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			b.Bucket([]byte("scope")).DeleteBucket([]byte(owner))
 			if b := b.Bucket([]byte("owner")); b != nil {
 				b.Delete([]byte(owner))
 				remains = b.Stats().KeyN - 1
