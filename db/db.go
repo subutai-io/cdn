@@ -49,7 +49,9 @@ func Write(owner, key, value string, options ...map[string]string) {
 		// Associating files with user
 		b, _ := tx.Bucket(users).CreateBucketIfNotExists([]byte(owner))
 		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
-			b.Put([]byte(key), []byte(value))
+			if k, _ := b.Cursor().Seek([]byte(key)); k == nil {
+				b.Put([]byte(key), []byte(value))
+			}
 		}
 
 		// Creating new record about file
