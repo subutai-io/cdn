@@ -346,7 +346,7 @@ func UserFile(owner, file string) (list []string) {
 		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
-					if string(v) == file {
+					if Read(string(k)) == file {
 						list = append(list, string(k))
 					}
 					return nil
