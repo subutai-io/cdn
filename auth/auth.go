@@ -145,6 +145,6 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 	db.Write(owner, hash, signature)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File has been signed"))
-	log.Warn("File " + info["Name"] + "(" + hash + ")" + " has been signed by " + owner)
+	log.Info("File " + info["Name"] + "(" + hash + ")" + " has been signed by " + owner)
 	return
 }
