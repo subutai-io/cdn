@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -401,15 +402,17 @@ func UnshareWith(hash, owner, user string) {
 }
 
 func CheckShare(hash, user string) (shared bool) {
+	// log.Warn("hash: " + hash + ", user: " + user)
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				b.ForEach(func(k, v []byte) error {
+					// log.Warn("Owner: " + string(k))
 					if b := b.Bucket(k); b != nil {
 						b.ForEach(func(k1, v1 []byte) error {
-							if string(k1) == user {
+							// log.Warn("+++" + string(k1))
+							if strings.EqualFold(string(k1), user) {
 								shared = true
-								// return nil
 							}
 							return nil
 						})

@@ -125,15 +125,14 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 
 func Share(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		r.ParseMultipartForm(32 << 20)
-		if len(r.MultipartForm.Value["json"]) == 0 || len(r.MultipartForm.Value["json"][0]) == 0 {
+		if len(r.FormValue("json")) == 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Empty json"))
 			log.Warn("Share request: empty json, nothing to do")
 			return
 		}
 		var data share
-		if log.Check(log.WarnLevel, "Parsing share request json", json.Unmarshal([]byte(r.MultipartForm.Value["json"][0]), &data)) {
+		if log.Check(log.WarnLevel, "Parsing share request json", json.Unmarshal([]byte(r.FormValue("json")), &data)) {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Failed to parse json body"))
 			return

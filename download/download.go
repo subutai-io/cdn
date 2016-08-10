@@ -131,6 +131,7 @@ func Info(repo string, r *http.Request) []byte {
 	counter := 0
 	for k, _ := range list {
 		if !db.Public(k) && !db.CheckShare(k, db.CheckToken(r.URL.Query().Get("token"))) {
+			// log.Warn("File " + k + " is not shared with " + db.CheckToken(r.URL.Query().Get("token")))
 			continue
 		}
 		info := db.Info(k)
