@@ -5,6 +5,7 @@ import (
 
 	"github.com/subutai-io/gorjun/apt"
 	"github.com/subutai-io/gorjun/auth"
+	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/raw"
 	"github.com/subutai-io/gorjun/template"
@@ -47,5 +48,5 @@ func main() {
 
 	http.HandleFunc("/kurjun/rest/share", upload.Share)
 
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":"+config.Network.Port, nil)
 }

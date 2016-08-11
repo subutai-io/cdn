@@ -29,8 +29,8 @@ type Template struct {
 
 func readTempl(hash string) (configfile string, err error) {
 	var file bytes.Buffer
-	f, err := os.Open(config.Filepath + hash)
-	log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err)
+	f, err := os.Open(config.Storage.Path + hash)
+	log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+hash, err)
 	defer f.Close()
 
 	gzf, err := gzip.NewReader(f)
@@ -87,7 +87,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
 			if db.Delete(owner, hash) <= 0 {
-				os.Remove(config.Filepath + hash)
+				os.Remove(config.Storage.Path + hash)
 			}
 			return
 		}

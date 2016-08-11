@@ -22,7 +22,7 @@ import (
 
 func readDeb(hash string) (string, bytes.Buffer) {
 	var control bytes.Buffer
-	file, err := os.Open(config.Filepath + hash)
+	file, err := os.Open(config.Storage.Path + hash)
 	log.Check(log.WarnLevel, "Opening deb package", err)
 
 	defer file.Close()
@@ -72,12 +72,12 @@ func getSize(file string) (size string) {
 
 func writePackage(meta map[string]string) {
 	var f *os.File
-	if _, err := os.Stat(config.Filepath + "Packages"); os.IsNotExist(err) {
-		f, err = os.Create(config.Filepath + "Packages")
+	if _, err := os.Stat(config.Storage.Path + "Packages"); os.IsNotExist(err) {
+		f, err = os.Create(config.Storage.Path + "Packages")
 		log.Check(log.WarnLevel, "Creating packages file", err)
 		defer f.Close()
 	} else if err == nil {
-		f, err = os.OpenFile(config.Filepath+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
+		f, err = os.OpenFile(config.Storage.Path+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
 		log.Check(log.WarnLevel, "Opening packages file", err)
 		defer f.Close()
 	} else {
@@ -98,7 +98,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		hash, owner := upload.Handler(w, r)
 		meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
-		meta["Size"] = getSize(config.Filepath + hash)
+		meta["Size"] = getSize(config.Storage.Path + hash)
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
 		writePackage(meta)
@@ -115,8 +115,8 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if file != "Packages" && file != "InRelease" && file != "Release" {
 		file = db.LastHash(file, "apt")
 	}
-	f, err := os.Open(config.Filepath + file)
-	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+file, err) {
+	f, err := os.Open(config.Storage.Path + file)
+	if log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+file, err) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -125,7 +125,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 }
 
 func readPackages() []string {
-	file, err := os.Open(config.Filepath + "Packages")
+	file, err := os.Open(config.Storage.Path + "Packages")
 	log.Check(log.WarnLevel, "Opening packages file", err)
 	defer file.Close()
 
@@ -168,14 +168,14 @@ func deleteInfo(hash string) {
 	}
 	if changed {
 		log.Info("Updating packages list")
-		file, err := os.Create(config.Filepath + "Packages.new")
+		file, err := os.Create(config.Storage.Path + "Packages.new")
 		log.Check(log.WarnLevel, "Opening packages file", err)
 		defer file.Close()
 
 		_, err = file.WriteString(newlist)
 		log.Check(log.WarnLevel, "Writing new list", err)
 		log.Check(log.WarnLevel, "Replacing old list",
-			os.Rename(config.Filepath+"Packages.new", config.Filepath+"Packages"))
+			os.Rename(config.Storage.Path+"Packages.new", config.Storage.Path+"Packages"))
 	}
 }
 
