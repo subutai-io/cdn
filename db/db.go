@@ -24,8 +24,8 @@ var (
 )
 
 func initdb() *bolt.DB {
-	db, err := bolt.Open(config.Path+"my.db", 0600, nil)
-	log.Check(log.FatalLevel, "Openning DB: my.db", err)
+	db, err := bolt.Open(config.DB.Path, 0600, nil)
+	log.Check(log.FatalLevel, "Openning DB: "+config.DB.Path, err)
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, b := range [][]byte{bucket, search, users, tokens, authid} {
@@ -60,7 +60,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 			b.Put([]byte("name"), []byte(value))
 
 			// Getting file size
-			if f, err := os.Open(config.Filepath + key); err == nil {
+			if f, err := os.Open(config.Storage.Path + key); err == nil {
 				fi, _ := f.Stat()
 				f.Close()
 				b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
