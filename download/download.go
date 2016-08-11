@@ -77,13 +77,13 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, err := os.Open(config.Filepath + hash)
+	f, err := os.Open(config.Storage.Path + hash)
 	defer f.Close()
 
-	if log.Check(log.WarnLevel, "Opening file "+config.Filepath+hash, err) || len(hash) == 0 {
-		if len(config.CDN) > 0 {
+	if log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+hash, err) || len(hash) == 0 {
+		if len(config.CDN.Node) > 0 {
 			client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-			resp, err := client.Get(config.CDN + r.URL.RequestURI())
+			resp, err := client.Get(config.CDN.Node + r.URL.RequestURI())
 			if !log.Check(log.WarnLevel, "Getting file from CDN", err) {
 				w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
 				w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
@@ -204,13 +204,13 @@ func Info(repo string, r *http.Request) []byte {
 // ProxyList retrieves list of artifacts from main CDN nodes if no data found in local database
 // It creates simple JSON list of artifacts to provide it to Subutai Social.
 func ProxyList(t string) []byte {
-	if len(config.CDN) == 0 {
+	if len(config.CDN.Node) == 0 {
 		return nil
 	}
 	list := make([]listItem, 0)
 
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	resp, err := client.Get(config.CDN + "/kurjun/rest/" + t + "/list")
+	resp, err := client.Get(config.CDN.Node + "/kurjun/rest/" + t + "/list")
 	defer resp.Body.Close()
 	if log.Check(log.WarnLevel, "Getting list from CDN", err) {
 		return nil
@@ -235,11 +235,11 @@ func ProxyList(t string) []byte {
 // ProxyInfo retrieves information from main CDN nodes if no data found in local database
 // It creates simple info JSON to provide it to Subutai Social.
 func ProxyInfo(uri string) []byte {
-	if len(config.CDN) == 0 {
+	if len(config.CDN.Node) == 0 {
 		return nil
 	}
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	resp, err := client.Get(config.CDN + uri)
+	resp, err := client.Get(config.CDN.Node + uri)
 	defer resp.Body.Close()
 	if log.Check(log.WarnLevel, "Getting list of templates from CDN", err) {
 		return nil

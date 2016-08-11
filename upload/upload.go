@@ -40,7 +40,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
-	out, err := os.Create(config.Filepath + header.Filename)
+	out, err := os.Create(config.Storage.Path + header.Filename)
 	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Cannot create file"))
@@ -56,7 +56,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
-	hash = genHash(config.Filepath + header.Filename)
+	hash = genHash(config.Storage.Path + header.Filename)
 	if len(hash) == 0 {
 		log.Warn("Failed to calculate hash for " + header.Filename)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -64,7 +64,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
-	os.Rename(config.Filepath+header.Filename, config.Filepath+hash)
+	os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+hash)
 	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
 
 	return hash, owner
@@ -113,7 +113,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 	if db.Delete(user, hash) <= 0 {
-		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Filepath+hash)) {
+		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))
 			return ""
