@@ -72,15 +72,15 @@ func DefaultQuota() int {
 	multiplier := 1
 	switch config.Storage.Userquota[len(config.Storage.Userquota)-1:] {
 	case "G":
-		multiplier = 1024
+		multiplier = 1073741824
 	case "M":
-		multiplier = 1
+		multiplier = 1048576
 	case "K":
-		multiplier = 1 / 1024
+		multiplier = 1024
 	}
 	v, err := strconv.Atoi(config.Storage.Userquota[:len(config.Storage.Userquota)-1])
 	if log.Check(log.WarnLevel, "Converting quota value to int", err) {
-		return 1024
+		return 1073741824
 	}
 	return v * multiplier
 }

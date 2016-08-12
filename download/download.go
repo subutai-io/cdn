@@ -150,7 +150,7 @@ func Info(repo string, r *http.Request) []byte {
 					Architecture: strings.ToUpper(info["arch"]),
 					// Owner:        db.FileSignatures(k),
 					Owner:     db.FileOwner(k),
-					Signature: db.FileSignatures(k),
+					Signature: db.FileSignatures(k, name),
 				})
 			case "apt":
 				item, _ = json.Marshal(AptItem{
@@ -162,7 +162,7 @@ func Info(repo string, r *http.Request) []byte {
 					Size:         info["Size"],
 					// Owner:        db.FileSignatures(k),
 					Owner:     db.FileOwner(k),
-					Signature: db.FileSignatures(k),
+					Signature: db.FileSignatures(k, name),
 				})
 			case "raw":
 				item, _ = json.Marshal(RawItem{
@@ -172,13 +172,14 @@ func Info(repo string, r *http.Request) []byte {
 					Version: info["version"],
 					// Owner:   db.FileSignatures(k),
 					Owner:     db.FileOwner(k),
-					Signature: db.FileSignatures(k),
+					Signature: db.FileSignatures(k, name),
 				})
 			}
 
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
 				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"], info["type"]) {
 					if rtype == "text" {
+						log.Warn("Deprecated call to \"type=text\" endpoint")
 						return ([]byte("public." + k))
 					} else {
 						return item

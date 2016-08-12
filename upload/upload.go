@@ -69,7 +69,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		info, _ := out.Stat()
 		log.Warn("Counting quota after upload!")
 		log.Warn("Uploaded: " + strconv.Itoa(int(info.Size())) + ", quota left: " + strconv.Itoa(db.QuotaLeft(owner)))
-		if int((info.Size() / 1048576)) > db.QuotaLeft(owner) {
+		if int(info.Size()) > db.QuotaLeft(owner) {
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Storage quota exceeded after upload"))
 			os.Remove(config.Storage.Path + header.Filename)
@@ -135,7 +135,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	}
 
 	f, _ := os.Stat(config.Storage.Path + hash)
-	db.QuotaUsageSet(user, -(int(f.Size()) / 1048576))
+	db.QuotaUsageSet(user, -int(f.Size()))
 
 	if db.Delete(user, hash) <= 0 {
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
@@ -218,7 +218,6 @@ func сheckLength(user, length string) int {
 	if log.Check(log.WarnLevel, "Converting content length to int", err) || len(length) == 0 {
 		return 2
 	}
-	l /= 1048576
 
 	if l > db.QuotaLeft(user) {
 		return 1
@@ -231,14 +230,14 @@ func сheckLength(user, length string) int {
 func QuotaTest(w http.ResponseWriter, r *http.Request) {
 	user := r.URL.Query().Get("user")
 	if len(user) != 0 {
-		w.Write([]byte("Quota: " + strconv.Itoa(db.QuotaGet(user)) + "Mb\n"))
-		w.Write([]byte("Quota used: " + strconv.Itoa(db.QuotaUsageGet(user)) + "Mb\n"))
-		w.Write([]byte("Quota left: " + strconv.Itoa(db.QuotaLeft(user)) + "Mb\n"))
+		w.Write([]byte("Quota: " + strconv.Itoa(db.QuotaGet(user)/1048576) + "Mb\n"))
+		w.Write([]byte("Quota used: " + strconv.Itoa(db.QuotaUsageGet(user)/1048576) + "Mb\n"))
+		w.Write([]byte("Quota left: " + strconv.Itoa(db.QuotaLeft(user)/1048576) + "Mb\n"))
 	}
 
 	quota := r.URL.Query().Get("quota")
 	if len(quota) != 0 {
 		db.QuotaSet(user, quota)
-		w.Write([]byte("user: " + user + ", quota: " + quota + "Mb\n"))
+		w.Write([]byte("user: " + user + ", quota: " + quota + "b\n"))
 	}
 }
