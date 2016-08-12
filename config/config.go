@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strconv"
+
 	"github.com/subutai-io/base/agent/log"
 	"gopkg.in/gcfg.v1"
 )
@@ -15,7 +17,8 @@ type dbConfig struct {
 	Path string
 }
 type fileConfig struct {
-	Path string
+	Path  string
+	Quota string
 }
 
 type configFile struct {
@@ -37,6 +40,7 @@ const defaultConfig = `
 
 	[storage]
 	path = /tmp/
+	userquota = 1G
 `
 
 var (
@@ -62,4 +66,21 @@ func init() {
 	// CDN      = "https://cdn.subut.ai:8338"
 	Network = config.Network
 	Storage = config.Storage
+}
+
+func DefaultQuota() int {
+	multiplier := 1
+	switch config.Storage.Quota[len(config.Storage.Quota)-1:] {
+	case "G":
+		multiplier = 1024
+	case "M":
+		multiplier = 1
+	case "K":
+		multiplier = 1 / 1024
+	}
+	v, err := strconv.Atoi(config.Storage.Quota[:len(config.Storage.Quota)-1])
+	if log.Check(log.WarnLevel, "Converting quota value to int", err) {
+		return 1024
+	}
+	return v * multiplier
 }

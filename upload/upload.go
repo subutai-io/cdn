@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/subutai-io/base/agent/log"
 	"github.com/subutai-io/gorjun/config"
@@ -40,6 +41,13 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
+	l := CheckLength(owner, r.Header.Get("Content-Length"))
+	if l == 1 {
+		w.WriteHeader(http.StatusNotAcceptable)
+		w.Write([]byte("Storage quota exceeded"))
+		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
+	}
+
 	out, err := os.Create(config.Storage.Path + header.Filename)
 	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -56,11 +64,27 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
+	if l == 2 {
+		info, err := out.Stat()
+		if log.Check(log.WarnLevel, "Getting file stats", err) {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Cannot get file stats"))
+			return
+		}
+		if int(info.Size()) > db.QuotaLeft(owner) {
+			w.WriteHeader(http.StatusNotAcceptable)
+			w.Write([]byte("Storage quota exceeded"))
+			os.Remove(config.Storage.Path + header.Filename)
+			return
+		}
+	}
+
 	hash = genHash(config.Storage.Path + header.Filename)
 	if len(hash) == 0 {
 		log.Warn("Failed to calculate hash for " + header.Filename)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to calculate hash"))
+		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
 		return
 	}
 
@@ -185,4 +209,18 @@ func Share(w http.ResponseWriter, r *http.Request) {
 		js, _ := json.Marshal(db.GetScope(id, owner))
 		w.Write(js)
 	}
+}
+
+func CheckLength(user, length string) int {
+	l, err := strconv.Atoi(length)
+	if log.Check(log.WarnLevel, "Converting content length to int", err) || len(length) == 0 {
+		return 2
+	}
+
+	if l > db.QuotaLeft(user) {
+		return 1
+	}
+
+	db.QuotaUsageSet(user, l)
+	return 0
 }
