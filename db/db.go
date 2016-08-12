@@ -50,9 +50,13 @@ func Write(owner, key, value string, options ...map[string]string) {
 		// Associating files with user
 		b, _ := tx.Bucket(users).CreateBucketIfNotExists([]byte(owner))
 		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
-			if k, _ := b.Cursor().Seek([]byte(key)); k == nil {
+			if v := b.Get([]byte(key)); v == nil {
+				// log.Warn("Associating: " + owner + " with " + value + " (" + key + ")")
 				b.Put([]byte(key), []byte(value))
 			}
+			// else {
+			// log.Warn("Entity alread exists, assuming signature")
+			// }
 		}
 
 		// Creating new record about file
@@ -493,17 +497,16 @@ func QuotaLeft(user string) int {
 
 // countTotal counts and sets user's total quota usage
 func countTotal(user string) (total int) {
-	db.Update(func(tx *bolt.Tx) error {
+	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
-			if b := b.Bucket([]byte("files")); b != nil {
-				b.ForEach(func(k, v []byte) error {
+			if c := b.Bucket([]byte("files")); c != nil {
+				c.ForEach(func(k, v []byte) error {
 					tmp, _ := strconv.Atoi(Info(string(k))["size"])
 					total += tmp
-					// log.Warn("DEBUG: " + strconv.Itoa(total))
 					return nil
 				})
 			}
-			b.Put([]byte("stored"), []byte(strconv.Itoa(total)))
+			// b.Put([]byte("stored"), []byte(strconv.Itoa(total)))
 		}
 		return nil
 	})

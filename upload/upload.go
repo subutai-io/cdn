@@ -222,7 +222,6 @@ func сheckLength(user, length string) int {
 	if l > db.QuotaLeft(user) {
 		return 1
 	}
-
 	db.QuotaUsageSet(user, l)
 	return 0
 }
@@ -230,9 +229,9 @@ func сheckLength(user, length string) int {
 func QuotaTest(w http.ResponseWriter, r *http.Request) {
 	user := r.URL.Query().Get("user")
 	if len(user) != 0 {
-		w.Write([]byte("Quota: " + strconv.Itoa(db.QuotaGet(user)/1048576) + "Mb\n"))
-		w.Write([]byte("Quota used: " + strconv.Itoa(db.QuotaUsageGet(user)/1048576) + "Mb\n"))
-		w.Write([]byte("Quota left: " + strconv.Itoa(db.QuotaLeft(user)/1048576) + "Mb\n"))
+		w.Write([]byte("Quota: " + strconv.Itoa(db.QuotaGet(user)) + "b\n"))
+		w.Write([]byte("Quota used: " + strconv.Itoa(db.QuotaUsageGet(user)) + "b\n"))
+		w.Write([]byte("Quota left: " + strconv.Itoa(db.QuotaLeft(user)) + "b\n"))
 	}
 
 	quota := r.URL.Query().Get("quota")
