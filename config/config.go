@@ -17,8 +17,8 @@ type dbConfig struct {
 	Path string
 }
 type fileConfig struct {
-	Path  string
-	Quota string
+	Path      string
+	Userquota string
 }
 
 type configFile struct {
@@ -70,7 +70,7 @@ func init() {
 
 func DefaultQuota() int {
 	multiplier := 1
-	switch config.Storage.Quota[len(config.Storage.Quota)-1:] {
+	switch config.Storage.Userquota[len(config.Storage.Userquota)-1:] {
 	case "G":
 		multiplier = 1024
 	case "M":
@@ -78,7 +78,7 @@ func DefaultQuota() int {
 	case "K":
 		multiplier = 1 / 1024
 	}
-	v, err := strconv.Atoi(config.Storage.Quota[:len(config.Storage.Quota)-1])
+	v, err := strconv.Atoi(config.Storage.Userquota[:len(config.Storage.Userquota)-1])
 	if log.Check(log.WarnLevel, "Converting quota value to int", err) {
 		return 1024
 	}

@@ -473,14 +473,17 @@ func QuotaLeft(user string) int {
 			} else {
 				quota = config.DefaultQuota()
 			}
-			if s := b.Get([]byte("stored")); s != nil {
-				stored, _ = strconv.Atoi(string(s))
-			} else {
-				stored = countTotal(user)
-			}
+			// if s := b.Get([]byte("stored")); s != nil {
+			// stored, _ = strconv.Atoi(string(s))
+			// } else {
+			stored = countTotal(user)
+			// }
 		}
 		return nil
 	})
+	if quota <= stored {
+		return 0
+	}
 	return quota - stored
 }
 
@@ -492,6 +495,7 @@ func countTotal(user string) (total int) {
 				b.ForEach(func(k, v []byte) error {
 					tmp, _ := strconv.Atoi(Info(string(k))["size"])
 					total += tmp
+					// log.Warn("DEBUG: " + strconv.Itoa(total))
 					return nil
 				})
 			}
@@ -508,11 +512,11 @@ func QuotaUsageSet(user string, value int) {
 	var stored int
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
-			if s := b.Get([]byte("stored")); s != nil {
-				stored, _ = strconv.Atoi(string(s))
-			} else {
-				stored = countTotal(user)
-			}
+			// if s := b.Get([]byte("stored")); s != nil {
+			// stored, _ = strconv.Atoi(string(s))
+			// } else {
+			stored = countTotal(user)
+			// }
 			b.Put([]byte("stored"), []byte(strconv.Itoa(stored+value)))
 		}
 		return nil
@@ -527,4 +531,41 @@ func QuotaAdjust(user string, value int) {
 		}
 		return nil
 	})
+}
+
+func QuotaGet(user string) (quota int) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			if q := b.Get([]byte("quota")); q != nil {
+				quota, _ = strconv.Atoi(string(q))
+			} else {
+				quota = config.DefaultQuota()
+			}
+		}
+		return nil
+	})
+	return
+}
+
+func QuotaSet(user, quota string) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			b.Put([]byte("quota"), []byte(quota))
+		}
+		return nil
+	})
+}
+
+func QuotaUsageGet(user string) (stored int) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			// if s := b.Get([]byte("stored")); s != nil {
+			// stored, _ = strconv.Atoi(string(s))
+			// } else {
+			stored = countTotal(user)
+			// }
+		}
+		return nil
+	})
+	return
 }
