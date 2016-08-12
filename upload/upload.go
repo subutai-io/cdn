@@ -41,7 +41,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
-	l := CheckLength(owner, r.Header.Get("Content-Length"))
+	l := сheckLength(owner, r.Header.Get("Content-Length"))
 	if l == 1 {
 		w.WriteHeader(http.StatusNotAcceptable)
 		w.Write([]byte("Storage quota exceeded"))
@@ -136,6 +136,10 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
 		return ""
 	}
+
+	f, _ := os.Stat(config.Storage.Path + hash)
+	db.QuotaUsageSet(user, -int(f.Size()))
+
 	if db.Delete(user, hash) <= 0 {
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -143,6 +147,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 			return ""
 		}
 	}
+
 	log.Info("Removing " + info["name"])
 	return hash
 }
@@ -211,7 +216,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CheckLength(user, length string) int {
+func сheckLength(user, length string) int {
 	l, err := strconv.Atoi(length)
 	if log.Check(log.WarnLevel, "Converting content length to int", err) || len(length) == 0 {
 		return 2
