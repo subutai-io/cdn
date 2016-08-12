@@ -323,7 +323,11 @@ func CheckOwner(owner, hash string) (res bool) {
 	return res
 }
 
-func FileSignatures(hash string) (list map[string]string) {
+func FileSignatures(hash string, opt ...string) (list map[string]string) {
+	//workaround to hide signatures from full list of artifacts and to show it only when certain name is specified
+	if len(opt[0]) == 0 {
+		return nil
+	}
 	list = map[string]string{}
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
