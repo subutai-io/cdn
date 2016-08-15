@@ -224,7 +224,7 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		user := r.URL.Query().Get("user")
 		token := r.URL.Query().Get("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" || db.CheckToken(token) != user {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != user {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return
