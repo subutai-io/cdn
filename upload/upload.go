@@ -220,23 +220,38 @@ func сheckLength(user, length string) bool {
 }
 
 func Quota(w http.ResponseWriter, r *http.Request) {
-	user := r.URL.Query().Get("user")
-	quota := r.URL.Query().Get("quota")
-	token := r.URL.Query().Get("token")
+	if r.Method == "GET" {
+		user := r.URL.Query().Get("user")
+		token := r.URL.Query().Get("token")
 
-	if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" {
-		w.Write([]byte("Forbidden"))
-		w.WriteHeader(http.StatusForbidden)
-		return
-	}
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" {
+			w.Write([]byte("Forbidden"))
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 
-	if len(user) != 0 && len(quota) == 0 {
-		w.Write([]byte(strconv.Itoa(db.QuotaGet(user)) + "\n"))
-		w.Write([]byte(strconv.Itoa(db.QuotaUsageGet(user)) + "\n"))
-		w.Write([]byte(strconv.Itoa(db.QuotaLeft(user)) + "\n"))
-	} else if len(user) != 0 && len(quota) != 0 {
-		db.QuotaSet(user, quota)
-		log.Info("New quota for " + user + " is " + quota)
-		w.WriteHeader(http.StatusOK)
+		if len(user) != 0 {
+			w.Write([]byte(strconv.Itoa(db.QuotaGet(user)) + "\n"))
+			w.Write([]byte(strconv.Itoa(db.QuotaUsageGet(user)) + "\n"))
+			w.Write([]byte(strconv.Itoa(db.QuotaLeft(user)) + "\n"))
+		}
+
+	} else if r.Method == "POST" {
+		user := r.FormValue("user")
+		quota := r.FormValue("quota")
+		token := r.FormValue("token")
+
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" {
+			w.Write([]byte("Forbidden"))
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if len(user) != 0 && len(quota) != 0 {
+			db.QuotaSet(user, quota)
+			log.Info("New quota for " + user + " is " + quota)
+			w.Write([]byte("Ok"))
+			w.WriteHeader(http.StatusOK)
+		}
 	}
 }
