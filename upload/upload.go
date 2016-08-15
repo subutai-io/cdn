@@ -42,7 +42,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 
 	l := сheckLength(owner, r.Header.Get("Content-Length"))
-	if l == 1 {
+	if !l {
 		w.WriteHeader(http.StatusNotAcceptable)
 		w.Write([]byte("Storage quota exceeded"))
 		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
@@ -57,24 +57,16 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 	defer out.Close()
 
-	// write the content from POST to the file
-	_, err = io.Copy(out, file)
-	if log.Check(log.WarnLevel, "Writing file", err) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to write file"))
-		return
-	}
+	limit := int64(db.QuotaLeft(owner))
+	f := io.LimitReader(file, limit)
 
-	if l == 2 {
-		info, _ := out.Stat()
-		log.Warn("Counting quota after upload!")
-		log.Warn("Uploaded: " + strconv.Itoa(int(info.Size())) + ", quota left: " + strconv.Itoa(db.QuotaLeft(owner)))
-		if int(info.Size()) > db.QuotaLeft(owner) {
-			w.WriteHeader(http.StatusNotAcceptable)
-			w.Write([]byte("Storage quota exceeded after upload"))
-			os.Remove(config.Storage.Path + header.Filename)
-			return
-		}
+	// write the content from POST to the file
+	if copied, err := io.Copy(out, f); copied == limit || err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to write file or storage quota exceeded"))
+		log.Warn("User " + owner + " exceeded storage quota, removing file")
+		os.Remove(config.Storage.Path + header.Filename)
+		return
 	}
 
 	hash = genHash(config.Storage.Path + header.Filename)
@@ -213,17 +205,18 @@ func Share(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func сheckLength(user, length string) int {
+func сheckLength(user, length string) bool {
 	l, err := strconv.Atoi(length)
-	if log.Check(log.WarnLevel, "Converting content length to int", err) || len(length) == 0 {
-		return 2
+	if err != nil || len(length) == 0 {
+		log.Warn("Empty or invalid content length")
+		return true
 	}
 
 	if l > db.QuotaLeft(user) {
-		return 1
+		return false
 	}
 	db.QuotaUsageSet(user, l)
-	return 0
+	return true
 }
 
 func QuotaTest(w http.ResponseWriter, r *http.Request) {
