@@ -471,30 +471,6 @@ func Public(hash string) (public bool) {
 	return
 }
 
-// QuotaLeft returns user's quota left space
-func QuotaLeft(user string) int {
-	var quota, stored int
-	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
-			if q := b.Get([]byte("quota")); q != nil {
-				quota, _ = strconv.Atoi(string(q))
-			} else {
-				quota = config.DefaultQuota()
-			}
-			// if s := b.Get([]byte("stored")); s != nil {
-			// stored, _ = strconv.Atoi(string(s))
-			// } else {
-			stored = countTotal(user)
-			// }
-		}
-		return nil
-	})
-	if quota <= stored {
-		return 0
-	}
-	return quota - stored
-}
-
 // countTotal counts and sets user's total quota usage
 func countTotal(user string) (total int) {
 	db.View(func(tx *bolt.Tx) error {
@@ -513,16 +489,43 @@ func countTotal(user string) (total int) {
 	return
 }
 
+// QuotaLeft returns user's quota left space
+func QuotaLeft(user string) int {
+	var quota, stored int
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			if q := b.Get([]byte("quota")); q != nil {
+				quota, _ = strconv.Atoi(string(q))
+			} else {
+				quota = config.DefaultQuota()
+			}
+			if s := b.Get([]byte("stored")); s != nil {
+				stored, _ = strconv.Atoi(string(s))
+			} else {
+				stored = countTotal(user)
+				b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
+			}
+		}
+		return nil
+	})
+	if quota <= stored {
+		return 0
+	}
+	return quota - stored
+}
+
 // QuotaUsageSet accepts size of added/removed file and updates quota usage for user
 func QuotaUsageSet(user string, value int) {
 	var stored int
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
-			// if s := b.Get([]byte("stored")); s != nil {
-			// stored, _ = strconv.Atoi(string(s))
-			// } else {
-			stored = countTotal(user)
-			// }
+			if s := b.Get([]byte("stored")); s != nil {
+				stored, _ = strconv.Atoi(string(s))
+			} else {
+				stored = countTotal(user)
+				// b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
+				//
+			}
 			b.Put([]byte("stored"), []byte(strconv.Itoa(stored+value)))
 		}
 		return nil
@@ -563,13 +566,14 @@ func QuotaSet(user, quota string) {
 }
 
 func QuotaUsageGet(user string) (stored int) {
-	db.View(func(tx *bolt.Tx) error {
+	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
-			// if s := b.Get([]byte("stored")); s != nil {
-			// stored, _ = strconv.Atoi(string(s))
-			// } else {
-			stored = countTotal(user)
-			// }
+			if s := b.Get([]byte("stored")); s != nil {
+				stored, _ = strconv.Atoi(string(s))
+			} else {
+				stored = countTotal(user)
+				b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
+			}
 		}
 		return nil
 	})

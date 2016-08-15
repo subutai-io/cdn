@@ -40,7 +40,7 @@ const defaultConfig = `
 
 	[storage]
 	path = /tmp/
-	userquota = 1G
+	userquota = 2G
 `
 
 var (
