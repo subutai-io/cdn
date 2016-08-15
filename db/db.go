@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,9 +50,13 @@ func Write(owner, key, value string, options ...map[string]string) {
 		// Associating files with user
 		b, _ := tx.Bucket(users).CreateBucketIfNotExists([]byte(owner))
 		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
-			if k, _ := b.Cursor().Seek([]byte(key)); k == nil {
+			if v := b.Get([]byte(key)); v == nil {
+				// log.Warn("Associating: " + owner + " with " + value + " (" + key + ")")
 				b.Put([]byte(key), []byte(value))
 			}
+			// else {
+			// log.Warn("Entity alread exists, assuming signature")
+			// }
 		}
 
 		// Creating new record about file
@@ -227,6 +232,7 @@ func RegisterUser(name, key []byte) {
 		b, err := tx.Bucket(users).CreateBucket([]byte(name))
 		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
 			b.Put([]byte("key"), key)
+			b.Put([]byte("quota"), []byte("1024"))
 		}
 		return err
 	})
@@ -323,6 +329,7 @@ func CheckOwner(owner, hash string) (res bool) {
 	return res
 }
 
+// FileSignatures returns map with file owners and theirs signatures
 func FileSignatures(hash string, opt ...string) (list map[string]string) {
 	//workaround to hide signatures from full list of artifacts and to show it only when certain name is specified
 	if len(opt[0]) == 0 {
@@ -366,6 +373,7 @@ func UserFile(owner, file string) (list []string) {
 	return list
 }
 
+// GetScope shows users with whom shared a certain owner of the file
 func GetScope(hash, owner string) (scope []string) {
 	scope = []string{}
 	db.View(func(tx *bolt.Tx) error {
@@ -384,6 +392,7 @@ func GetScope(hash, owner string) (scope []string) {
 	return scope
 }
 
+// ShareWith adds user to share scope of file
 func ShareWith(hash, owner, user string) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
@@ -397,6 +406,7 @@ func ShareWith(hash, owner, user string) {
 	})
 }
 
+// UnshareWith removes user from share scope of file
 func UnshareWith(hash, owner, user string) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
@@ -410,6 +420,7 @@ func UnshareWith(hash, owner, user string) {
 	})
 }
 
+// CheckShare returns true if user has access to file, otherwise - false
 func CheckShare(hash, user string) (shared bool) {
 	// log.Warn("hash: " + hash + ", user: " + user)
 	db.View(func(tx *bolt.Tx) error {
@@ -437,6 +448,7 @@ func CheckShare(hash, user string) (shared bool) {
 	return
 }
 
+// Public returns true if file is publicly accessible
 func Public(hash string) (public bool) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
@@ -452,6 +464,115 @@ func Public(hash string) (public bool) {
 				})
 			} else {
 				public = true
+			}
+		}
+		return nil
+	})
+	return
+}
+
+// countTotal counts and sets user's total quota usage
+func countTotal(user string) (total int) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			if c := b.Bucket([]byte("files")); c != nil {
+				c.ForEach(func(k, v []byte) error {
+					tmp, _ := strconv.Atoi(Info(string(k))["size"])
+					total += tmp
+					return nil
+				})
+			}
+			// b.Put([]byte("stored"), []byte(strconv.Itoa(total)))
+		}
+		return nil
+	})
+	return
+}
+
+// QuotaLeft returns user's quota left space
+func QuotaLeft(user string) int {
+	var quota, stored int
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			if q := b.Get([]byte("quota")); q != nil {
+				quota, _ = strconv.Atoi(string(q))
+			} else {
+				quota = config.DefaultQuota()
+			}
+			if s := b.Get([]byte("stored")); s != nil {
+				stored, _ = strconv.Atoi(string(s))
+			} else {
+				stored = countTotal(user)
+				b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
+			}
+		}
+		return nil
+	})
+	if quota <= stored {
+		return 0
+	}
+	return quota - stored
+}
+
+// QuotaUsageSet accepts size of added/removed file and updates quota usage for user
+func QuotaUsageSet(user string, value int) {
+	var stored int
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			if s := b.Get([]byte("stored")); s != nil {
+				stored, _ = strconv.Atoi(string(s))
+			} else {
+				stored = countTotal(user)
+				// b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
+				//
+			}
+			b.Put([]byte("stored"), []byte(strconv.Itoa(stored+value)))
+		}
+		return nil
+	})
+}
+
+// QuotaAdjust sets changes default storage quota for user
+func QuotaAdjust(user string, value int) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			b.Put([]byte("quota"), []byte(strconv.Itoa(value)))
+		}
+		return nil
+	})
+}
+
+func QuotaGet(user string) (quota int) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			if q := b.Get([]byte("quota")); q != nil {
+				quota, _ = strconv.Atoi(string(q))
+			} else {
+				quota = config.DefaultQuota()
+			}
+		}
+		return nil
+	})
+	return
+}
+
+func QuotaSet(user, quota string) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			b.Put([]byte("quota"), []byte(quota))
+		}
+		return nil
+	})
+}
+
+func QuotaUsageGet(user string) (stored int) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
+			if s := b.Get([]byte("stored")); s != nil {
+				stored, _ = strconv.Atoi(string(s))
+			} else {
+				stored = countTotal(user)
+				b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
 			}
 		}
 		return nil
