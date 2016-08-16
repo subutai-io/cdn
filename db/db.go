@@ -42,7 +42,7 @@ func initdb() *bolt.DB {
 
 func Write(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
-		owner = "public"
+		owner = "subutai"
 	}
 	err := db.Update(func(tx *bolt.Tx) error {
 		now, _ := time.Now().MarshalText()
@@ -187,7 +187,7 @@ func Info(hash string) map[string]string {
 		}
 		return nil
 	})
-	list["owner"] = "public"
+	list["owner"] = "subutai"
 	return list
 }
 
@@ -355,7 +355,7 @@ func FileSignatures(hash string, opt ...string) (list map[string]string) {
 // UserFile searching file at particular user. It returns list of hashes of files with required name.
 func UserFile(owner, file string) (list []string) {
 	if len(owner) == 0 {
-		owner = "public"
+		owner = "subutai"
 	}
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
