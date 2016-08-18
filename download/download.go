@@ -120,7 +120,6 @@ func Info(repo string, r *http.Request) []byte {
 
 	id := r.URL.Query().Get("id")
 	name := r.URL.Query().Get("name")
-	rtype := r.URL.Query().Get("type")
 	version := r.URL.Query().Get("version")
 
 	list := db.Search(name)
@@ -178,12 +177,7 @@ func Info(repo string, r *http.Request) []byte {
 
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
 				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"], info["type"]) {
-					if rtype == "text" {
-						log.Warn("Deprecated call to \"type=text\" endpoint")
-						return ([]byte("public." + k))
-					} else {
-						return item
-					}
+					return item
 
 				}
 				continue
