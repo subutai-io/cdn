@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/subutai-io/base/agent/log"
 	"github.com/subutai-io/gorjun/config"
@@ -40,6 +41,14 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
+	l := сheckLength(owner, r.Header.Get("Content-Length"))
+	if !l {
+		w.WriteHeader(http.StatusNotAcceptable)
+		w.Write([]byte("Storage quota exceeded"))
+		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
+		return
+	}
+
 	out, err := os.Create(config.Storage.Path + header.Filename)
 	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -48,11 +57,15 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 	defer out.Close()
 
+	limit := int64(db.QuotaLeft(owner))
+	f := io.LimitReader(file, limit)
+
 	// write the content from POST to the file
-	_, err = io.Copy(out, file)
-	if log.Check(log.WarnLevel, "Writing file", err) {
+	if copied, err := io.Copy(out, f); copied == limit || err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to write file"))
+		w.Write([]byte("Failed to write file or storage quota exceeded"))
+		log.Warn("User " + owner + " exceeded storage quota, removing file")
+		os.Remove(config.Storage.Path + header.Filename)
 		return
 	}
 
@@ -112,6 +125,10 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
 		return ""
 	}
+
+	f, _ := os.Stat(config.Storage.Path + hash)
+	db.QuotaUsageSet(user, -int(f.Size()))
+
 	if db.Delete(user, hash) <= 0 {
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -119,6 +136,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 			return ""
 		}
 	}
+
 	log.Info("Removing " + info["name"])
 	return hash
 }
@@ -184,5 +202,56 @@ func Share(w http.ResponseWriter, r *http.Request) {
 		}
 		js, _ := json.Marshal(db.GetScope(id, owner))
 		w.Write(js)
+	}
+}
+
+func сheckLength(user, length string) bool {
+	l, err := strconv.Atoi(length)
+	if err != nil || len(length) == 0 {
+		log.Warn("Empty or invalid content length")
+		return true
+	}
+
+	if l > db.QuotaLeft(user) {
+		return false
+	}
+	db.QuotaUsageSet(user, l)
+	return true
+}
+
+func Quota(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		user := r.URL.Query().Get("user")
+		token := r.URL.Query().Get("token")
+
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != user {
+			w.Write([]byte("Forbidden"))
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if len(user) != 0 {
+			w.Write([]byte(strconv.Itoa(db.QuotaGet(user)) + "\n"))
+			w.Write([]byte(strconv.Itoa(db.QuotaUsageGet(user)) + "\n"))
+			w.Write([]byte(strconv.Itoa(db.QuotaLeft(user)) + "\n"))
+		}
+
+	} else if r.Method == "POST" {
+		user := r.FormValue("user")
+		quota := r.FormValue("quota")
+		token := r.FormValue("token")
+
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" {
+			w.Write([]byte("Forbidden"))
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if len(user) != 0 && len(quota) != 0 {
+			db.QuotaSet(user, quota)
+			log.Info("New quota for " + user + " is " + quota)
+			w.Write([]byte("Ok"))
+			w.WriteHeader(http.StatusOK)
+		}
 	}
 }

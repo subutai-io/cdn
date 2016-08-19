@@ -96,6 +96,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
 		hash, owner := upload.Handler(w, r)
+		if len(hash) == 0 {
+			return
+		}
 		meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(config.Storage.Path + hash)

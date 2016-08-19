@@ -14,6 +14,9 @@ import (
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		hash, owner := upload.Handler(w, r)
+		if len(hash) == 0 {
+			return
+		}
 		info := map[string]string{
 			"type": "raw",
 		}
