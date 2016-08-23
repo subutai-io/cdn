@@ -102,6 +102,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta := getControl(readDeb(hash))
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(config.Storage.Path + hash)
+		meta["SHA512"] = upload.Hash(config.Storage.Path+hash, "sha512")
+		meta["SHA256"] = upload.Hash(config.Storage.Path+hash, "sha256")
+		meta["SHA1"] = upload.Hash(config.Storage.Path+hash, "sha1")
 		meta["MD5sum"] = hash
 		meta["type"] = "apt"
 		writePackage(meta)

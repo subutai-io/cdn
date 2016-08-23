@@ -2,6 +2,9 @@ package upload
 
 import (
 	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -69,7 +72,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		return
 	}
 
-	hash = genHash(config.Storage.Path + header.Filename)
+	hash = Hash(config.Storage.Path + header.Filename)
 	if len(hash) == 0 {
 		log.Warn("Failed to calculate hash for " + header.Filename)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -83,12 +86,22 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	return hash, owner
 }
 
-func genHash(file string) string {
+func Hash(file string, algo ...string) string {
 	f, err := os.Open(file)
 	log.Check(log.WarnLevel, "Opening file"+file, err)
 	defer f.Close()
 
 	hash := md5.New()
+	if len(algo) != 0 {
+		switch algo[0] {
+		case "sha512":
+			hash = sha512.New()
+		case "sha256":
+			hash = sha256.New()
+		case "sha1":
+			hash = sha1.New()
+		}
+	}
 	if _, err := io.Copy(hash, f); err != nil {
 		return ""
 	}

@@ -117,6 +117,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 
 func Info(repo string, r *http.Request) []byte {
 	var item, js []byte
+	var info map[string]string
 
 	id := r.URL.Query().Get("id")
 	name := r.URL.Query().Get("name")
@@ -133,7 +134,12 @@ func Info(repo string, r *http.Request) []byte {
 			// log.Warn("File " + k + " is not shared with " + db.CheckToken(r.URL.Query().Get("token")))
 			continue
 		}
-		info := db.Info(k)
+
+		if name == "management" {
+			info = db.LatestTmpl(name, version)
+		} else {
+			info = db.Info(k)
+		}
 		if info["type"] == repo {
 			size, _ := strconv.ParseInt(info["size"], 10, 64)
 
@@ -178,7 +184,6 @@ func Info(repo string, r *http.Request) []byte {
 			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
 				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"], info["type"]) {
 					return item
-
 				}
 				continue
 			}
