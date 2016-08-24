@@ -249,7 +249,6 @@ func RegisterUser(name, key []byte) {
 		b, err := tx.Bucket(users).CreateBucket([]byte(name))
 		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
 			b.Put([]byte("key"), key)
-			b.Put([]byte("quota"), []byte("1024"))
 		}
 		return err
 	})
@@ -525,7 +524,9 @@ func QuotaLeft(user string) int {
 		}
 		return nil
 	})
-	if quota <= stored {
+	if quota == -1 {
+		return -1
+	} else if quota <= stored {
 		return 0
 	}
 	return quota - stored
