@@ -211,6 +211,23 @@ func Search(query string) map[string]string {
 	return list
 }
 
+func LatestTmpl(name, version string) (info map[string]string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(search).Cursor(); b != nil {
+			for k, _ := b.Seek([]byte(name + "-subutai-template")); bytes.HasPrefix(k, []byte(name+"-subutai-template")); k, _ = b.Next() {
+				if c := tx.Bucket(search).Bucket(k).Cursor(); c != nil {
+					_, m := c.Last()
+					if tmp := Info(string(m)); tmp["type"] == "template" && (len(version) != 0 && strings.HasSuffix(tmp["version"], version) || len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
+						info = tmp
+					}
+				}
+			}
+		}
+		return nil
+	})
+	return
+}
+
 func LastHash(name, t string) (hash string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(search).Bucket([]byte(name)); b != nil {
@@ -232,7 +249,6 @@ func RegisterUser(name, key []byte) {
 		b, err := tx.Bucket(users).CreateBucket([]byte(name))
 		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
 			b.Put([]byte("key"), key)
-			b.Put([]byte("quota"), []byte("1024"))
 		}
 		return err
 	})
@@ -508,7 +524,9 @@ func QuotaLeft(user string) int {
 		}
 		return nil
 	})
-	if quota <= stored {
+	if quota == -1 {
+		return -1
+	} else if quota <= stored {
 		return 0
 	}
 	return quota - stored
