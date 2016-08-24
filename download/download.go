@@ -181,8 +181,8 @@ func Info(repo string, r *http.Request) []byte {
 				})
 			}
 
-			if name == strings.Split(info["name"], "-subutai-template")[0] || name == info["name"] {
-				if (len(version) == 0 || info["version"] == version) && k == db.LastHash(info["name"], info["type"]) {
+			if strings.Contains(info["name"], name+"-subutai-template") || name == info["name"] {
+				if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], info["type"]) {
 					return item
 				}
 				continue
