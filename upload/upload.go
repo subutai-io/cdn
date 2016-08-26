@@ -247,9 +247,11 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(user) != 0 {
-			w.Write([]byte(strconv.Itoa(db.QuotaGet(user)) + "\n"))
-			w.Write([]byte(strconv.Itoa(db.QuotaUsageGet(user)) + "\n"))
-			w.Write([]byte(strconv.Itoa(db.QuotaLeft(user)) + "\n"))
+			q, _ := json.Marshal(map[string]int{
+				"quota": db.QuotaGet(user),
+				"used":  db.QuotaUsageGet(user),
+				"left":  db.QuotaLeft(user)})
+			w.Write([]byte(q))
 		}
 
 	} else if r.Method == "POST" {
