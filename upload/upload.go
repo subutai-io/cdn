@@ -265,11 +265,21 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if len(user) != 0 && len(quota) != 0 {
-			db.QuotaSet(user, quota)
-			log.Info("New quota for " + user + " is " + quota)
-			w.Write([]byte("Ok"))
-			w.WriteHeader(http.StatusOK)
+		if len(user) == 0 || len(quota) == 0 {
+			w.Write([]byte("Please specify username and quota value"))
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
+
+		if q, err := strconv.Atoi(quota); err != nil || q < 0 {
+			w.Write([]byte("Invalid quota value"))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		db.QuotaSet(user, quota)
+		log.Info("New quota for " + user + " is " + quota)
+		w.Write([]byte("Ok"))
+		w.WriteHeader(http.StatusOK)
 	}
 }
