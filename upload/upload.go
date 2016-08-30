@@ -271,7 +271,7 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if q, err := strconv.Atoi(quota); err != nil || q < 0 {
+		if q, err := strconv.Atoi(quota); err != nil || q < -1 {
 			w.Write([]byte("Invalid quota value"))
 			w.WriteHeader(http.StatusBadRequest)
 			return
