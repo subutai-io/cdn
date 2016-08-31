@@ -1,3 +1,5 @@
+// Package torrent provides function for operating BitTorrent client and torrent files.
+// Client allows to seed and download files.
 package torrent
 
 import (
@@ -19,13 +21,15 @@ import (
 )
 
 var (
+	// List of predefined torrent peers that can operate even without trackers. CDN nodes.
 	list = []torrent.Peer{
-		{IP: net.ParseIP("52.28.78.136"), Port: 50007},    // eu0.cdn.subut.ai
-		{IP: net.ParseIP("52.90.197.198"), Port: 50007},   // us0.cdn.subut.ai
-		{IP: net.ParseIP("54.183.100.182"), Port: 50007},  // us1.cdn.subut.ai
-		{IP: net.ParseIP("158.181.187.116"), Port: 50007}, // kg.cdn.subut.ai
+		{IP: net.ParseIP("eu0.cdn.subut.ai"), Port: 50007},
+		{IP: net.ParseIP("us0.cdn.subut.ai"), Port: 50007},
+		{IP: net.ParseIP("us1.cdn.subut.ai"), Port: 50007},
+		{IP: net.ParseIP("kg.cdn.subut.ai"), Port: 50007},
 	}
 
+	// List of torrent trackers that will be used in torrent files.
 	builtinAnnounceList = [][]string{
 		{"http://eu0.cdn.subut.ai:6882/announce"},
 		{"http://us0.cdn.subut.ai:6882/announce"},
@@ -33,12 +37,14 @@ var (
 		{"http://kg.cdn.subut.ai:6882/announce"},
 	}
 
+	// Torrent client seeds and downloads files.
 	client = initClient()
 )
 
 func initClient() *torrent.Client {
-	os.MkdirAll(config.Storage.Path+"/p2p/", 0600)
-	client, err := torrent.NewClient(&torrent.Config{
+	err := os.MkdirAll(config.Storage.Path, 0600)
+	log.Check(log.ErrorLevel, "Creating storage path", err)
+	cl, err := torrent.NewClient(&torrent.Config{
 		DataDir:           config.Storage.Path,
 		Seed:              true,
 		DisableEncryption: true,
@@ -47,9 +53,12 @@ func initClient() *torrent.Client {
 	})
 
 	log.Check(log.FatalLevel, "Creating torrent client", err)
-	return client
+	return cl
 }
 
+// Load returns torrent file for template. It tries to get torrent file from DB first.
+// If no record found in DB it will generate new torrent file from template on disk.
+// After generating new torrent file Load will store it in DB for future usage.
 func Load(hash []byte) *bytes.Reader {
 	file := db.Torrent(hash)
 	if file == nil {
@@ -60,17 +69,22 @@ func Load(hash []byte) *bytes.Reader {
 		metaInfo.SetDefaults()
 
 		err := metaInfo.Info.BuildFromFilePath(config.Storage.Path + string(hash))
-		if log.Check(log.DebugLevel, "Creating torrent from local file", err) {
+		if log.Check(log.DebugLevel, "Creating torrent from local file", err) && len(config.CDN.Node) > 0 {
 			httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 			resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/torrent?id=" + string(hash))
 			if !log.Check(log.WarnLevel, "Getting file from CDN", err) && resp.StatusCode == http.StatusOK {
-				io.Copy(tfile, resp.Body)
-				resp.Body.Close()
+
+				_, err = io.Copy(tfile, resp.Body)
+				log.Check(log.DebugLevel, "Reading CDN response to torrent file", err)
+
+				err = resp.Body.Close()
+				log.Check(log.DebugLevel, "Closing CDN response", err)
 			} else {
 				return nil
 			}
 		} else {
-			metaInfo.Write(tfile)
+			err = metaInfo.Write(tfile)
+			log.Check(log.DebugLevel, "Writing torrent file to buffer", err)
 		}
 		db.SaveTorrent(hash, buf.Bytes())
 		file = db.Torrent(hash)
@@ -78,6 +92,8 @@ func Load(hash []byte) *bytes.Reader {
 	return bytes.NewReader(file)
 }
 
+// AddTorrent starting downloading or seeding template file. It adds torrent file to the torrent client.
+// Second adding the same torrent will not add another instance, it will be processed only once.
 func AddTorrent(hash string) {
 	reader := Load([]byte(hash))
 	if reader == nil {
@@ -93,20 +109,24 @@ func AddTorrent(hash string) {
 		metaInfo.SetDefaults()
 		metaInfo.Info.MarshalBencode()
 
-		t, _ := client.AddTorrent(metaInfo)
-		t.AddPeers(list)
+		t, err := client.AddTorrent(metaInfo)
+		if !log.Check(log.WarnLevel, "Adding torrent file to client", err) {
+			t.AddPeers(list)
 
-		go func() {
-			<-t.GotInfo()
-			t.DownloadAll()
-		}()
-		t.Seeding()
+			go func() {
+				<-t.GotInfo()
+				t.DownloadAll()
+			}()
+			t.Seeding()
+		}
 	}
 }
 
+// SeedLocal getting list of all local template files and starts seeding it for other peers.
+// It checks and adds new files every 60 seconds.
 func SeedLocal() {
 	for {
-		for hash, _ := range db.List() {
+		for hash := range db.List() {
 			if info := db.Info(hash); info["type"] == "template" {
 				AddTorrent(hash)
 			}
@@ -115,6 +135,9 @@ func SeedLocal() {
 	}
 }
 
+// Info shows information about download progress for request template file.
+// It return JSON with total and finished bytes of file.
+// Info also drops broken torrents from client if any of them will be found.
 func Info(id string) (output string) {
 	for _, t := range client.Torrents() {
 		if t.Info().TotalLength() != 0 {
@@ -128,10 +151,12 @@ func Info(id string) (output string) {
 	return output
 }
 
+// Close correctly finishing torrent client work.
 func Close() {
 	client.Close()
 }
 
+// IsDownloaded shows if particular template was downloaded or it still in progress.
 func IsDownloaded(hash string) bool {
 	for _, t := range client.Torrents() {
 		if t.Name() == hash && t.Info().TotalLength() == t.BytesCompleted() {

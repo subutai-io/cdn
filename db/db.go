@@ -72,7 +72,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 			}
 
 			// Writing optional parameters for file
-			for i, _ := range options {
+			for i := range options {
 				for k, v := range options[i] {
 					b.Put([]byte(k), []byte(v))
 				}
@@ -130,7 +130,7 @@ func Delete(owner, key string) (remains int) {
 		// Removing indexes and file only if no file owners left
 		if remains <= 0 {
 			// Deleting search index
-			if b := tx.Bucket(search).Bucket([]byte(filename)); b != nil {
+			if b := tx.Bucket(search).Bucket(filename); b != nil {
 				b.ForEach(func(k, v []byte) error {
 					if string(v) == key {
 						b.Delete(k)
@@ -245,7 +245,7 @@ func LastHash(name, t string) (hash string) {
 
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.Bucket(users).CreateBucket([]byte(name))
+		b, err := tx.Bucket(users).CreateBucket(name)
 		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
 			b.Put([]byte("key"), key)
 		}
@@ -469,7 +469,7 @@ func Public(hash string) (public bool) {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				b.ForEach(func(k, v []byte) error {
-					if b := b.Bucket([]byte(k)); b != nil {
+					if b := b.Bucket(k); b != nil {
 						k, _ := b.Cursor().First()
 						if k == nil {
 							public = true
@@ -600,7 +600,7 @@ func QuotaUsageGet(user string) (stored int) {
 // SaveTorrent saves torrent file for particular template in DB for future usage to prevent regeneration same file again.
 func SaveTorrent(hash, torrent []byte) {
 	db.Update(func(tx *bolt.Tx) error {
-		if b, err := tx.Bucket(bucket).CreateBucketIfNotExists([]byte(hash)); err == nil {
+		if b, err := tx.Bucket(bucket).CreateBucketIfNotExists(hash); err == nil {
 			b.Put([]byte("torrent"), torrent)
 		}
 		return nil

@@ -119,7 +119,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
 
-	if name = db.Read(hash); len(name) == 0 {
+	if name = db.Read(hash); len(name) == 0 && len(config.CDN.Node) > 0 {
 		httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 		resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/info?id=" + hash)
 		if !log.Check(log.WarnLevel, "Getting info from CDN", err) {
