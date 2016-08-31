@@ -21,16 +21,7 @@ import (
 )
 
 var (
-	// List of torrent trackers that will be used in torrent files.
-	builtinAnnounceList = [][]string{
-		{"http://eu0.cdn.subut.ai:6882/announce"},
-		{"http://us0.cdn.subut.ai:6882/announce"},
-		{"http://us1.cdn.subut.ai:6882/announce"},
-		{"http://kg.cdn.subut.ai:6882/announce"},
-	}
-
-	// Torrent client seeds and downloads files.
-	client = initClient()
+	client = initClient() // Torrent client seeds and downloads files.
 )
 
 func initClient() *torrent.Client {
@@ -57,7 +48,13 @@ func Load(hash []byte) *bytes.Reader {
 		var buf bytes.Buffer
 		tfile := bufio.NewWriter(&buf)
 
-		metaInfo := &metainfo.MetaInfo{AnnounceList: builtinAnnounceList}
+		// List of torrent trackers that will be used in torrent files.
+		metaInfo := &metainfo.MetaInfo{AnnounceList: [][]string{
+			{"http://eu0.cdn.subut.ai:6882/announce"},
+			{"http://us0.cdn.subut.ai:6882/announce"},
+			{"http://us1.cdn.subut.ai:6882/announce"},
+			{"http://kg.cdn.subut.ai:6882/announce"},
+		}}
 		metaInfo.SetDefaults()
 
 		err := metaInfo.Info.BuildFromFilePath(config.Storage.Path + string(hash))
@@ -97,10 +94,6 @@ func AddTorrent(hash string) {
 	}
 	_, ok := client.Torrent(metaInfo.Info.Hash())
 	if !ok {
-		metaInfo.AnnounceList = builtinAnnounceList
-		metaInfo.SetDefaults()
-		metaInfo.Info.MarshalBencode()
-
 		t, err := client.AddTorrent(metaInfo)
 		if !log.Check(log.WarnLevel, "Adding torrent file to client", err) {
 
