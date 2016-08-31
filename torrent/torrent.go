@@ -21,14 +21,6 @@ import (
 )
 
 var (
-	// List of predefined torrent peers that can operate even without trackers. CDN nodes.
-	list = []torrent.Peer{
-		{IP: net.ParseIP("eu0.cdn.subut.ai"), Port: 50007},
-		{IP: net.ParseIP("us0.cdn.subut.ai"), Port: 50007},
-		{IP: net.ParseIP("us1.cdn.subut.ai"), Port: 50007},
-		{IP: net.ParseIP("kg.cdn.subut.ai"), Port: 50007},
-	}
-
 	// List of torrent trackers that will be used in torrent files.
 	builtinAnnounceList = [][]string{
 		{"http://eu0.cdn.subut.ai:6882/announce"},
@@ -111,7 +103,14 @@ func AddTorrent(hash string) {
 
 		t, err := client.AddTorrent(metaInfo)
 		if !log.Check(log.WarnLevel, "Adding torrent file to client", err) {
-			t.AddPeers(list)
+
+			// List of predefined torrent peers that can operate even without trackers. CDN nodes.
+			t.AddPeers([]torrent.Peer{
+				{IP: net.ParseIP("eu0.cdn.subut.ai"), Port: 50007},
+				{IP: net.ParseIP("us0.cdn.subut.ai"), Port: 50007},
+				{IP: net.ParseIP("us1.cdn.subut.ai"), Port: 50007},
+				{IP: net.ParseIP("kg.cdn.subut.ai"), Port: 50007},
+			})
 
 			go func() {
 				<-t.GotInfo()
