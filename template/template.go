@@ -120,6 +120,12 @@ func Download(w http.ResponseWriter, r *http.Request) {
 
 func Torrent(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
+	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.CheckToken(r.URL.Query().Get("token"))) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not found"))
+		return
+	}
+
 	reader := torrent.Load([]byte(id))
 	if reader == nil {
 		return
