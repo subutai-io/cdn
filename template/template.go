@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"gorjun/torrent"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/anacrolix/torrent/metainfo"
 	"github.com/subutai-io/base/agent/log"
 
 	"github.com/subutai-io/gorjun/config"
@@ -114,6 +116,23 @@ func Download(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/kurjun/rest/template/download?id="+list[0], 302)
 		}
 	}
+}
+
+func Torrent(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	reader := torrent.Load([]byte(id))
+	if reader == nil {
+		return
+	}
+	mi, err := metainfo.Load(reader)
+	if log.Check(log.WarnLevel, "Creating torrent for", err) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("File not found"))
+		return
+	}
+
+	err = mi.Write(w)
+	log.Check(log.WarnLevel, "Writing to HTTP output", err)
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {

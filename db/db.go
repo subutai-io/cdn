@@ -81,7 +81,6 @@ func Write(owner, key, value string, options ...map[string]string) {
 			// Adding search index for files
 			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(value))
 			b.Put(now, []byte(key))
-
 		}
 
 		// Adding owners and shares to files
@@ -596,4 +595,27 @@ func QuotaUsageGet(user string) (stored int) {
 		return nil
 	})
 	return
+}
+
+// SaveTorrent saves torrent file for particular template in DB for future usage to prevent regeneration same file again.
+func SaveTorrent(hash, torrent []byte) {
+	db.Update(func(tx *bolt.Tx) error {
+		if b, err := tx.Bucket(bucket).CreateBucketIfNotExists([]byte(hash)); err == nil {
+			b.Put([]byte("torrent"), torrent)
+		}
+		return nil
+	})
+}
+
+// Torrent retrieves torrent file for template from DB. If no torrent file found it returns nil.
+func Torrent(hash []byte) (val []byte) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket(hash); b != nil {
+			if value := b.Get([]byte("torrent")); value != nil {
+				val = value
+			}
+		}
+		return nil
+	})
+	return val
 }
