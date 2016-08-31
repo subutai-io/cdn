@@ -151,6 +151,16 @@ func Info(id string) (output string) {
 	return output
 }
 
+// Delete stops seeding file by client. This needed only if file removed from Service.
+func Delete(hash string) {
+	for _, t := range client.Torrents() {
+		if t.Name() == hash {
+			t.Drop()
+			return
+		}
+	}
+}
+
 // Close correctly finishing torrent client work.
 func Close() {
 	client.Close()
