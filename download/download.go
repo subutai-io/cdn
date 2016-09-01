@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"gorjun/torrent"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -71,9 +72,16 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		hash = db.LastHash(name, repo)
 	}
 
-	if !db.Public(hash) && !db.CheckShare(hash, db.CheckToken(r.URL.Query().Get("token"))) {
+	if len(db.Read(hash)) > 0 && !db.Public(hash) && !db.CheckShare(hash, db.CheckToken(r.URL.Query().Get("token"))) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
+		return
+	}
+
+	if !torrent.IsDownloaded(hash) {
+		torrent.AddTorrent(hash)
+		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte(torrent.Info(hash)))
 		return
 	}
 
@@ -110,7 +118,26 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+db.Read(hash)+"\"")
+
+	if name = db.Read(hash); len(name) == 0 && len(config.CDN.Node) > 0 {
+		httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+		resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/info?id=" + hash)
+		if !log.Check(log.WarnLevel, "Getting info from CDN", err) {
+			var info ListItem
+			rsp, err := ioutil.ReadAll(resp.Body)
+			if log.Check(log.WarnLevel, "Reading from CDN response", err) {
+				w.WriteHeader(http.StatusNotFound)
+				io.WriteString(w, "File not found")
+				return
+			}
+			if !log.Check(log.WarnLevel, "Decrypting request", json.Unmarshal([]byte(rsp), &info)) {
+				w.Header().Set("Content-Disposition", "attachment; filename=\""+info.Filename+"\"")
+			}
+			resp.Body.Close()
+		}
+	} else {
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+db.Read(hash)+"\"")
+	}
 
 	io.Copy(w, f)
 }
@@ -181,7 +208,7 @@ func Info(repo string, r *http.Request) []byte {
 				})
 			}
 
-			if strings.Contains(info["name"], name+"-subutai-template") || name == info["name"] {
+			if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
 				if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], info["type"]) {
 					return item
 				}
