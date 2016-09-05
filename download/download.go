@@ -77,8 +77,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Not found"))
 		return
 	}
-
-	if !torrent.IsDownloaded(hash) {
+	if len(db.Read(hash)) == 0 && repo == "template" && !torrent.IsDownloaded(hash) {
 		torrent.AddTorrent(hash)
 		w.WriteHeader(http.StatusAccepted)
 		w.Write([]byte(torrent.Info(hash)))
