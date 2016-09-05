@@ -5,14 +5,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"gorjun/torrent"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/anacrolix/torrent/metainfo"
 	"github.com/subutai-io/base/agent/log"
 
 	"github.com/subutai-io/gorjun/config"
@@ -118,28 +116,28 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Torrent(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.CheckToken(r.URL.Query().Get("token"))) {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
-		return
-	}
+// func Torrent(w http.ResponseWriter, r *http.Request) {
+// 	id := r.URL.Query().Get("id")
+// 	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.CheckToken(r.URL.Query().Get("token"))) {
+// 		w.WriteHeader(http.StatusNotFound)
+// 		w.Write([]byte("Not found"))
+// 		return
+// 	}
 
-	reader := torrent.Load([]byte(id))
-	if reader == nil {
-		return
-	}
-	mi, err := metainfo.Load(reader)
-	if log.Check(log.WarnLevel, "Creating torrent for", err) {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("File not found"))
-		return
-	}
+// 	reader := torrent.Load([]byte(id))
+// 	if reader == nil {
+// 		return
+// 	}
+// 	mi, err := metainfo.Load(reader)
+// 	if log.Check(log.WarnLevel, "Creating torrent for", err) {
+// 		w.WriteHeader(http.StatusNotFound)
+// 		w.Write([]byte("File not found"))
+// 		return
+// 	}
 
-	err = mi.Write(w)
-	log.Check(log.WarnLevel, "Writing to HTTP output", err)
-}
+// 	err = mi.Write(w)
+// 	log.Check(log.WarnLevel, "Writing to HTTP output", err)
+// }
 
 func Info(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {

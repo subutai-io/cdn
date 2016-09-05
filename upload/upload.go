@@ -7,7 +7,6 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"fmt"
-	"gorjun/torrent"
 	"io"
 	"net/http"
 	"os"
@@ -147,7 +146,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	db.QuotaUsageSet(user, -int(f.Size()))
 
 	if db.Delete(user, hash) <= 0 {
-		torrent.Delete(hash)
+		// torrent.Delete(hash)
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))

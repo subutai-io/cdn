@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"gorjun/torrent"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -77,12 +76,13 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Not found"))
 		return
 	}
-	if len(db.Read(hash)) == 0 && repo == "template" && !torrent.IsDownloaded(hash) {
-		torrent.AddTorrent(hash)
-		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte(torrent.Info(hash)))
-		return
-	}
+
+	// if len(db.Read(hash)) == 0 && repo == "template" && !torrent.IsDownloaded(hash) {
+	// 	torrent.AddTorrent(hash)
+	// 	w.WriteHeader(http.StatusAccepted)
+	// 	w.Write([]byte(torrent.Info(hash)))
+	// 	return
+	// }
 
 	f, err := os.Open(config.Storage.Path + hash)
 	defer f.Close()
