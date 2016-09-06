@@ -199,8 +199,17 @@ func Search(query string) (list []string) {
 		b := tx.Bucket(search)
 		c := b.Cursor()
 		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
-			_, kk := b.Bucket(k).Cursor().Last()
-			list = append(list, string(kk))
+			//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
+			b.Bucket(k).ForEach(func(kk, vv []byte) error {
+				for _, l := range list {
+					if l == string(vv) {
+						return nil
+					}
+				}
+				list = append(list, string(vv))
+				return nil
+			})
+			// _, kk := b.Bucket(k).Cursor().First()
 		}
 		return nil
 	})
