@@ -229,7 +229,7 @@ func Info(repo string, r *http.Request) []byte {
 				continue
 			}
 
-			if counter > (p[0]-1)*p[1]+1 {
+			if counter > 1 && counter > (p[0]-1)*p[1]+1 {
 				js = append(js, []byte(",")...)
 			}
 			js = append(js, item...)
