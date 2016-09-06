@@ -46,7 +46,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 
 	l := сheckLength(owner, r.Header.Get("Content-Length"))
 	if !l {
-		w.WriteHeader(http.StatusNotAcceptable)
+		w.WriteHeader(http.StatusInsufficientStorage)
 		w.Write([]byte("Storage quota exceeded"))
 		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
 		return

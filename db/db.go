@@ -194,20 +194,17 @@ func Close() {
 	db.Close()
 }
 
-func Search(query string) map[string]string {
-	list := make(map[string]string)
+func Search(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
 		c := b.Cursor()
 		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
-			b.Bucket(k).ForEach(func(kk, vv []byte) error {
-				list[string(vv)] = string(k)
-				return nil
-			})
+			_, kk := b.Bucket(k).Cursor().Last()
+			list = append(list, string(kk))
 		}
 		return nil
 	})
-	return list
+	return
 }
 
 func LatestTmpl(name, version string) (info map[string]string) {

@@ -144,28 +144,38 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	var item, js []byte
 	var info map[string]string
+	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
 	name := r.URL.Query().Get("name")
+	page := r.URL.Query().Get("page")
+	owner := r.URL.Query().Get("owner")
 	version := r.URL.Query().Get("version")
 
 	list := db.Search(name)
 	if len(id) > 0 {
-		list = map[string]string{id: ""}
+		list = append(list[:0], id)
+	}
+
+	pstr := strings.Split(page, ",")
+	p[0], _ = strconv.Atoi(pstr[0])
+	if len(pstr) == 2 {
+		p[1], _ = strconv.Atoi(pstr[1])
 	}
 
 	counter := 0
-	for k, _ := range list {
-		if !db.Public(k) && !db.CheckShare(k, db.CheckToken(r.URL.Query().Get("token"))) {
+	for _, k := range list {
+		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(r.URL.Query().Get("token")))) || (len(owner) != 0 && !db.CheckOwner(owner, k)) {
 			// log.Warn("File " + k + " is not shared with " + db.CheckToken(r.URL.Query().Get("token")))
 			continue
 		}
 
-		if name == "management" {
+		if name == "management" && repo == "template" {
 			info = db.LatestTmpl(name, version)
 		} else {
 			info = db.Info(k)
 		}
+
 		if info["type"] == repo {
 			size, _ := strconv.ParseInt(info["size"], 10, 64)
 
@@ -214,10 +224,19 @@ func Info(repo string, r *http.Request) []byte {
 				continue
 			}
 
-			if counter++; counter > 1 {
+			counter++
+			if counter < (p[0]-1)*p[1]+1 {
+				continue
+			}
+
+			if counter > (p[0]-1)*p[1]+1 {
 				js = append(js, []byte(",")...)
 			}
 			js = append(js, item...)
+
+			if counter == p[0]*p[1] {
+				break
+			}
 		}
 	}
 	if counter > 1 {
