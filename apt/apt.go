@@ -186,13 +186,16 @@ func deleteInfo(hash string) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if hash := upload.Delete(w, r); len(hash) != 0 && r.Method == "DELETE" {
-		deleteInfo(hash)
-		w.Write([]byte("Removed"))
-		return
+	if r.Method == "DELETE" {
+		if hash := upload.Delete(w, r); len(hash) != 0 {
+			deleteInfo(hash)
+			w.Write([]byte("Removed"))
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
 	}
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte("Incorrect method"))
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
