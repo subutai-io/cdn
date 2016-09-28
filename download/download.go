@@ -47,10 +47,11 @@ type ListItem struct {
 	ID           string            `json:"id"`
 	Size         int64             `json:"size"`
 	Name         string            `json:"name"`
-	Filename     string            `json:"filename"`
+	Owner        []string          `json:"owner"`
 	Parent       string            `json:"parent"`
 	Version      string            `json:"version"`
-	Owner        []string          `json:"owner,omitempty"`
+	Filename     string            `json:"filename"`
+	Prefsize     string            `json:"prefsize"`
 	Architecture string            `json:"architecture"`
 	Signature    map[string]string `json:"signature,omitempty"`
 }
@@ -181,6 +182,9 @@ func Info(repo string, r *http.Request) []byte {
 
 			switch repo {
 			case "template":
+				if len(info["prefsize"]) == 0 {
+					info["prefsize"] = "tiny"
+				}
 				item, _ = json.Marshal(ListItem{
 					ID:           k,
 					Size:         size,
@@ -188,6 +192,7 @@ func Info(repo string, r *http.Request) []byte {
 					Filename:     info["name"],
 					Parent:       info["parent"],
 					Version:      info["version"],
+					Prefsize:     info["prefsize"],
 					Architecture: strings.ToUpper(info["arch"]),
 					// Owner:        db.FileSignatures(k),
 					Owner:     db.FileOwner(k),

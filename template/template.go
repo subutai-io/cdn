@@ -20,11 +20,12 @@ import (
 )
 
 type Template struct {
-	hash    string
-	arch    string
-	name    string
-	parent  string
-	version string
+	hash     string
+	arch     string
+	name     string
+	parent   string
+	version  string
+	sizetype string
 }
 
 func readTempl(hash string) (configfile string, err error) {
@@ -69,6 +70,8 @@ func getConf(hash string, configfile string) (t *Template) {
 				t.parent = line[1]
 			case "subutai.template.version":
 				t.version = line[1]
+			case "subutai.template.size":
+				t.sizetype = line[1]
 			}
 		}
 	}
@@ -93,10 +96,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		t := getConf(hash, configfile)
 		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", map[string]string{
-			"type":    "template",
-			"arch":    t.arch,
-			"parent":  t.parent,
-			"version": t.version,
+			"type":     "template",
+			"arch":     t.arch,
+			"parent":   t.parent,
+			"version":  t.version,
+			"prefsize": t.sizetype,
 		})
 		w.Write([]byte(t.hash))
 	}
