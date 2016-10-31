@@ -20,8 +20,7 @@ import (
 	"github.com/subutai-io/base/agent/log"
 )
 
-func readDeb(hash string) (string, bytes.Buffer) {
-	var control bytes.Buffer
+func readDeb(hash string) (control bytes.Buffer, err error) {
 	file, err := os.Open(config.Storage.Path + hash)
 	log.Check(log.WarnLevel, "Opening deb package", err)
 
@@ -29,27 +28,35 @@ func readDeb(hash string) (string, bytes.Buffer) {
 
 	library := ar.NewReader(file)
 	for header, err := library.Next(); err != io.EOF; header, err = library.Next() {
+		if err != nil {
+			return control, err
+		}
 		if header.Name == "control.tar.gz" {
 			ungzip, err := gzip.NewReader(library)
-			log.Check(log.WarnLevel, "Ungziping control file", err)
+			if err != nil {
+				return control, err
+			}
 
 			defer ungzip.Close()
 
 			tr := tar.NewReader(ungzip)
 			for tarHeader, err := tr.Next(); err != io.EOF; tarHeader, err = tr.Next() {
+				if err != nil {
+					return control, err
+				}
 				if tarHeader.Name == "./control" {
 					if _, err := io.Copy(&control, tr); err != nil {
-						log.Warn(err.Error())
+						return control, err
 					}
 					break
 				}
 			}
 		}
 	}
-	return hash, control
+	return
 }
 
-func getControl(hash string, control bytes.Buffer) map[string]string {
+func getControl(control bytes.Buffer) map[string]string {
 	d := make(map[string]string)
 	for _, v := range strings.Split(control.String(), "\n") {
 		line := strings.Split(v, ":")
@@ -99,7 +106,17 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		if len(hash) == 0 {
 			return
 		}
-		meta := getControl(readDeb(hash))
+		control, err := readDeb(hash)
+		if err != nil {
+			log.Warn(err.Error())
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+			w.Write([]byte(err.Error()))
+			if db.Delete(owner, hash) <= 0 {
+				os.Remove(config.Storage.Path + hash)
+			}
+			return
+		}
+		meta := getControl(control)
 		meta["Filename"] = header.Filename
 		meta["Size"] = getSize(config.Storage.Path + hash)
 		meta["SHA512"] = upload.Hash(config.Storage.Path+hash, "sha512")
