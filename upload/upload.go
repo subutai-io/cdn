@@ -37,12 +37,12 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
 
 	file, header, err := r.FormFile("file")
-	defer file.Close()
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Cannot get file from request"))
 		return
 	}
+	defer file.Close()
 
 	l := сheckLength(owner, r.Header.Get("Content-Length"))
 	if !l {
