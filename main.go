@@ -14,6 +14,8 @@ import (
 
 func main() {
 	defer db.Close()
+	// defer torrent.Close()
+	// go torrent.SeedLocal()
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
 	http.HandleFunc("/kurjun/rest/file/info", raw.Info)
 	http.HandleFunc("/kurjun/rest/raw/get", raw.Download)
@@ -38,6 +40,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/template/list", template.List)
 	http.HandleFunc("/kurjun/rest/template/delete", template.Delete)
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)
+	// http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
 	http.HandleFunc("/kurjun/rest/template/download", template.Download)
 
 	http.HandleFunc("/kurjun/rest/auth/key", auth.Key)

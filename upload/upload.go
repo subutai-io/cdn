@@ -12,7 +12,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 )
@@ -37,12 +37,12 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
 
 	file, header, err := r.FormFile("file")
-	defer file.Close()
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Cannot get file from request"))
 		return
 	}
+	defer file.Close()
 
 	l := сheckLength(owner, r.Header.Get("Content-Length"))
 	if !l {
@@ -91,7 +91,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 
 func Hash(file string, algo ...string) string {
 	f, err := os.Open(file)
-	log.Check(log.WarnLevel, "Opening file"+file, err)
+	log.Check(log.WarnLevel, "Opening file "+file, err)
 	defer f.Close()
 
 	hash := md5.New()
@@ -142,10 +142,13 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 
-	f, _ := os.Stat(config.Storage.Path + hash)
-	db.QuotaUsageSet(user, -int(f.Size()))
+	f, err := os.Stat(config.Storage.Path + hash)
+	if !log.Check(log.WarnLevel, "Reading file stats", err) {
+		db.QuotaUsageSet(user, -int(f.Size()))
+	}
 
 	if db.Delete(user, hash) <= 0 {
+		// torrent.Delete(hash)
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))
@@ -247,9 +250,11 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(user) != 0 {
-			w.Write([]byte(strconv.Itoa(db.QuotaGet(user)) + "\n"))
-			w.Write([]byte(strconv.Itoa(db.QuotaUsageGet(user)) + "\n"))
-			w.Write([]byte(strconv.Itoa(db.QuotaLeft(user)) + "\n"))
+			q, _ := json.Marshal(map[string]int{
+				"quota": db.QuotaGet(user),
+				"used":  db.QuotaUsageGet(user),
+				"left":  db.QuotaLeft(user)})
+			w.Write([]byte(q))
 		}
 
 	} else if r.Method == "POST" {
@@ -263,11 +268,21 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if len(user) != 0 && len(quota) != 0 {
-			db.QuotaSet(user, quota)
-			log.Info("New quota for " + user + " is " + quota)
-			w.Write([]byte("Ok"))
-			w.WriteHeader(http.StatusOK)
+		if len(user) == 0 || len(quota) == 0 {
+			w.Write([]byte("Please specify username and quota value"))
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
+
+		if q, err := strconv.Atoi(quota); err != nil || q < -1 {
+			w.Write([]byte("Invalid quota value"))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		db.QuotaSet(user, quota)
+		log.Info("New quota for " + user + " is " + quota)
+		w.Write([]byte("Ok"))
+		w.WriteHeader(http.StatusOK)
 	}
 }

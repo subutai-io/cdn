@@ -75,12 +75,15 @@ func List(w http.ResponseWriter, r *http.Request) {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "DELETE" && len(upload.Delete(w, r)) != 0 {
-		w.Write([]byte("Removed"))
-		return
+	if r.Method == "DELETE" {
+		if len(upload.Delete(w, r)) != 0 {
+			w.Write([]byte("Removed"))
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Bad Request"))
 	}
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write([]byte("Bad Request"))
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {

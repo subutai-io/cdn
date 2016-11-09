@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
@@ -20,11 +20,12 @@ import (
 )
 
 type Template struct {
-	hash    string
-	arch    string
-	name    string
-	parent  string
-	version string
+	hash     string
+	arch     string
+	name     string
+	parent   string
+	version  string
+	sizetype string
 }
 
 func readTempl(hash string) (configfile string, err error) {
@@ -69,6 +70,8 @@ func getConf(hash string, configfile string) (t *Template) {
 				t.parent = line[1]
 			case "subutai.template.version":
 				t.version = line[1]
+			case "subutai.template.size":
+				t.sizetype = line[1]
 			}
 		}
 	}
@@ -93,10 +96,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		t := getConf(hash, configfile)
 		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", map[string]string{
-			"type":    "template",
-			"arch":    t.arch,
-			"parent":  t.parent,
-			"version": t.version,
+			"type":     "template",
+			"arch":     t.arch,
+			"parent":   t.parent,
+			"version":  t.version,
+			"prefsize": t.sizetype,
 		})
 		w.Write([]byte(t.hash))
 	}
@@ -115,6 +119,29 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+// func Torrent(w http.ResponseWriter, r *http.Request) {
+// 	id := r.URL.Query().Get("id")
+// 	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.CheckToken(r.URL.Query().Get("token"))) {
+// 		w.WriteHeader(http.StatusNotFound)
+// 		w.Write([]byte("Not found"))
+// 		return
+// 	}
+
+// 	reader := torrent.Load([]byte(id))
+// 	if reader == nil {
+// 		return
+// 	}
+// 	mi, err := metainfo.Load(reader)
+// 	if log.Check(log.WarnLevel, "Creating torrent for", err) {
+// 		w.WriteHeader(http.StatusNotFound)
+// 		w.Write([]byte("File not found"))
+// 		return
+// 	}
+
+// 	err = mi.Write(w)
+// 	log.Check(log.WarnLevel, "Writing to HTTP output", err)
+// }
 
 func Info(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {

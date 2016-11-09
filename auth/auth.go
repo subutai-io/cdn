@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/pgp"
@@ -60,15 +60,14 @@ func Token(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(authID))
 		}
 	} else if r.Method == http.MethodPost {
-		r.ParseMultipartForm(32 << 20)
-		if len(r.MultipartForm.Value["user"]) == 0 || len(r.MultipartForm.Value["message"]) == 0 {
+		name := r.FormValue("user")
+		message := r.FormValue("message")
+		if len(name) == 0 || len(message) == 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Please specify user name and auth message"))
 			log.Warn(r.RemoteAddr + " - empty user name or message filed")
 			return
 		}
-		name := r.MultipartForm.Value["user"][0]
-		message := r.MultipartForm.Value["message"][0]
 		authid := pgp.Verify(name, message)
 		if db.CheckAuthID(authid) == name {
 			token := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(time.Now().String(), name, rand.Float64()))))
