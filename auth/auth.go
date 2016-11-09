@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/pgp"

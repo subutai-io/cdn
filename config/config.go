@@ -3,7 +3,7 @@ package config
 import (
 	"strconv"
 
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 	"gopkg.in/gcfg.v1"
 )
 

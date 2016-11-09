@@ -3,6 +3,7 @@ package download
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 )
@@ -143,7 +144,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(repo string, r *http.Request) []byte {
-	var item, js []byte
+	var js []byte
 	var info map[string]string
 	p := []int{0, 1000}
 
@@ -151,11 +152,15 @@ func Info(repo string, r *http.Request) []byte {
 	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
 	owner := r.URL.Query().Get("owner")
+	token := r.URL.Query().Get("token")
 	version := r.URL.Query().Get("version")
+	verified := r.URL.Query().Get("verified")
 
 	list := db.Search(name)
 	if len(id) > 0 {
 		list = append(list[:0], id)
+	} else if verified == "true" {
+		return getVerified(list, name, repo)
 	}
 
 	pstr := strings.Split(page, ",")
@@ -166,8 +171,7 @@ func Info(repo string, r *http.Request) []byte {
 
 	counter := 0
 	for _, k := range list {
-		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(r.URL.Query().Get("token")))) || (len(owner) != 0 && !db.CheckOwner(owner, k)) {
-			// log.Warn("File " + k + " is not shared with " + db.CheckToken(r.URL.Query().Get("token")))
+		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) || (len(owner) > 0 && !db.CheckOwner(owner, k)) {
 			continue
 		}
 
@@ -177,71 +181,30 @@ func Info(repo string, r *http.Request) []byte {
 			info = db.Info(k)
 		}
 
-		if info["type"] == repo {
-			size, _ := strconv.ParseInt(info["size"], 10, 64)
+		if info["type"] != repo {
+			continue
+		}
 
-			switch repo {
-			case "template":
-				if len(info["prefsize"]) == 0 {
-					info["prefsize"] = "tiny"
-				}
-				item, _ = json.Marshal(ListItem{
-					ID:           k,
-					Size:         size,
-					Name:         strings.Split(info["name"], "-subutai-template")[0],
-					Filename:     info["name"],
-					Parent:       info["parent"],
-					Version:      info["version"],
-					Prefsize:     info["prefsize"],
-					Architecture: strings.ToUpper(info["arch"]),
-					// Owner:        db.FileSignatures(k),
-					Owner:     db.FileOwner(k),
-					Signature: db.FileSignatures(k, name),
-				})
-			case "apt":
-				item, _ = json.Marshal(AptItem{
-					ID:           info["MD5sum"],
-					Name:         info["name"],
-					Description:  info["Description"],
-					Architecture: info["Architecture"],
-					Version:      info["Version"],
-					Size:         info["Size"],
-					// Owner:        db.FileSignatures(k),
-					Owner:     db.FileOwner(k),
-					Signature: db.FileSignatures(k, name),
-				})
-			case "raw":
-				item, _ = json.Marshal(RawItem{
-					ID:      k,
-					Size:    size,
-					Name:    info["name"],
-					Version: info["version"],
-					// Owner:   db.FileSignatures(k),
-					Owner:     db.FileOwner(k),
-					Signature: db.FileSignatures(k, name),
-				})
-			}
+		item, _ := formatItem(info, name)
 
-			if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
-				if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], info["type"]) {
-					return item
-				}
-				continue
+		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
+			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], info["type"]) {
+				return item
 			}
+			continue
+		}
 
-			counter++
-			if counter < (p[0]-1)*p[1]+1 {
-				continue
-			}
+		if counter++; counter < (p[0]-1)*p[1]+1 {
+			continue
+		}
 
-			if counter > 1 && counter > (p[0]-1)*p[1]+1 {
-				js = append(js, []byte(",")...)
-			}
-			js = append(js, item...)
+		if counter > 1 && counter > (p[0]-1)*p[1]+1 {
+			js = append(js, []byte(",")...)
+		}
+		js = append(js, item...)
 
-			if counter == p[0]*p[1] {
-				break
-			}
+		if counter == p[0]*p[1] {
+			break
 		}
 	}
 	if counter > 1 {
@@ -300,4 +263,83 @@ func ProxyInfo(uri string) []byte {
 		return nil
 	}
 	return rsp
+}
+
+func in(str string, list []string) bool {
+	for _, s := range list {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+func getVerified(list []string, name, repo string) []byte {
+	for _, k := range list {
+		if info := db.Info(k); info["type"] == repo {
+			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
+				for _, owner := range db.FileOwner(info["id"]) {
+					if in(owner, []string{"subutai", "jenkins", "docker"}) {
+						item, _ := formatItem(info, name)
+						return item
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func formatItem(info map[string]string, name string) ([]byte, error) {
+	size, err := strconv.ParseInt(info["size"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	switch info["type"] {
+
+	case "template":
+		if len(info["prefsize"]) == 0 {
+			info["prefsize"] = "tiny"
+		}
+		item, err := json.Marshal(ListItem{
+			ID:           info["id"],
+			Name:         strings.Split(info["name"], "-subutai-template")[0],
+			Size:         size,
+			Owner:        db.FileOwner(info["id"]),
+			Version:      info["version"],
+			Filename:     info["name"],
+			Parent:       info["parent"],
+			Prefsize:     info["prefsize"],
+			Architecture: strings.ToUpper(info["arch"]),
+			Signature:    db.FileSignatures(info["id"], name),
+		})
+		return item, err
+
+	case "apt":
+		item, err := json.Marshal(AptItem{
+			ID:           info["MD5sum"],
+			Name:         info["name"],
+			Size:         info["Size"],
+			Owner:        db.FileOwner(info["id"]),
+			Version:      info["Version"],
+			Description:  info["Description"],
+			Architecture: info["Architecture"],
+			Signature:    db.FileSignatures(info["id"], name),
+		})
+		return item, err
+
+	case "raw":
+		item, err := json.Marshal(RawItem{
+			ID:        info["id"],
+			Name:      info["name"],
+			Size:      size,
+			Owner:     db.FileOwner(info["id"]),
+			Version:   info["version"],
+			Signature: db.FileSignatures(info["id"], name),
+		})
+		return item, err
+	}
+
+	return nil, errors.New("Failed to process item.")
 }

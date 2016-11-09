@@ -1,6 +1,6 @@
 APP=gorjun
 CC=go
-VERSION=4.0.1
+VERSION=4.0.6
 
 LDFLAGS=-ldflags "-w -s -X main.Version=${VERSION}"
 

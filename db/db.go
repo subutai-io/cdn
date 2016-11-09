@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 
 	"github.com/subutai-io/gorjun/config"
 )
@@ -186,6 +186,7 @@ func Info(hash string) map[string]string {
 		}
 		return nil
 	})
+	list["id"] = hash
 	list["owner"] = "subutai"
 	return list
 }

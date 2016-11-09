@@ -17,7 +17,7 @@ import (
 	"github.com/subutai-io/gorjun/upload"
 
 	"github.com/mkrautz/goar"
-	"github.com/subutai-io/base/agent/log"
+	"github.com/subutai-io/agent/log"
 )
 
 func readDeb(hash string) (control bytes.Buffer, err error) {
