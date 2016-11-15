@@ -89,7 +89,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			log.Warn("Unable to read template config, err: " + err.Error())
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
-			if db.Delete(owner, hash) <= 0 {
+			if db.Delete(owner, "template", hash) == 0 {
 				os.Remove(config.Storage.Path + hash)
 			}
 			return
@@ -103,6 +103,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			"prefsize": t.sizetype,
 		})
 		w.Write([]byte(t.hash))
+		log.Info(t.name + " saved to template repo by " + owner)
 	}
 }
 

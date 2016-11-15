@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/subutai-io/agent/log"
+
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
@@ -27,6 +29,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		_, header, _ := r.FormFile("file")
 		db.Write(owner, hash, header.Filename, info)
 		w.Write([]byte(hash))
+		log.Info(header.Filename + " saved to raw repo by " + owner)
 	}
 }
 

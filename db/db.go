@@ -54,9 +54,6 @@ func Write(owner, key, value string, options ...map[string]string) {
 				// log.Warn("Associating: " + owner + " with " + value + " (" + key + ")")
 				b.Put([]byte(key), []byte(value))
 			}
-			// else {
-			// log.Warn("Entity alread exists, assuming signature")
-			// }
 		}
 
 		// Creating new record about file
@@ -74,7 +71,9 @@ func Write(owner, key, value string, options ...map[string]string) {
 			// Writing optional parameters for file
 			for i := range options {
 				for k, v := range options[i] {
-					b.Put([]byte(k), []byte(v))
+					if k != "type" {
+						b.Put([]byte(k), []byte(v))
+					}
 				}
 			}
 
@@ -85,6 +84,18 @@ func Write(owner, key, value string, options ...map[string]string) {
 
 		// Adding owners and shares to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			for i := range options {
+				for k, v := range options[i] {
+					if k == "type" {
+						if c, err := b.CreateBucketIfNotExists([]byte("type")); err == nil {
+							if c, err := c.CreateBucketIfNotExists([]byte(v)); err == nil {
+								// log.Info(key + " added to " + v)
+								c.Put([]byte(owner), []byte("w"))
+							}
+						}
+					}
+				}
+			}
 			if c, _ := b.CreateBucketIfNotExists([]byte("owner")); c != nil {
 				//If value is not empty, we are assuming that it is a signature (or any other personal info)
 				//Otherwise we are just adding new owner
@@ -104,31 +115,38 @@ func Write(owner, key, value string, options ...map[string]string) {
 	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
-func Delete(owner, key string) (remains int) {
+func Delete(owner, repo, key string) (copies int) {
 	db.Update(func(tx *bolt.Tx) error {
 		var filename []byte
 
+		copies = CheckRepo(owner, "", key) - 1
+
+		// Deleting user association with file
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if d := b.Bucket([]byte("type")); d != nil {
+				if d := d.Bucket([]byte(repo)); d != nil {
+					d.Delete([]byte(owner))
+				}
+			}
+
+			if c := b.Bucket([]byte("scope")); copies == 0 && c != nil {
+				c.Delete([]byte(owner))
+			}
+			if b := b.Bucket([]byte("owner")); copies == 0 && b != nil {
+				b.Delete([]byte(owner))
+			}
+		}
+
 		// Deleting file association with user
-		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
+		if b := tx.Bucket(users).Bucket([]byte(owner)); copies == 0 && b != nil {
 			if b := b.Bucket([]byte("files")); b != nil {
 				filename = b.Get([]byte(key))
 				b.Delete([]byte(key))
 			}
 		}
 
-		// Deleting user association with file
-		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
-			if c := b.Bucket([]byte("scope")); c != nil {
-				c.Delete([]byte(owner))
-			}
-			if b := b.Bucket([]byte("owner")); b != nil {
-				b.Delete([]byte(owner))
-				remains = b.Stats().KeyN - 1
-			}
-		}
-
 		// Removing indexes and file only if no file owners left
-		if remains <= 0 {
+		if copies == 0 {
 			// Deleting search index
 			if b := tx.Bucket(search).Bucket(filename); b != nil {
 				b.ForEach(func(k, v []byte) error {
@@ -145,7 +163,7 @@ func Delete(owner, key string) (remains int) {
 		return nil
 	})
 
-	return
+	return copies
 }
 
 func Read(key string) (val string) {
@@ -338,18 +356,25 @@ func FileOwner(hash string) (list []string) {
 	return list
 }
 
-// CheckOwner checks if user owns particular file
-func CheckOwner(owner, hash string) (res bool) {
-	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
-			if b := b.Bucket([]byte("owner")); b != nil && b.Get([]byte(owner)) != nil {
-				res = true
-			}
-		}
-		return nil
-	})
-	return res
-}
+// // CheckOwner checks if user owns particular file
+// func CheckOwner(owner, repo, hash string) (res bool) {
+// 	db.View(func(tx *bolt.Tx) error {
+// 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+// 			if b := b.Bucket([]byte("type")).Bucket([]byte(repo)); b != nil {
+// 				b.ForEach(func(k, v []byte) error {
+// 					if string(k) == owner {
+// 						res = true
+// 					}
+// 					return nil
+// 				})
+// 			} else if b := b.Bucket([]byte("owner")); b != nil && b.Get([]byte(owner)) != nil {
+// 				res = true
+// 			}
+// 		}
+// 		return nil
+// 	})
+// 	return res
+// }
 
 // FileSignatures returns map with file owners and theirs signatures
 func FileSignatures(hash string, opt ...string) (list map[string]string) {
@@ -620,6 +645,32 @@ func Torrent(hash []byte) (val []byte) {
 		if b := tx.Bucket(bucket).Bucket(hash); b != nil {
 			if value := b.Get([]byte("torrent")); value != nil {
 				val = value
+			}
+		}
+		return nil
+	})
+	return val
+}
+
+func CheckRepo(owner, repo, hash string) (val int) {
+	reps := []string{repo}
+	if len(repo) == 0 {
+		reps = []string{"apt", "template", "raw"}
+	}
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+			if c := b.Bucket([]byte("type")); c != nil {
+				for _, v := range reps {
+					if d := c.Bucket([]byte(v)); d != nil {
+						if k, _ := d.Cursor().First(); len(owner) == 0 && k != nil {
+							val++
+						} else if d.Get([]byte(owner)) != nil {
+							val++
+						}
+					}
+				}
+			} else if len(repo) == 0 || len(repo) != 0 && repo == string(b.Get([]byte("type"))) {
+				val = b.Bucket([]byte("owner")).Stats().KeyN
 			}
 		}
 		return nil
