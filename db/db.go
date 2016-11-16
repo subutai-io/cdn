@@ -356,26 +356,6 @@ func FileOwner(hash string) (list []string) {
 	return list
 }
 
-// // CheckOwner checks if user owns particular file
-// func CheckOwner(owner, repo, hash string) (res bool) {
-// 	db.View(func(tx *bolt.Tx) error {
-// 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
-// 			if b := b.Bucket([]byte("type")).Bucket([]byte(repo)); b != nil {
-// 				b.ForEach(func(k, v []byte) error {
-// 					if string(k) == owner {
-// 						res = true
-// 					}
-// 					return nil
-// 				})
-// 			} else if b := b.Bucket([]byte("owner")); b != nil && b.Get([]byte(owner)) != nil {
-// 				res = true
-// 			}
-// 		}
-// 		return nil
-// 	})
-// 	return res
-// }
-
 // FileSignatures returns map with file owners and theirs signatures
 func FileSignatures(hash string, opt ...string) (list map[string]string) {
 	//workaround to hide signatures from full list of artifacts and to show it only when certain name is specified
@@ -652,6 +632,8 @@ func Torrent(hash []byte) (val []byte) {
 	return val
 }
 
+// CheckRepo walks through specified repo (or all repos, if none is specified) and checks
+// if particular file exists and owner is correct. Returns number of found matches
 func CheckRepo(owner, repo, hash string) (val int) {
 	reps := []string{repo}
 	if len(repo) == 0 {
