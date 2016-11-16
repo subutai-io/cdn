@@ -146,8 +146,8 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 
 	if db.CheckRepo(user, repo[3], hash) == 0 {
 		log.Warn("File " + info["name"] + "(" + hash + ") in " + repo[3] + " repo is not owned by " + user + ", rejecting deletion request")
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("File " + info["name"] + " not found or it has different owner"))
 		return ""
 	}
 

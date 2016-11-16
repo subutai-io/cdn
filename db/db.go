@@ -89,10 +89,11 @@ func Write(owner, key, value string, options ...map[string]string) {
 					if k == "type" {
 						if c, err := b.CreateBucketIfNotExists([]byte("type")); err == nil {
 							if c, err := c.CreateBucketIfNotExists([]byte(v)); err == nil {
-								// log.Info(key + " added to " + v)
 								c.Put([]byte(owner), []byte("w"))
 							}
 						}
+					} else if b.Get([]byte(k)) == nil {
+						b.Put([]byte(k), []byte(v))
 					}
 				}
 			}
@@ -241,7 +242,7 @@ func LatestTmpl(name, version string) (info map[string]string) {
 			for k, _ := b.Seek([]byte(name + "-subutai-template")); bytes.HasPrefix(k, []byte(name+"-subutai-template")); k, _ = b.Next() {
 				if c := tx.Bucket(search).Bucket(k).Cursor(); c != nil {
 					_, m := c.Last()
-					if tmp := Info(string(m)); tmp["type"] == "template" && (len(version) != 0 && strings.HasSuffix(tmp["version"], version) || len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
+					if tmp := Info(string(m)); CheckRepo("", "template", string(m)) > 0 && (len(version) != 0 && strings.HasSuffix(tmp["version"], version) || len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
 						info = tmp
 					}
 				}
@@ -257,7 +258,7 @@ func LastHash(name, t string) (hash string) {
 		if b := tx.Bucket(search).Bucket([]byte(name)); b != nil {
 			c := b.Cursor()
 			for k, v := c.Last(); k != nil; k, v = c.Prev() {
-				if t == "" || t == Info(string(v))["type"] {
+				if CheckRepo("", t, string(v)) > 0 {
 					hash = string(v)
 					break
 				}
