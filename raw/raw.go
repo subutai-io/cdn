@@ -52,7 +52,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 func List(w http.ResponseWriter, r *http.Request) {
 	list := []download.RawItem{}
 	for hash, _ := range db.List() {
-		if info := db.Info(hash); info["type"] == "raw" {
+		if info := db.Info(hash); db.CheckRepo("", "raw", hash) > 0 {
 			item := download.RawItem{
 				ID:   hash,
 				Name: info["name"],

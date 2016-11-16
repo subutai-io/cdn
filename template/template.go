@@ -177,7 +177,7 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 func List(w http.ResponseWriter, r *http.Request) {
 	list := make([]download.ListItem, 0)
 	for hash, _ := range db.List() {
-		if info := db.Info(hash); info["type"] == "template" {
+		if info := db.Info(hash); db.CheckRepo("", "template", hash) > 0 {
 			item := download.ListItem{
 				ID:           hash,
 				Name:         strings.Split(info["name"], "-subutai-template")[0],
