@@ -135,7 +135,14 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	info := db.Info(hash)
-	if !db.CheckOwner(owner, hash) {
+	repo := strings.Split(r.URL.EscapedPath(), "/")
+	if len(repo) < 4 {
+		log.Warn(r.URL.EscapedPath() + " - bad share request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Bad request"))
+		return
+	}
+	if db.CheckRepo(owner, repo[3], hash) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("File and signature have different owner"))
 		log.Warn("File and signature have different owner")

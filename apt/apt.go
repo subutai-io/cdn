@@ -111,7 +111,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			log.Warn(err.Error())
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			w.Write([]byte(err.Error()))
-			if db.Delete(owner, hash) <= 0 {
+			if db.Delete(owner, "apt", hash) == 0 {
 				os.Remove(config.Storage.Path + hash)
 			}
 			return
@@ -127,6 +127,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		writePackage(meta)
 		db.Write(owner, hash, header.Filename, meta)
 		w.Write([]byte(hash))
+		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}
 }
 
