@@ -134,15 +134,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		log.Warn("Failed to verify signature with user key")
 		return
 	}
-	info := db.Info(hash)
-	repo := strings.Split(r.URL.EscapedPath(), "/")
-	if len(repo) < 4 {
-		log.Warn(r.URL.EscapedPath() + " - bad share request")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Bad request"))
-		return
-	}
-	if db.CheckRepo(owner, repo[3], hash) == 0 {
+	if db.CheckRepo(owner, "", hash) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("File and signature have different owner"))
 		log.Warn("File and signature have different owner")
@@ -151,6 +143,6 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 	db.Write(owner, hash, signature)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File has been signed"))
-	log.Info("File " + info["Name"] + "(" + hash + ")" + " has been signed by " + owner)
+	log.Info("File " + hash + " has been signed by " + owner)
 	return
 }
