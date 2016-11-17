@@ -177,6 +177,9 @@ func Info(repo string, r *http.Request) []byte {
 
 		if name == "management" && repo == "template" {
 			info = db.LatestTmpl(name, version)
+			if len(info["name"]) == 0 {
+				continue
+			}
 		} else {
 			info = db.Info(k)
 		}
@@ -188,7 +191,7 @@ func Info(repo string, r *http.Request) []byte {
 		item, _ := formatItem(info, repo, name)
 
 		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
-			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], info["type"]) {
+			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], repo) {
 				return item
 			}
 			continue

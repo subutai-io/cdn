@@ -150,7 +150,6 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method"))
 		return
 	}
-
 	if info := download.Info("template", r); len(info) != 0 {
 		w.Write(info)
 	} else {
