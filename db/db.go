@@ -146,6 +146,7 @@ func Delete(owner, repo, key string) (copies int) {
 			}
 		}
 
+		copies = CheckRepo("", "", key)
 		// Removing indexes and file only if no file owners left
 		if copies == 0 {
 			// Deleting search index
