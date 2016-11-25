@@ -171,24 +171,27 @@ func Info(repo string, r *http.Request) []byte {
 
 	counter := 0
 	for _, k := range list {
-		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) || (len(owner) > 0 && !db.CheckOwner(owner, k)) {
+		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) || (len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) {
 			continue
 		}
 
 		if name == "management" && repo == "template" {
 			info = db.LatestTmpl(name, version)
+			if len(info["name"]) == 0 {
+				continue
+			}
 		} else {
 			info = db.Info(k)
 		}
 
-		if info["type"] != repo {
+		if db.CheckRepo("", repo, k) == 0 {
 			continue
 		}
 
-		item, _ := formatItem(info, name)
+		item, _ := formatItem(info, repo, name)
 
 		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
-			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], info["type"]) {
+			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], repo) {
 				return item
 			}
 			continue
@@ -276,11 +279,11 @@ func in(str string, list []string) bool {
 
 func getVerified(list []string, name, repo string) []byte {
 	for _, k := range list {
-		if info := db.Info(k); info["type"] == repo {
+		if info := db.Info(k); db.CheckRepo("", repo, k) > 0 {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileOwner(info["id"]) {
 					if in(owner, []string{"subutai", "jenkins", "docker"}) {
-						item, _ := formatItem(info, name)
+						item, _ := formatItem(info, repo, name)
 						return item
 					}
 				}
@@ -290,13 +293,13 @@ func getVerified(list []string, name, repo string) []byte {
 	return nil
 }
 
-func formatItem(info map[string]string, name string) ([]byte, error) {
+func formatItem(info map[string]string, repo, name string) ([]byte, error) {
 	size, err := strconv.ParseInt(info["size"], 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	switch info["type"] {
+	switch repo {
 
 	case "template":
 		if len(info["prefsize"]) == 0 {
@@ -318,9 +321,9 @@ func formatItem(info map[string]string, name string) ([]byte, error) {
 
 	case "apt":
 		item, err := json.Marshal(AptItem{
-			ID:           info["MD5sum"],
+			ID:           info["id"],
 			Name:         info["name"],
-			Size:         info["Size"],
+			Size:         info["size"],
 			Owner:        db.FileOwner(info["id"]),
 			Version:      info["Version"],
 			Description:  info["Description"],

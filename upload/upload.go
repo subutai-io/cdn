@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
@@ -84,7 +85,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 
 	os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+hash)
-	log.Info("File uploaded successfully: " + header.Filename + "(" + hash + ")")
+	log.Info("File received: " + header.Filename + "(" + hash + ")")
 
 	return hash, owner
 }
@@ -135,10 +136,18 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 
-	if !db.CheckOwner(user, hash) {
-		log.Warn("File " + info["name"] + "(" + hash + ") is not owned by " + user + ", rejecting deletion request")
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("File " + info["name"] + " is not owned by " + user))
+	repo := strings.Split(r.URL.EscapedPath(), "/")
+	if len(repo) < 4 {
+		log.Warn(r.URL.EscapedPath() + " - bad deletion request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Bad request"))
+		return ""
+	}
+
+	if db.CheckRepo(user, repo[3], hash) == 0 {
+		log.Warn("File " + info["name"] + "(" + hash + ") in " + repo[3] + " repo is not owned by " + user + ", rejecting deletion request")
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("File " + info["name"] + " not found or it has different owner"))
 		return ""
 	}
 
@@ -147,7 +156,8 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		db.QuotaUsageSet(user, -int(f.Size()))
 	}
 
-	if db.Delete(user, hash) <= 0 {
+	if db.Delete(user, repo[3], hash) == 0 {
+		log.Warn("Removing " + hash + " from disk")
 		// torrent.Delete(hash)
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -156,7 +166,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		}
 	}
 
-	log.Info("Removing " + info["name"])
+	log.Info("Removing " + info["name"] + " from " + repo[3] + " repo")
 	return hash
 }
 
@@ -187,7 +197,14 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		owner := db.CheckToken(data.Token)
-		if !db.CheckOwner(owner, data.Id) {
+		repo := strings.Split(r.URL.EscapedPath(), "/")
+		if len(repo) < 4 {
+			log.Warn(r.URL.EscapedPath() + " - bad share request")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Bad request"))
+			return
+		}
+		if db.CheckRepo(owner, repo[3], data.Id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
 			log.Warn("User tried to share another's file, rejecting")
@@ -213,7 +230,14 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		owner := db.CheckToken(token)
-		if !db.CheckOwner(owner, id) {
+		repo := strings.Split(r.URL.EscapedPath(), "/")
+		if len(repo) < 4 {
+			log.Warn(r.URL.EscapedPath() + " - bad deletion request")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Bad request"))
+			return
+		}
+		if db.CheckRepo(owner, repo[3], id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
 			log.Warn("User tried to request scope of another's file, rejecting")

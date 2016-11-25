@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/subutai-io/agent/log"
+
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
@@ -27,6 +29,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		_, header, _ := r.FormFile("file")
 		db.Write(owner, hash, header.Filename, info)
 		w.Write([]byte(hash))
+		log.Info(header.Filename + " saved to raw repo by " + owner)
 	}
 }
 
@@ -49,7 +52,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 func List(w http.ResponseWriter, r *http.Request) {
 	list := []download.RawItem{}
 	for hash, _ := range db.List() {
-		if info := db.Info(hash); info["type"] == "raw" {
+		if info := db.Info(hash); db.CheckRepo("", "raw", hash) > 0 {
 			item := download.RawItem{
 				ID:   hash,
 				Name: info["name"],
