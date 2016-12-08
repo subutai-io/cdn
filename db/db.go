@@ -243,8 +243,10 @@ func LatestTmpl(name, version string) (info map[string]string) {
 			for k, _ := b.Seek([]byte(name + "-subutai-template")); bytes.HasPrefix(k, []byte(name+"-subutai-template")); k, _ = b.Next() {
 				if c := tx.Bucket(search).Bucket(k).Cursor(); c != nil {
 					_, m := c.Last()
-					if tmp := Info(string(m)); CheckRepo("", "template", string(m)) > 0 && (len(version) != 0 && strings.HasSuffix(tmp["version"], version) || len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
-						info = tmp
+					if tmp := Info(string(m)); CheckRepo("", "template", string(m)) > 0 && info["date"] < tmp["date"] {
+						if (len(version) != 0 && strings.HasSuffix(tmp["version"], version)) || (len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
+							info = tmp
+						}
 					}
 				}
 			}
