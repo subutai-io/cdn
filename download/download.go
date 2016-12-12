@@ -18,11 +18,6 @@ import (
 	"github.com/subutai-io/gorjun/db"
 )
 
-type listItem struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-}
-
 type AptItem struct {
 	ID           string            `json:"id"`
 	Size         string            `json:"size"`
@@ -223,7 +218,7 @@ func ProxyList(t string) []byte {
 	if len(config.CDN.Node) == 0 {
 		return nil
 	}
-	list := make([]listItem, 0)
+	list := make([]ListItem, 0)
 
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	resp, err := client.Get(config.CDN.Node + "/kurjun/rest/" + t + "/list")
