@@ -267,7 +267,7 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		user := r.URL.Query().Get("user")
 		token := r.URL.Query().Get("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "2129bb4fb65b27ff68a21c678d461db2e2c20bb7" && db.CheckToken(token) != user {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" && db.CheckToken(token) != user {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return
@@ -286,7 +286,7 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		quota := r.FormValue("quota")
 		token := r.FormValue("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "2129bb4fb65b27ff68a21c678d461db2e2c20bb7" {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return
