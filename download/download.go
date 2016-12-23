@@ -166,7 +166,7 @@ func Info(repo string, r *http.Request) []byte {
 
 	counter := 0
 	for _, k := range list {
-		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) || (len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) {
+		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) || (len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) || db.CheckRepo("", repo, k) == 0 {
 			continue
 		}
 
@@ -177,10 +177,6 @@ func Info(repo string, r *http.Request) []byte {
 			}
 		} else {
 			info = db.Info(k)
-		}
-
-		if db.CheckRepo("", repo, k) == 0 {
-			continue
 		}
 
 		item, _ := formatItem(info, repo, name)

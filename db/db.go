@@ -656,7 +656,11 @@ func CheckRepo(owner, repo, hash string) (val int) {
 					}
 				}
 			} else if len(repo) == 0 || len(repo) != 0 && repo == string(b.Get([]byte("type"))) {
-				val = b.Bucket([]byte("owner")).Stats().KeyN
+				if len(owner) == 0 {
+					val = b.Bucket([]byte("owner")).Stats().KeyN
+				} else if len(owner) != 0 && b.Bucket([]byte("owner")).Get([]byte(owner)) != nil {
+					val++
+				}
 			}
 		}
 		return nil
