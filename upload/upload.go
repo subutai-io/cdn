@@ -45,8 +45,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 	defer file.Close()
 
-	l := сheckLength(owner, r.Header.Get("Content-Length"))
-	if !l {
+	if !сheckLength(owner, r.Header.Get("Content-Length")) {
 		w.WriteHeader(http.StatusNotAcceptable)
 		w.Write([]byte("Storage quota exceeded"))
 		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
@@ -74,6 +73,9 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		log.Warn("User " + owner + " exceeded storage quota, removing file")
 		os.Remove(config.Storage.Path + header.Filename)
 		return
+	} else {
+		db.QuotaUsageSet(owner, int(copied))
+		log.Info("User " + owner + ", quota usage +" + strconv.Itoa(int(copied)))
 	}
 
 	hash = Hash(config.Storage.Path + header.Filename)
@@ -154,6 +156,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	f, err := os.Stat(config.Storage.Path + hash)
 	if !log.Check(log.WarnLevel, "Reading file stats", err) {
 		db.QuotaUsageSet(user, -int(f.Size()))
+		log.Info("User " + user + ", quota usage -" + strconv.Itoa(int(f.Size())))
 	}
 
 	if db.Delete(user, repo[3], hash) == 0 {
@@ -250,13 +253,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 
 func сheckLength(user, length string) bool {
 	l, err := strconv.Atoi(length)
-	if err != nil || len(length) == 0 {
-		log.Warn("Empty or invalid content length")
-		return true
-	}
-
-	if l < db.QuotaLeft(user) || db.QuotaLeft(user) == -1 {
-		db.QuotaUsageSet(user, l)
+	if err != nil || len(length) == 0 || l < db.QuotaLeft(user) || db.QuotaLeft(user) == -1 {
 		return true
 	}
 	return false
@@ -265,6 +262,7 @@ func сheckLength(user, length string) bool {
 func Quota(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		user := r.URL.Query().Get("user")
+		fix := r.URL.Query().Get("fix")
 		token := r.URL.Query().Get("token")
 
 		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" && db.CheckToken(token) != user {
@@ -279,6 +277,8 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 				"used":  db.QuotaUsageGet(user),
 				"left":  db.QuotaLeft(user)})
 			w.Write([]byte(q))
+		} else if len(fix) != 0 {
+			db.QuotaUsageCorrect()
 		}
 
 	} else if r.Method == "POST" {

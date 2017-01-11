@@ -513,7 +513,6 @@ func countTotal(user string) (total int) {
 					return nil
 				})
 			}
-			// b.Put([]byte("stored"), []byte(strconv.Itoa(total)))
 		}
 		return nil
 	})
@@ -556,8 +555,6 @@ func QuotaUsageSet(user string, value int) {
 				stored, _ = strconv.Atoi(string(s))
 			} else {
 				stored = countTotal(user)
-				// b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
-				//
 			}
 			b.Put([]byte("stored"), []byte(strconv.Itoa(stored+value)))
 		}
@@ -565,16 +562,7 @@ func QuotaUsageSet(user string, value int) {
 	})
 }
 
-// QuotaAdjust sets changes default storage quota for user
-func QuotaAdjust(user string, value int) {
-	db.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
-			b.Put([]byte("quota"), []byte(strconv.Itoa(value)))
-		}
-		return nil
-	})
-}
-
+// QuotaGet returns value of user's disk quota
 func QuotaGet(user string) (quota int) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
@@ -589,6 +577,7 @@ func QuotaGet(user string) (quota int) {
 	return
 }
 
+// QuotaSet sets changes default storage quota for user
 func QuotaSet(user, quota string) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
@@ -598,6 +587,27 @@ func QuotaSet(user, quota string) {
 	})
 }
 
+// QuotaUsageCorrect updates saved values of quota usage according to file index table
+func QuotaUsageCorrect() {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if c := b.Bucket(k); c != nil {
+					r_val := countTotal(string(k))
+					if s_val := c.Get([]byte("stored")); s_val == nil && r_val != 0 || s_val != nil && string(s_val) != strconv.Itoa(r_val) {
+						log.Info("Correcting quota usage for user " + string(k))
+						log.Info("Stored value: " + string(s_val) + ", real value: " + strconv.Itoa(r_val))
+						c.Put([]byte("stored"), []byte(strconv.Itoa(r_val)))
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+}
+
+// QuotaUsageGet returns value of used disk quota
 func QuotaUsageGet(user string) (stored int) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
