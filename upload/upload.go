@@ -23,6 +23,7 @@ type share struct {
 	Id     string   `json:"id"`
 	Add    []string `json:"add"`
 	Remove []string `json:"remove"`
+	Repo   string   `json:"repo"`
 }
 
 //Handler function works with income upload requests, makes sanity checks, etc
@@ -199,24 +200,25 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			log.Warn("Empty file id, rejecting share request")
 			return
 		}
-		owner := db.CheckToken(data.Token)
-		repo := strings.Split(r.URL.EscapedPath(), "/")
-		if len(repo) < 4 {
-			log.Warn(r.URL.EscapedPath() + " - bad share request")
+		if len(data.Repo) == 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Bad request"))
+			w.Write([]byte("Empty repo name"))
+			log.Warn("Empty repo name, rejecting share request")
 			return
 		}
-		if db.CheckRepo(owner, repo[3], data.Id) == 0 {
+		owner := db.CheckToken(data.Token)
+		if db.CheckRepo(owner, data.Repo, data.Id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
 			log.Warn("User tried to share another's file, rejecting")
 			return
 		}
 		for _, v := range data.Add {
+			log.Info("Sharing " + data.Id + " with " + v)
 			db.ShareWith(data.Id, owner, v)
 		}
 		for _, v := range data.Remove {
+			log.Info("Unsharing " + data.Id + " with " + v)
 			db.UnshareWith(data.Id, owner, v)
 		}
 	} else if r.Method == "GET" {
@@ -233,14 +235,13 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		owner := db.CheckToken(token)
-		repo := strings.Split(r.URL.EscapedPath(), "/")
-		if len(repo) < 4 {
-			log.Warn(r.URL.EscapedPath() + " - bad deletion request")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Bad request"))
+		repo := r.URL.Query().Get("repo")
+		if len(repo) == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Repository not specified"))
 			return
 		}
-		if db.CheckRepo(owner, repo[3], id) == 0 {
+		if db.CheckRepo(owner, repo, id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
 			log.Warn("User tried to request scope of another's file, rejecting")
@@ -277,7 +278,8 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 				"used":  db.QuotaUsageGet(user),
 				"left":  db.QuotaLeft(user)})
 			w.Write([]byte(q))
-		} else if len(fix) != 0 {
+		}
+		if user == "subutai" && len(fix) != 0 {
 			db.QuotaUsageCorrect()
 		}
 
