@@ -104,6 +104,10 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		})
 		w.Write([]byte(t.hash))
 		log.Info(t.name + " saved to template repo by " + owner)
+		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
+			log.Info("Sharing " + hash + " with " + owner)
+			db.ShareWith(hash, owner, owner)
+		}
 	}
 }
 
