@@ -4,11 +4,9 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/subutai-io/agent/log"
@@ -175,32 +173,4 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusBadRequest)
 	w.Write([]byte("Incorrect method"))
-}
-
-func List(w http.ResponseWriter, r *http.Request) {
-	list := make([]download.ListItem, 0)
-	for hash, _ := range db.List() {
-		if info := db.Info(hash); db.CheckRepo("", "template", hash) > 0 {
-			item := download.ListItem{
-				ID:           hash,
-				Name:         strings.Split(info["name"], "-subutai-template")[0],
-				Filename:     info["name"],
-				Parent:       info["parent"],
-				Version:      info["version"],
-				Architecture: strings.ToUpper(info["arch"]),
-				// Owner:        db.FileSignatures(hash),
-				Owner: db.FileOwner(hash),
-			}
-			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
-			list = append(list, item)
-		}
-	}
-	if len(list) == 0 {
-		if js := download.ProxyList("template"); js != nil {
-			w.Write(js)
-		}
-		return
-	}
-	js, _ := json.Marshal(list)
-	w.Write(js)
 }

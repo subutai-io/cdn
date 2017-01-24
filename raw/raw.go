@@ -1,9 +1,7 @@
 package raw
 
 import (
-	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/subutai-io/agent/log"
@@ -47,34 +45,6 @@ func Download(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/kurjun/rest/raw/download?id="+list[0], 302)
 		}
 	}
-}
-
-func List(w http.ResponseWriter, r *http.Request) {
-	list := []download.RawItem{}
-	for hash, _ := range db.List() {
-		if info := db.Info(hash); db.CheckRepo("", "raw", hash) > 0 {
-			item := download.RawItem{
-				ID:   hash,
-				Name: info["name"],
-				// Owner:       db.FileSignatures(hash),
-				Owner: db.FileOwner(hash),
-			}
-			item.Size, _ = strconv.ParseInt(info["size"], 10, 64)
-			if version, exists := info["version"]; exists {
-				item.Version = version
-			}
-			list = append(list, item)
-		}
-	}
-	if len(list) == 0 {
-		if js := download.ProxyList("raw"); js != nil {
-			w.Write(js)
-		}
-		return
-	}
-	js, _ := json.Marshal(list)
-	w.Write(js)
-
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
