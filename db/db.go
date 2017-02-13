@@ -116,11 +116,12 @@ func Write(owner, key, value string, options ...map[string]string) {
 	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
-func Delete(owner, repo, key string) (copies int) {
+func Delete(owner, repo, key string) (total int) {
 	db.Update(func(tx *bolt.Tx) error {
 		var filename []byte
 
-		copies = CheckRepo(owner, "", key) - 1
+		owned := CheckRepo(owner, "", key)
+		total = CheckRepo("", "", key)
 
 		// Deleting user association with file
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
@@ -130,25 +131,24 @@ func Delete(owner, repo, key string) (copies int) {
 				}
 			}
 
-			if c := b.Bucket([]byte("scope")); copies == 0 && c != nil {
+			if c := b.Bucket([]byte("scope")); owned == 1 && c != nil {
 				c.Delete([]byte(owner))
 			}
-			if b := b.Bucket([]byte("owner")); copies == 0 && b != nil {
+			if b := b.Bucket([]byte("owner")); owned == 1 && b != nil {
 				b.Delete([]byte(owner))
 			}
 		}
 
 		// Deleting file association with user
-		if b := tx.Bucket(users).Bucket([]byte(owner)); copies == 0 && b != nil {
+		if b := tx.Bucket(users).Bucket([]byte(owner)); owned == 1 && b != nil {
 			if b := b.Bucket([]byte("files")); b != nil {
 				filename = b.Get([]byte(key))
 				b.Delete([]byte(key))
 			}
 		}
 
-		copies = CheckRepo("", "", key) - 1
 		// Removing indexes and file only if no file owners left
-		if copies == 0 {
+		if total == 1 {
 			// Deleting search index
 			if b := tx.Bucket(search).Bucket(filename); b != nil {
 				b.ForEach(func(k, v []byte) error {
@@ -164,8 +164,7 @@ func Delete(owner, repo, key string) (copies int) {
 		}
 		return nil
 	})
-
-	return copies
+	return total - 1
 }
 
 func Read(key string) (val string) {
@@ -659,7 +658,7 @@ func CheckRepo(owner, repo, hash string) (val int) {
 				for _, v := range reps {
 					if d := c.Bucket([]byte(v)); d != nil {
 						if k, _ := d.Cursor().First(); len(owner) == 0 && k != nil {
-							val++
+							val += d.Stats().KeyN
 						} else if d.Get([]byte(owner)) != nil {
 							val++
 						}
