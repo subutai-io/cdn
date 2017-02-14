@@ -141,6 +141,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	var js []byte
 	var info map[string]string
+	var counter int
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -164,9 +165,14 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 
-	counter := 0
 	for _, k := range list {
-		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) || (len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) || db.CheckRepo("", repo, k) == 0 {
+		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
+			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
+			db.CheckRepo("", repo, k) == 0 {
+			continue
+		}
+
+		if counter++; counter < p[0] {
 			continue
 		}
 
@@ -188,18 +194,13 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if counter++; counter < (p[0]-1)*p[1]+1 {
-			continue
-		}
-
-		if counter > 1 && counter > (p[0]-1)*p[1]+1 {
+		if counter == p[0]+p[1] {
+			break
+		} else if len(js) > 0 {
 			js = append(js, []byte(",")...)
 		}
-		js = append(js, item...)
 
-		if counter == p[0]*p[1] {
-			break
-		}
+		js = append(js, item...)
 	}
 	if counter > 1 {
 		js = append([]byte("["), js...)
