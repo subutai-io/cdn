@@ -78,7 +78,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 			}
 
 			// Adding search index for files
-			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(value))
+			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(strings.ToLower(value)))
 			b.Put(now, []byte(key))
 		}
 
@@ -150,7 +150,7 @@ func Delete(owner, repo, key string) (total int) {
 		// Removing indexes and file only if no file owners left
 		if total == 1 {
 			// Deleting search index
-			if b := tx.Bucket(search).Bucket(filename); b != nil {
+			if b := tx.Bucket(search).Bucket(bytes.ToLower(filename)); b != nil {
 				b.ForEach(func(k, v []byte) error {
 					if string(v) == key {
 						b.Delete(k)
@@ -218,6 +218,7 @@ func Search(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
 		c := b.Cursor()
+		query = strings.ToLower(query)
 		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
 			//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
 			b.Bucket(k).ForEach(func(kk, vv []byte) error {
@@ -239,6 +240,7 @@ func Search(query string) (list []string) {
 func LatestTmpl(name, version string) (info map[string]string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(search).Cursor(); b != nil {
+			name = strings.ToLower(name)
 			for k, _ := b.Seek([]byte(name + "-subutai-template")); bytes.HasPrefix(k, []byte(name+"-subutai-template")); k, _ = b.Next() {
 				if c := tx.Bucket(search).Bucket(k).Cursor(); c != nil {
 					_, m := c.Last()
@@ -257,7 +259,7 @@ func LatestTmpl(name, version string) (info map[string]string) {
 
 func LastHash(name, t string) (hash string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(search).Bucket([]byte(name)); b != nil {
+		if b := tx.Bucket(search).Bucket([]byte(strings.ToLower(name))); b != nil {
 			c := b.Cursor()
 			for k, v := c.Last(); k != nil; k, v = c.Prev() {
 				if CheckRepo("", t, string(v)) > 0 {
