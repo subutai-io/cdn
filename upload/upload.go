@@ -23,6 +23,7 @@ type share struct {
 	Id     string   `json:"id"`
 	Add    []string `json:"add"`
 	Remove []string `json:"remove"`
+	Repo   string   `json:"repo"`
 }
 
 //Handler function works with income upload requests, makes sanity checks, etc
@@ -45,8 +46,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 	}
 	defer file.Close()
 
-	l := сheckLength(owner, r.Header.Get("Content-Length"))
-	if !l {
+	if !сheckLength(owner, r.Header.Get("Content-Length")) {
 		w.WriteHeader(http.StatusNotAcceptable)
 		w.Write([]byte("Storage quota exceeded"))
 		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
@@ -74,6 +74,9 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		log.Warn("User " + owner + " exceeded storage quota, removing file")
 		os.Remove(config.Storage.Path + header.Filename)
 		return
+	} else {
+		db.QuotaUsageSet(owner, int(copied))
+		log.Info("User " + owner + ", quota usage +" + strconv.Itoa(int(copied)))
 	}
 
 	hash = Hash(config.Storage.Path + header.Filename)
@@ -154,6 +157,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	f, err := os.Stat(config.Storage.Path + hash)
 	if !log.Check(log.WarnLevel, "Reading file stats", err) {
 		db.QuotaUsageSet(user, -int(f.Size()))
+		log.Info("User " + user + ", quota usage -" + strconv.Itoa(int(f.Size())))
 	}
 
 	if db.Delete(user, repo[3], hash) == 0 {
@@ -196,24 +200,25 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			log.Warn("Empty file id, rejecting share request")
 			return
 		}
-		owner := db.CheckToken(data.Token)
-		repo := strings.Split(r.URL.EscapedPath(), "/")
-		if len(repo) < 4 {
-			log.Warn(r.URL.EscapedPath() + " - bad share request")
+		if len(data.Repo) == 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Bad request"))
+			w.Write([]byte("Empty repo name"))
+			log.Warn("Empty repo name, rejecting share request")
 			return
 		}
-		if db.CheckRepo(owner, repo[3], data.Id) == 0 {
+		owner := db.CheckToken(data.Token)
+		if db.CheckRepo(owner, data.Repo, data.Id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
 			log.Warn("User tried to share another's file, rejecting")
 			return
 		}
 		for _, v := range data.Add {
+			log.Info("Sharing " + data.Id + " with " + v)
 			db.ShareWith(data.Id, owner, v)
 		}
 		for _, v := range data.Remove {
+			log.Info("Unsharing " + data.Id + " with " + v)
 			db.UnshareWith(data.Id, owner, v)
 		}
 	} else if r.Method == "GET" {
@@ -230,14 +235,13 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		owner := db.CheckToken(token)
-		repo := strings.Split(r.URL.EscapedPath(), "/")
-		if len(repo) < 4 {
-			log.Warn(r.URL.EscapedPath() + " - bad deletion request")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Bad request"))
+		repo := r.URL.Query().Get("repo")
+		if len(repo) == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Repository not specified"))
 			return
 		}
-		if db.CheckRepo(owner, repo[3], id) == 0 {
+		if db.CheckRepo(owner, repo, id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
 			log.Warn("User tried to request scope of another's file, rejecting")
@@ -250,13 +254,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 
 func сheckLength(user, length string) bool {
 	l, err := strconv.Atoi(length)
-	if err != nil || len(length) == 0 {
-		log.Warn("Empty or invalid content length")
-		return true
-	}
-
-	if l < db.QuotaLeft(user) || db.QuotaLeft(user) == -1 {
-		db.QuotaUsageSet(user, l)
+	if err != nil || len(length) == 0 || l < db.QuotaLeft(user) || db.QuotaLeft(user) == -1 {
 		return true
 	}
 	return false
@@ -265,9 +263,10 @@ func сheckLength(user, length string) bool {
 func Quota(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		user := r.URL.Query().Get("user")
+		fix := r.URL.Query().Get("fix")
 		token := r.URL.Query().Get("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "2129bb4fb65b27ff68a21c678d461db2e2c20bb7" && db.CheckToken(token) != user {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" && db.CheckToken(token) != user {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return
@@ -280,13 +279,16 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 				"left":  db.QuotaLeft(user)})
 			w.Write([]byte(q))
 		}
+		if user == "subutai" && len(fix) != 0 {
+			db.QuotaUsageCorrect()
+		}
 
 	} else if r.Method == "POST" {
 		user := r.FormValue("user")
 		quota := r.FormValue("quota")
 		token := r.FormValue("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "2129bb4fb65b27ff68a21c678d461db2e2c20bb7" {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return

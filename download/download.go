@@ -18,11 +18,6 @@ import (
 	"github.com/subutai-io/gorjun/db"
 )
 
-type listItem struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-}
-
 type AptItem struct {
 	ID           string            `json:"id"`
 	Size         string            `json:"size"`
@@ -146,6 +141,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	var js []byte
 	var info map[string]string
+	var counter int
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -169,9 +165,14 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 
-	counter := 0
 	for _, k := range list {
-		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) || (len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) {
+		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
+			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
+			db.CheckRepo("", repo, k) == 0 {
+			continue
+		}
+
+		if counter++; counter < p[0] {
 			continue
 		}
 
@@ -184,10 +185,6 @@ func Info(repo string, r *http.Request) []byte {
 			info = db.Info(k)
 		}
 
-		if db.CheckRepo("", repo, k) == 0 {
-			continue
-		}
-
 		item, _ := formatItem(info, repo, name)
 
 		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
@@ -197,18 +194,13 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if counter++; counter < (p[0]-1)*p[1]+1 {
-			continue
-		}
-
-		if counter > 1 && counter > (p[0]-1)*p[1]+1 {
+		if counter == p[0]+p[1] {
+			break
+		} else if len(js) > 0 {
 			js = append(js, []byte(",")...)
 		}
-		js = append(js, item...)
 
-		if counter == p[0]*p[1] {
-			break
-		}
+		js = append(js, item...)
 	}
 	if counter > 1 {
 		js = append([]byte("["), js...)
@@ -223,7 +215,7 @@ func ProxyList(t string) []byte {
 	if len(config.CDN.Node) == 0 {
 		return nil
 	}
-	list := make([]listItem, 0)
+	list := make([]ListItem, 0)
 
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	resp, err := client.Get(config.CDN.Node + "/kurjun/rest/" + t + "/list")

@@ -78,7 +78,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 			}
 
 			// Adding search index for files
-			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(value))
+			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(strings.ToLower(value)))
 			b.Put(now, []byte(key))
 		}
 
@@ -116,11 +116,12 @@ func Write(owner, key, value string, options ...map[string]string) {
 	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
-func Delete(owner, repo, key string) (copies int) {
+func Delete(owner, repo, key string) (total int) {
 	db.Update(func(tx *bolt.Tx) error {
 		var filename []byte
 
-		copies = CheckRepo(owner, "", key) - 1
+		owned := CheckRepo(owner, "", key)
+		total = CheckRepo("", "", key)
 
 		// Deleting user association with file
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
@@ -130,27 +131,26 @@ func Delete(owner, repo, key string) (copies int) {
 				}
 			}
 
-			if c := b.Bucket([]byte("scope")); copies == 0 && c != nil {
+			if c := b.Bucket([]byte("scope")); owned == 1 && c != nil {
 				c.Delete([]byte(owner))
 			}
-			if b := b.Bucket([]byte("owner")); copies == 0 && b != nil {
+			if b := b.Bucket([]byte("owner")); owned == 1 && b != nil {
 				b.Delete([]byte(owner))
 			}
 		}
 
 		// Deleting file association with user
-		if b := tx.Bucket(users).Bucket([]byte(owner)); copies == 0 && b != nil {
+		if b := tx.Bucket(users).Bucket([]byte(owner)); owned == 1 && b != nil {
 			if b := b.Bucket([]byte("files")); b != nil {
 				filename = b.Get([]byte(key))
 				b.Delete([]byte(key))
 			}
 		}
 
-		copies = CheckRepo("", "", key) - 1
 		// Removing indexes and file only if no file owners left
-		if copies == 0 {
+		if total == 1 {
 			// Deleting search index
-			if b := tx.Bucket(search).Bucket(filename); b != nil {
+			if b := tx.Bucket(search).Bucket(bytes.ToLower(filename)); b != nil {
 				b.ForEach(func(k, v []byte) error {
 					if string(v) == key {
 						b.Delete(k)
@@ -164,8 +164,7 @@ func Delete(owner, repo, key string) (copies int) {
 		}
 		return nil
 	})
-
-	return copies
+	return total - 1
 }
 
 func Read(key string) (val string) {
@@ -219,6 +218,7 @@ func Search(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
 		c := b.Cursor()
+		query = strings.ToLower(query)
 		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
 			//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
 			b.Bucket(k).ForEach(func(kk, vv []byte) error {
@@ -240,11 +240,14 @@ func Search(query string) (list []string) {
 func LatestTmpl(name, version string) (info map[string]string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(search).Cursor(); b != nil {
+			name = strings.ToLower(name)
 			for k, _ := b.Seek([]byte(name + "-subutai-template")); bytes.HasPrefix(k, []byte(name+"-subutai-template")); k, _ = b.Next() {
 				if c := tx.Bucket(search).Bucket(k).Cursor(); c != nil {
 					_, m := c.Last()
-					if tmp := Info(string(m)); CheckRepo("", "template", string(m)) > 0 && (len(version) != 0 && strings.HasSuffix(tmp["version"], version) || len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
-						info = tmp
+					if tmp := Info(string(m)); CheckRepo("", "template", string(m)) > 0 && info["date"] < tmp["date"] {
+						if (len(version) != 0 && strings.HasSuffix(tmp["version"], version)) || (len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
+							info = tmp
+						}
 					}
 				}
 			}
@@ -256,7 +259,7 @@ func LatestTmpl(name, version string) (info map[string]string) {
 
 func LastHash(name, t string) (hash string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(search).Bucket([]byte(name)); b != nil {
+		if b := tx.Bucket(search).Bucket([]byte(strings.ToLower(name))); b != nil {
 			c := b.Cursor()
 			for k, v := c.Last(); k != nil; k, v = c.Prev() {
 				if CheckRepo("", t, string(v)) > 0 {
@@ -511,7 +514,6 @@ func countTotal(user string) (total int) {
 					return nil
 				})
 			}
-			// b.Put([]byte("stored"), []byte(strconv.Itoa(total)))
 		}
 		return nil
 	})
@@ -554,8 +556,6 @@ func QuotaUsageSet(user string, value int) {
 				stored, _ = strconv.Atoi(string(s))
 			} else {
 				stored = countTotal(user)
-				// b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
-				//
 			}
 			b.Put([]byte("stored"), []byte(strconv.Itoa(stored+value)))
 		}
@@ -563,16 +563,7 @@ func QuotaUsageSet(user string, value int) {
 	})
 }
 
-// QuotaAdjust sets changes default storage quota for user
-func QuotaAdjust(user string, value int) {
-	db.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
-			b.Put([]byte("quota"), []byte(strconv.Itoa(value)))
-		}
-		return nil
-	})
-}
-
+// QuotaGet returns value of user's disk quota
 func QuotaGet(user string) (quota int) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
@@ -587,6 +578,7 @@ func QuotaGet(user string) (quota int) {
 	return
 }
 
+// QuotaSet sets changes default storage quota for user
 func QuotaSet(user, quota string) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
@@ -596,6 +588,27 @@ func QuotaSet(user, quota string) {
 	})
 }
 
+// QuotaUsageCorrect updates saved values of quota usage according to file index table
+func QuotaUsageCorrect() {
+	db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if c := b.Bucket(k); c != nil {
+					r_val := countTotal(string(k))
+					if s_val := c.Get([]byte("stored")); s_val == nil && r_val != 0 || s_val != nil && string(s_val) != strconv.Itoa(r_val) {
+						log.Info("Correcting quota usage for user " + string(k))
+						log.Info("Stored value: " + string(s_val) + ", real value: " + strconv.Itoa(r_val))
+						c.Put([]byte("stored"), []byte(strconv.Itoa(r_val)))
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+}
+
+// QuotaUsageGet returns value of used disk quota
 func QuotaUsageGet(user string) (stored int) {
 	db.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(user)); b != nil {
@@ -647,14 +660,18 @@ func CheckRepo(owner, repo, hash string) (val int) {
 				for _, v := range reps {
 					if d := c.Bucket([]byte(v)); d != nil {
 						if k, _ := d.Cursor().First(); len(owner) == 0 && k != nil {
-							val++
+							val += d.Stats().KeyN
 						} else if d.Get([]byte(owner)) != nil {
 							val++
 						}
 					}
 				}
 			} else if len(repo) == 0 || len(repo) != 0 && repo == string(b.Get([]byte("type"))) {
-				val = b.Bucket([]byte("owner")).Stats().KeyN
+				if len(owner) == 0 {
+					val = b.Bucket([]byte("owner")).Stats().KeyN
+				} else if len(owner) != 0 && b.Bucket([]byte("owner")).Get([]byte(owner)) != nil {
+					val++
+				}
 			}
 		}
 		return nil
