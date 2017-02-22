@@ -152,7 +152,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method"))
 		return
 	}
-	if info := download.Info("template", r); len(info) != 0 {
+	if info := download.Info("template", r); len(info) > 2 {
 		w.Write(info)
 	} else {
 		if output := download.ProxyInfo(r.URL.RequestURI()); len(output) > 0 {
