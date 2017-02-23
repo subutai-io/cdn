@@ -217,21 +217,24 @@ func Close() {
 func Search(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
-		c := b.Cursor()
 		query = strings.ToLower(query)
-		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
-			//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
-			b.Bucket(k).ForEach(func(kk, vv []byte) error {
-				for _, l := range list {
-					if l == string(vv) {
-						return nil
+		b.ForEach(func(k, v []byte) error {
+			if bytes.Contains(k, []byte(query)) {
+				// for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
+				//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
+				b.Bucket(k).ForEach(func(kk, vv []byte) error {
+					for _, l := range list {
+						if l == string(vv) {
+							return nil
+						}
 					}
-				}
-				list = append(list, string(vv))
-				return nil
-			})
-			// _, kk := b.Bucket(k).Cursor().First()
-		}
+					list = append(list, string(vv))
+					return nil
+				})
+				// _, kk := b.Bucket(k).Cursor().First()
+			}
+			return nil
+		})
 		return nil
 	})
 	return
