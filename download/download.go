@@ -20,7 +20,7 @@ import (
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
 type ListItem struct {
 	ID           string            `json:"id"`
-	Size         string            `json:"size,omitempty"`
+	Size         int               `json:"size,omitempty"`
 	Name         string            `json:"name,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`
 	Parent       string            `json:"parent,omitempty"`
@@ -272,10 +272,10 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 	if len(info["prefsize"]) == 0 && repo == "template" {
 		info["prefsize"] = "tiny"
 	}
+
 	item := ListItem{
 		ID:           info["id"],
 		Name:         strings.Split(info["name"], "-subutai-template")[0],
-		Size:         info["size"],
 		Owner:        db.FileOwner(info["id"]),
 		Version:      info["version"],
 		Filename:     info["name"],
@@ -285,6 +285,7 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 		Signature:    db.FileSignatures(info["id"], name),
 		Description:  info["Description"],
 	}
+	item.Size, _ = strconv.Atoi(info["size"])
 
 	if repo == "apt" {
 		item.Architecture = info["Architecture"]
