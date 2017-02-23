@@ -17,6 +17,7 @@ import (
 	"github.com/subutai-io/gorjun/db"
 )
 
+// ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
 type ListItem struct {
 	ID           string            `json:"id"`
 	Size         string            `json:"size,omitempty"`
@@ -31,6 +32,7 @@ type ListItem struct {
 	Architecture string            `json:"architecture,omitempty"`
 }
 
+// Handler provides download functionality for all artifacts.
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
 	name := r.URL.Query().Get("name")
@@ -117,6 +119,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, f)
 }
 
+// Info returns JSON formatted list of elements. It allows to apply some filters to Search.
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
 	var info map[string]string
@@ -200,10 +203,10 @@ func ProxyList(t string) []byte {
 
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	resp, err := client.Get(config.CDN.Node + "/kurjun/rest/" + t + "/list")
-	defer resp.Body.Close()
 	if log.Check(log.WarnLevel, "Getting list from CDN", err) {
 		return nil
 	}
+	defer resp.Body.Close()
 
 	rsp, err := ioutil.ReadAll(resp.Body)
 	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
@@ -229,10 +232,10 @@ func ProxyInfo(uri string) []byte {
 	}
 	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	resp, err := client.Get(config.CDN.Node + uri)
-	defer resp.Body.Close()
 	if log.Check(log.WarnLevel, "Getting list of templates from CDN", err) {
 		return nil
 	}
+	defer resp.Body.Close()
 
 	rsp, err := ioutil.ReadAll(resp.Body)
 	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
