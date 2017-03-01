@@ -158,7 +158,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if len(items) < p[0] {
+		if p[0]--; p[0] >= 0 {
 			continue
 		}
 
@@ -181,7 +181,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if len(items) == p[0]+p[1] {
+		if len(items) >= p[1] {
 			break
 		}
 		items = append(items, item)
