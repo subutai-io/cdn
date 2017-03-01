@@ -158,7 +158,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if p[0]--; p[0] >= 0 {
+		if p[0]--; p[0] > 0 {
 			continue
 		}
 
@@ -288,8 +288,8 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 	item.Size, _ = strconv.Atoi(info["size"])
 
 	if repo == "apt" {
-		item.Architecture = info["Architecture"]
 		item.Version = info["Version"]
+		item.Architecture = info["Architecture"]
 	}
 
 	return item
