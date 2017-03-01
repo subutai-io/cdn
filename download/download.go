@@ -289,6 +289,7 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 
 	if repo == "apt" {
 		item.Architecture = info["Architecture"]
+		item.Version = info["Version"]
 	}
 
 	return item
