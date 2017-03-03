@@ -155,10 +155,6 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	if info := download.Info("template", r); len(info) > 2 {
 		w.Write(info)
 	} else {
-		if output := download.ProxyInfo(r.URL.RequestURI()); len(output) > 0 {
-			w.Write(output)
-			return
-		}
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	}

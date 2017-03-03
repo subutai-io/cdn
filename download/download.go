@@ -193,57 +193,6 @@ func Info(repo string, r *http.Request) []byte {
 	return output
 }
 
-// ProxyList retrieves list of artifacts from main CDN nodes if no data found in local database
-// It creates simple JSON list of artifacts to provide it to Subutai Social.
-func ProxyList(t string) []byte {
-	if len(config.CDN.Node) == 0 {
-		return nil
-	}
-	list := make([]ListItem, 0)
-
-	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	resp, err := client.Get(config.CDN.Node + "/kurjun/rest/" + t + "/list")
-	if log.Check(log.WarnLevel, "Getting list from CDN", err) {
-		return nil
-	}
-	defer resp.Body.Close()
-
-	rsp, err := ioutil.ReadAll(resp.Body)
-	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
-		return nil
-	}
-
-	if log.Check(log.WarnLevel, "Decrypting request", json.Unmarshal([]byte(rsp), &list)) {
-		return nil
-	}
-
-	output, err := json.Marshal(list)
-	if log.Check(log.WarnLevel, "Marshaling list", err) {
-		return nil
-	}
-	return output
-}
-
-// ProxyInfo retrieves information from main CDN nodes if no data found in local database
-// It creates simple info JSON to provide it to Subutai Social.
-func ProxyInfo(uri string) []byte {
-	if len(config.CDN.Node) == 0 {
-		return nil
-	}
-	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	resp, err := client.Get(config.CDN.Node + uri)
-	if log.Check(log.WarnLevel, "Getting list of templates from CDN", err) {
-		return nil
-	}
-	defer resp.Body.Close()
-
-	rsp, err := ioutil.ReadAll(resp.Body)
-	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
-		return nil
-	}
-	return rsp
-}
-
 func in(str string, list []string) bool {
 	for _, s := range list {
 		if s == str {
