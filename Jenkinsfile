@@ -59,7 +59,7 @@ try {
 			set -e
 
 			/bin/mv /tmp/gorjun /mnt/lib/lxc/gorjun/opt/gorjun/bin/gorjun
-			/apps/bin/lxc-attach -n gorjun -- systemctrl restart gorjun
+			/apps/bin/lxc-attach -n gorjun -- systemctl restart gorjun
 		EOF"""	
 	}
 
