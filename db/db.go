@@ -28,6 +28,7 @@ var (
 
 func initdb() *bolt.DB {
 	os.MkdirAll(filepath.Dir(config.DB.Path), 0755)
+	os.MkdirAll(config.Storage.Path, 0755)
 	db, err := bolt.Open(config.DB.Path, 0600, nil)
 	log.Check(log.FatalLevel, "Openning DB: "+config.DB.Path, err)
 
