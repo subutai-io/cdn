@@ -12,6 +12,8 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
 
+	"path/filepath"
+
 	"github.com/subutai-io/gorjun/config"
 )
 
@@ -25,6 +27,7 @@ var (
 )
 
 func initdb() *bolt.DB {
+	os.MkdirAll(filepath.Dir(config.DB.Path), 0755)
 	db, err := bolt.Open(config.DB.Path, 0600, nil)
 	log.Check(log.FatalLevel, "Openning DB: "+config.DB.Path, err)
 

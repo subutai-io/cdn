@@ -83,11 +83,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		configfile, err := readTempl(hash)
-		if err != nil {
-			log.Warn("Unable to read template config, err: " + err.Error())
+		if err != nil || len(configfile) == 0 {
+			log.Warn("Unable to read template config")
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
-			if db.Delete(owner, "template", hash) == 0 {
+			if db.Delete(owner, "template", hash) < 1 {
+				f, _ := os.Stat(config.Storage.Path + hash)
+				db.QuotaUsageSet(owner, -int(f.Size()))
 				os.Remove(config.Storage.Path + hash)
 			}
 			return
