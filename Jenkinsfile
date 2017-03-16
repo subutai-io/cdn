@@ -44,23 +44,23 @@ try {
 		stage("Deploy Gorjun")
 		notifyBuildDetails = "\nFailed on Stage - Deploy Gorjun"
 
-		// switch (env.BRANCH_NAME) {
-		// 	case ~/master/: cdnHost = "stagecdn.subut.ai"; break;
-		// 	default: cdnHost = "devcdn.subut.ai"
-		// }
+		switch (env.BRANCH_NAME) {
+			case ~/master/: cdnHost = "stagecdn.subut.ai"; break;
+			default: cdnHost = "devcdn.subut.ai"
+		}
 
 		// test node
-		cdnHost = "54.194.92.172"
+		// cdnHost = "54.194.92.172"
 
 		sh """
 			set +x
-			scp gorjun root@${cdnHost}:/tmp
-			ssh root@${cdnHost} <<- EOF
+			scp -P 8022 gorjun root@${cdnHost}:/tmp
+			ssh root@${cdnHost} -p8022 <<- EOF
 			set -e
 
 			/bin/mv /tmp/gorjun /mnt/lib/lxc/gorjun/opt/gorjun/bin/gorjun
 			/apps/bin/lxc-attach -n gorjun -- systemctl restart gorjun
-		EOF"""	
+		EOF"""
 	}
 
 } catch (e) { 
@@ -97,7 +97,7 @@ def notifyBuild(String buildStatus = 'STARTED', String details = '') {
   // Get token
   def slackToken = getSlackToken('sysnet-bots-slack-token')
   // Send notifications
-  // slackSend (color: colorCode, message: summary, teamDomain: 'subutai-io', token: "${slackToken}")
+  slackSend (color: colorCode, message: summary, teamDomain: 'subutai-io', token: "${slackToken}")
 }
 
 // get slack token from global jenkins credentials store
