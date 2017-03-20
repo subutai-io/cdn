@@ -5,15 +5,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
-
-	"path/filepath"
-
 	"github.com/subutai-io/gorjun/config"
 )
 
@@ -29,9 +27,8 @@ var (
 func initdb() *bolt.DB {
 	os.MkdirAll(filepath.Dir(config.DB.Path), 0755)
 	os.MkdirAll(config.Storage.Path, 0755)
-	db, err := bolt.Open(config.DB.Path, 0600, nil)
+	db, err := bolt.Open(config.DB.Path, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	log.Check(log.FatalLevel, "Openning DB: "+config.DB.Path, err)
-
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, b := range [][]byte{bucket, search, users, tokens, authid} {
 			_, err := tx.CreateBucketIfNotExists(b)
