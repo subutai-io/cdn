@@ -5,13 +5,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
-
 	"github.com/subutai-io/gorjun/config"
 )
 
@@ -25,9 +25,10 @@ var (
 )
 
 func initdb() *bolt.DB {
-	db, err := bolt.Open(config.DB.Path, 0600, nil)
+	os.MkdirAll(filepath.Dir(config.DB.Path), 0755)
+	os.MkdirAll(config.Storage.Path, 0755)
+	db, err := bolt.Open(config.DB.Path, 0600, &bolt.Options{Timeout: 3 * time.Second})
 	log.Check(log.FatalLevel, "Openning DB: "+config.DB.Path, err)
-
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, b := range [][]byte{bucket, search, users, tokens, authid} {
 			_, err := tx.CreateBucketIfNotExists(b)
@@ -217,21 +218,24 @@ func Close() {
 func Search(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
-		c := b.Cursor()
 		query = strings.ToLower(query)
-		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
-			//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
-			b.Bucket(k).ForEach(func(kk, vv []byte) error {
-				for _, l := range list {
-					if l == string(vv) {
-						return nil
+		b.ForEach(func(k, v []byte) error {
+			if bytes.Contains(k, []byte(query)) {
+				// for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
+				//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
+				b.Bucket(k).ForEach(func(kk, vv []byte) error {
+					for _, l := range list {
+						if l == string(vv) {
+							return nil
+						}
 					}
-				}
-				list = append(list, string(vv))
-				return nil
-			})
-			// _, kk := b.Bucket(k).Cursor().First()
-		}
+					list = append(list, string(vv))
+					return nil
+				})
+				// _, kk := b.Bucket(k).Cursor().First()
+			}
+			return nil
+		})
 		return nil
 	})
 	return

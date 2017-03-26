@@ -83,11 +83,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		configfile, err := readTempl(hash)
-		if err != nil {
-			log.Warn("Unable to read template config, err: " + err.Error())
+		if err != nil || len(configfile) == 0 {
+			log.Warn("Unable to read template config")
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
-			if db.Delete(owner, "template", hash) == 0 {
+			if db.Delete(owner, "template", hash) < 1 {
+				f, _ := os.Stat(config.Storage.Path + hash)
+				db.QuotaUsageSet(owner, -int(f.Size()))
 				os.Remove(config.Storage.Path + hash)
 			}
 			return
@@ -152,13 +154,9 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method"))
 		return
 	}
-	if info := download.Info("template", r); len(info) != 0 {
+	if info := download.Info("template", r); len(info) > 2 {
 		w.Write(info)
 	} else {
-		if output := download.ProxyInfo(r.URL.RequestURI()); len(output) > 0 {
-			w.Write(output)
-			return
-		}
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	}

@@ -221,9 +221,5 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write(info)
 		return
 	}
-	if js := download.ProxyList("apt"); js != nil {
-		w.Write(js)
-		return
-	}
 	w.Write([]byte("Not found"))
 }
