@@ -125,7 +125,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 	user := db.CheckToken(token)
-	if len(token) == 0 || len(user) > 0 {
+	if len(token) == 0 || len(user) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Empty token"))
 		log.Warn(r.RemoteAddr + " - empty token")
