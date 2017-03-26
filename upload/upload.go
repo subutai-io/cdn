@@ -124,13 +124,13 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		log.Warn(r.RemoteAddr + " - empty file id")
 		return ""
 	}
-	if len(token) == 0 {
+	user := db.CheckToken(token)
+	if len(token) == 0 || len(user) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Empty token"))
-		log.Warn(r.RemoteAddr + " - empty token")
+		w.Write([]byte("Failed to authorize using provided token"))
+		log.Warn(r.RemoteAddr + " - Failed to authorize using provided token")
 		return ""
 	}
-	user := db.CheckToken(token)
 	info := db.Info(hash)
 	if len(info) == 0 {
 		log.Warn("File not found by hash")
