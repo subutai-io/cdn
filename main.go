@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 
 	"github.com/subutai-io/gorjun/apt"
 	"github.com/subutai-io/gorjun/auth"
@@ -16,6 +18,15 @@ func main() {
 	defer db.Close()
 	// defer torrent.Close()
 	// go torrent.SeedLocal()
+
+	if len(config.CDN.Node) > 0 {
+		proxy := httputil.NewSingleHostReverseProxy(&url.URL{
+			Scheme: "https",
+			Host:   config.CDN.Node,
+		})
+		http.ListenAndServe(":"+config.Network.Port, proxy)
+		return
+	}
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
 	http.HandleFunc("/kurjun/rest/file/info", raw.Info)
 	http.HandleFunc("/kurjun/rest/raw/get", raw.Download)
