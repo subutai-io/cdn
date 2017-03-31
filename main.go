@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/subutai-io/gorjun/apt"
 	"github.com/subutai-io/gorjun/auth"
@@ -13,6 +14,8 @@ import (
 	"github.com/subutai-io/gorjun/template"
 	"github.com/subutai-io/gorjun/upload"
 )
+
+var version = "unknown"
 
 func main() {
 	defer db.Close()
@@ -62,6 +65,15 @@ func main() {
 
 	http.HandleFunc("/kurjun/rest/share", upload.Share)
 	http.HandleFunc("/kurjun/rest/quota", upload.Quota)
+	http.HandleFunc("/kurjun/rest/about", about)
 
 	http.ListenAndServe(":"+config.Network.Port, nil)
+}
+
+func about(w http.ResponseWriter, r *http.Request) {
+	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
+		w.Write([]byte(version))
+	} else {
+		w.WriteHeader(http.StatusUnauthorized)
+	}
 }
