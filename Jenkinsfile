@@ -2,6 +2,7 @@
 
 notifyBuildDetails = ""
 cdnHost = ""
+version = ""
 
 try {
 	notifyBuild('STARTED')
@@ -31,35 +32,36 @@ try {
 		"""
 
 		stage("Build gorjun")
-		/* Build subutai binary */
+		/* Build gorjun binary */
 		notifyBuildDetails = "\nFailed on Stage - Build gorjun"
 
-		sh """
+		version = sh (script: """
 			export GOPATH=${workspace}/${goenvDir}
 			export GOBIN=${workspace}/${goenvDir}/bin
+			export GIT_BRANCH=${env.BRANCH_NAME}
 			go get
-			make
-		"""
+			make | cut -d ' ' -f 7 | cut -d '=' -f 2 | tr -d \"
+			""", returnStdout: true)
 
 		stage("Deploy Gorjun")
+		/* Build binary 
+		** upload it to appropriate cdn server 
+		*/
 		notifyBuildDetails = "\nFailed on Stage - Deploy Gorjun"
 
-		switch (env.BRANCH_NAME) {
+		switch (env.BRANCH_NAME) ∏{
 			case ~/master/: cdnHost = "stagecdn.subut.ai"; break;
 			default: cdnHost = "devcdn.subut.ai"
 		}
-
-		// test node
-		// cdnHost = "54.194.92.172"
 
 		sh """
 			set +x
 			scp -P 8022 gorjun root@${cdnHost}:/tmp
 			ssh root@${cdnHost} -p8022 <<- EOF
 			set -e
-
 			/bin/mv /tmp/gorjun /mnt/lib/lxc/gorjun/opt/gorjun/bin/gorjun
 			/apps/bin/lxc-attach -n gorjun -- systemctl restart gorjun
+			[ "${version}" == "\$(/apps/bin/lxc-attach -n gorjun -- curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
 		EOF"""
 	}
 
