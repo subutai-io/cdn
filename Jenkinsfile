@@ -41,7 +41,7 @@ try {
 			export GIT_BRANCH=${env.BRANCH_NAME}
 			go get
 			make | cut -d ' ' -f 7 | cut -d '=' -f 2 | tr -d '\"'
-			""", returnStdout: true)
+			""", returnStdout: true).trim()
 
 		stage("Deploy Gorjun")
 		/* Build binary 
