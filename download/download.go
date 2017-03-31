@@ -22,6 +22,7 @@ type ListItem struct {
 	ID           string            `json:"id"`
 	Size         int               `json:"size,omitempty"`
 	Name         string            `json:"name,omitempty"`
+	Tags         []string          `json:"tags,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`
 	Parent       string            `json:"parent,omitempty"`
 	Version      string            `json:"version,omitempty"`
@@ -206,7 +207,7 @@ func getVerified(list []string, name, repo string) ListItem {
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", repo, k) > 0 {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
-				for _, owner := range db.FileOwner(info["id"]) {
+				for _, owner := range db.FileField(info["id"], "owner") {
 					if in(owner, []string{"subutai", "jenkins", "docker"}) {
 						return formatItem(info, repo, name)
 					}
@@ -225,7 +226,8 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 	item := ListItem{
 		ID:           info["id"],
 		Name:         strings.Split(info["name"], "-subutai-template")[0],
-		Owner:        db.FileOwner(info["id"]),
+		Tags:         db.FileField(info["id"], "tags"),
+		Owner:        db.FileField(info["id"], "owner"),
 		Version:      info["version"],
 		Filename:     info["name"],
 		Parent:       info["parent"],
