@@ -60,6 +60,8 @@ try {
 			set -e
 			/bin/mv /tmp/gorjun /mnt/lib/lxc/gorjun/opt/gorjun/bin/gorjun
 			/apps/bin/lxc-attach -n gorjun -- systemctl restart gorjun
+			echo ${version}
+			/apps/bin/lxc-attach -n gorjun -- curl -s -q http://127.0.0.1:8080/kurjun/rest/about
 			[ "${version}" == "\$\$(/apps/bin/lxc-attach -n gorjun -- curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
 		EOF"""
 	}
