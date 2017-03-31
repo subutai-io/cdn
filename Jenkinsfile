@@ -55,7 +55,6 @@ try {
 		}
 
 		sh """
-			set +x
 			scp -P 8022 gorjun root@${cdnHost}:/tmp
 			ssh root@${cdnHost} -p8022 <<- EOF
 			set -e
