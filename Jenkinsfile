@@ -55,15 +55,18 @@ try {
 		}
 
 		sh """
+			set +x
 			scp -P 8022 gorjun root@${cdnHost}:/tmp
 			ssh root@${cdnHost} -p8022 <<- EOF
 			set -e
 			/bin/mv /tmp/gorjun /mnt/lib/lxc/gorjun/opt/gorjun/bin/gorjun
 			/apps/bin/lxc-attach -n gorjun -- systemctl restart gorjun
-			echo ${version}
-			/apps/bin/lxc-attach -n gorjun -- curl -s -q http://127.0.0.1:8080/kurjun/rest/about
-			[ "${version}" == "\$\$(/apps/bin/lxc-attach -n gorjun -- curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
 		EOF"""
+
+		// check remote gorjun version
+		sh """
+			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 /apps/bin/lxc-attach -n gorjun -- curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
+		"""
 	}
 
 } catch (e) { 
