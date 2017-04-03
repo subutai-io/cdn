@@ -17,15 +17,6 @@ import (
 	"github.com/subutai-io/gorjun/upload"
 )
 
-type Template struct {
-	hash     string
-	arch     string
-	name     string
-	parent   string
-	version  string
-	sizetype string
-}
-
 func readTempl(hash string) (configfile string, err error) {
 	var file bytes.Buffer
 	f, err := os.Open(config.Storage.Path + hash)
@@ -51,8 +42,8 @@ func readTempl(hash string) (configfile string, err error) {
 	return configfile, nil
 }
 
-func getConf(hash string, configfile string) (t *Template) {
-	t = &Template{hash: hash}
+func getConf(hash string, configfile string) (t *download.ListItem) {
+	t = &download.ListItem{ID: hash}
 
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
@@ -61,15 +52,17 @@ func getConf(hash string, configfile string) (t *Template) {
 
 			switch line[0] {
 			case "lxc.arch":
-				t.arch = line[1]
+				t.Architecture = line[1]
 			case "lxc.utsname":
-				t.name = line[1]
+				t.Name = line[1]
 			case "subutai.parent":
-				t.parent = line[1]
+				t.Parent = line[1]
 			case "subutai.template.version":
-				t.version = line[1]
+				t.Version = line[1]
 			case "subutai.template.size":
-				t.sizetype = line[1]
+				t.Prefsize = line[1]
+			case "subutai.tags":
+				t.Tags = []string{line[1]}
 			}
 		}
 	}
@@ -83,25 +76,28 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		configfile, err := readTempl(hash)
-		if err != nil {
-			log.Warn("Unable to read template config, err: " + err.Error())
+		if err != nil || len(configfile) == 0 {
+			log.Warn("Unable to read template config")
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
-			if db.Delete(owner, "template", hash) == 0 {
+			if db.Delete(owner, "template", hash) < 1 {
+				f, _ := os.Stat(config.Storage.Path + hash)
+				db.QuotaUsageSet(owner, -int(f.Size()))
 				os.Remove(config.Storage.Path + hash)
 			}
 			return
 		}
 		t := getConf(hash, configfile)
-		db.Write(owner, t.hash, t.name+"-subutai-template_"+t.version+"_"+t.arch+".tar.gz", map[string]string{
+		db.Write(owner, t.ID, t.Name+"-subutai-template_"+t.Version+"_"+t.Architecture+".tar.gz", map[string]string{
 			"type":     "template",
-			"arch":     t.arch,
-			"parent":   t.parent,
-			"version":  t.version,
-			"prefsize": t.sizetype,
+			"arch":     t.Architecture,
+			"tags":     strings.Join(t.Tags, ","),
+			"parent":   t.Parent,
+			"version":  t.Version,
+			"prefsize": t.Prefsize,
 		})
-		w.Write([]byte(t.hash))
-		log.Info(t.name + " saved to template repo by " + owner)
+		w.Write([]byte(t.ID))
+		log.Info(t.Name + " saved to template repo by " + owner)
 		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
 			log.Info("Sharing " + hash + " with " + owner)
 			db.ShareWith(hash, owner, owner)
@@ -152,13 +148,9 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method"))
 		return
 	}
-	if info := download.Info("template", r); len(info) != 0 {
+	if info := download.Info("template", r); len(info) > 2 {
 		w.Write(info)
 	} else {
-		if output := download.ProxyInfo(r.URL.RequestURI()); len(output) > 0 {
-			w.Write(output)
-			return
-		}
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	}

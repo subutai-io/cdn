@@ -5,13 +5,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
-
 	"github.com/subutai-io/gorjun/config"
 )
 
@@ -20,16 +20,18 @@ var (
 	search = []byte("SearchIndex")
 	users  = []byte("Users")
 	tokens = []byte("Tokens")
-	authid = []byte("AuthID")
-	db     = initdb()
+	authID = []byte("AuthID")
+	tags   = []byte("Tags")
+	db     = initDB()
 )
 
-func initdb() *bolt.DB {
-	db, err := bolt.Open(config.DB.Path, 0600, nil)
-	log.Check(log.FatalLevel, "Openning DB: "+config.DB.Path, err)
-
+func initDB() *bolt.DB {
+	os.MkdirAll(filepath.Dir(config.DB.Path), 0755)
+	os.MkdirAll(config.Storage.Path, 0755)
+	db, err := bolt.Open(config.DB.Path, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	log.Check(log.FatalLevel, "Opening DB: "+config.DB.Path, err)
 	err = db.Update(func(tx *bolt.Tx) error {
-		for _, b := range [][]byte{bucket, search, users, tokens, authid} {
+		for _, b := range [][]byte{bucket, search, users, tokens, authID, tags} {
 			_, err := tx.CreateBucketIfNotExists(b)
 			log.Check(log.FatalLevel, "Creating bucket: "+string(b), err)
 		}
@@ -40,6 +42,7 @@ func initdb() *bolt.DB {
 	return db
 }
 
+// Write create record about file in DB
 func Write(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
 		owner = "subutai"
@@ -68,15 +71,6 @@ func Write(owner, key, value string, options ...map[string]string) {
 				b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
 			}
 
-			// Writing optional parameters for file
-			for i := range options {
-				for k, v := range options[i] {
-					if k != "type" {
-						b.Put([]byte(k), []byte(v))
-					}
-				}
-			}
-
 			// Adding search index for files
 			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(strings.ToLower(value)))
 			b.Put(now, []byte(key))
@@ -90,6 +84,15 @@ func Write(owner, key, value string, options ...map[string]string) {
 						if c, err := b.CreateBucketIfNotExists([]byte("type")); err == nil {
 							if c, err := c.CreateBucketIfNotExists([]byte(v)); err == nil {
 								c.Put([]byte(owner), []byte("w"))
+							}
+						}
+					} else if k == "tags" {
+						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
+							for _, v := range strings.Split(v, ",") {
+								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
+								t, _ := tx.Bucket(tags).CreateBucketIfNotExists(tag)
+								c.Put(tag, []byte("w"))
+								t.Put(tag, []byte("w"))
 							}
 						}
 					} else if b.Get([]byte(k)) == nil {
@@ -116,6 +119,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
+// Delete removes record about file from DB
 func Delete(owner, repo, key string) (total int) {
 	db.Update(func(tx *bolt.Tx) error {
 		var filename []byte
@@ -167,31 +171,17 @@ func Delete(owner, repo, key string) (total int) {
 	return total - 1
 }
 
-func Read(key string) (val string) {
+// Read returns name by ID
+func Read(key string) (name string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
 			if value := b.Get([]byte("name")); value != nil {
-				val = string(value)
+				name = string(value)
 			}
 		}
 		return nil
 	})
-	return val
-}
-
-func List() map[string]string {
-	list := make(map[string]string)
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bucket)
-		b.ForEach(func(k, v []byte) error {
-			if value := b.Bucket(k).Get([]byte("name")); value != nil {
-				list[string(k)] = string(value)
-			}
-			return nil
-		})
-		return nil
-	})
-	return list
+	return name
 }
 
 func Info(hash string) map[string]string {
@@ -217,21 +207,24 @@ func Close() {
 func Search(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
-		c := b.Cursor()
 		query = strings.ToLower(query)
-		for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
-			//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
-			b.Bucket(k).ForEach(func(kk, vv []byte) error {
-				for _, l := range list {
-					if l == string(vv) {
-						return nil
+		b.ForEach(func(k, v []byte) error {
+			if bytes.Contains(k, []byte(query)) {
+				// for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
+				//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
+				b.Bucket(k).ForEach(func(kk, vv []byte) error {
+					for _, l := range list {
+						if l == string(vv) {
+							return nil
+						}
 					}
-				}
-				list = append(list, string(vv))
-				return nil
-			})
-			// _, kk := b.Bucket(k).Cursor().First()
-		}
+					list = append(list, string(vv))
+					return nil
+				})
+				// _, kk := b.Bucket(k).Cursor().First()
+			}
+			return nil
+		})
 		return nil
 	})
 	return
@@ -327,14 +320,14 @@ func CheckToken(token string) (name string) {
 
 func SaveAuthID(name, token string) {
 	db.Update(func(tx *bolt.Tx) error {
-		tx.Bucket(authid).Put([]byte(token), []byte(name))
+		tx.Bucket(authID).Put([]byte(token), []byte(name))
 		return nil
 	})
 }
 
 func CheckAuthID(token string) (name string) {
 	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(authid)
+		b := tx.Bucket(authID)
 		if value := b.Get([]byte(token)); value != nil {
 			name = string(value)
 			b.Delete([]byte(token))
@@ -344,16 +337,18 @@ func CheckAuthID(token string) (name string) {
 	return name
 }
 
-// FileOwner provides list of file owners
-func FileOwner(hash string) (list []string) {
+// FileField provides list of file properties
+func FileField(hash, field string) (list []string) {
 	list = []string{}
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
-			if b := b.Bucket([]byte("owner")); b != nil {
-				b.ForEach(func(k, v []byte) error {
+			if f := b.Bucket([]byte(field)); f != nil {
+				f.ForEach(func(k, v []byte) error {
 					list = append(list, string(k))
 					return nil
 				})
+			} else if b.Get([]byte(field)) != nil {
+				list = append(list, string(b.Get([]byte(field))))
 			}
 		}
 		return nil
@@ -594,11 +589,11 @@ func QuotaUsageCorrect() {
 		if b := tx.Bucket(users); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				if c := b.Bucket(k); c != nil {
-					r_val := countTotal(string(k))
-					if s_val := c.Get([]byte("stored")); s_val == nil && r_val != 0 || s_val != nil && string(s_val) != strconv.Itoa(r_val) {
+					rVal := countTotal(string(k))
+					if sVal := c.Get([]byte("stored")); sVal == nil && rVal != 0 || sVal != nil && string(sVal) != strconv.Itoa(rVal) {
 						log.Info("Correcting quota usage for user " + string(k))
-						log.Info("Stored value: " + string(s_val) + ", real value: " + strconv.Itoa(r_val))
-						c.Put([]byte("stored"), []byte(strconv.Itoa(r_val)))
+						log.Info("Stored value: " + string(sVal) + ", real value: " + strconv.Itoa(rVal))
+						c.Put([]byte("stored"), []byte(strconv.Itoa(rVal)))
 					}
 				}
 				return nil

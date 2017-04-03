@@ -2,6 +2,9 @@ package main
 
 import (
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
 
 	"github.com/subutai-io/gorjun/apt"
 	"github.com/subutai-io/gorjun/auth"
@@ -12,10 +15,21 @@ import (
 	"github.com/subutai-io/gorjun/upload"
 )
 
+var version = "unknown"
+
 func main() {
 	defer db.Close()
 	// defer torrent.Close()
 	// go torrent.SeedLocal()
+
+	if len(config.CDN.Node) > 0 {
+		proxy := httputil.NewSingleHostReverseProxy(&url.URL{
+			Scheme: "https",
+			Host:   config.CDN.Node,
+		})
+		http.ListenAndServe(":"+config.Network.Port, proxy)
+		return
+	}
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
 	http.HandleFunc("/kurjun/rest/file/info", raw.Info)
 	http.HandleFunc("/kurjun/rest/raw/get", raw.Download)
@@ -51,6 +65,15 @@ func main() {
 
 	http.HandleFunc("/kurjun/rest/share", upload.Share)
 	http.HandleFunc("/kurjun/rest/quota", upload.Quota)
+	http.HandleFunc("/kurjun/rest/about", about)
 
 	http.ListenAndServe(":"+config.Network.Port, nil)
+}
+
+func about(w http.ResponseWriter, r *http.Request) {
+	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
+		w.Write([]byte(version))
+	} else {
+		w.WriteHeader(http.StatusUnauthorized)
+	}
 }

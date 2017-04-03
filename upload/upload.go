@@ -127,8 +127,8 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	user := db.CheckToken(token)
 	if len(token) == 0 || len(user) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Empty token"))
-		log.Warn(r.RemoteAddr + " - empty token")
+		w.Write([]byte("Failed to authorize using provided token"))
+		log.Warn(r.RemoteAddr + " - Failed to authorize using provided token")
 		return ""
 	}
 	info := db.Info(hash)

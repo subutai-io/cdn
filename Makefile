@@ -1,8 +1,15 @@
 APP=gorjun
 CC=go
-VERSION=4.0.6
+VERSION=$(shell git describe --abbrev=0 --tags | awk -F'.' '{print $$1"."$$2"."$$3+1}')
+ifeq (${GIT_BRANCH}, )
+	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD | grep -iv head)
+endif
+ifneq (${GIT_BRANCH}, )
+	VERSION:=${VERSION}-SNAPSHOT
+endif
+COMMIT=$(shell git rev-parse HEAD)
 
-LDFLAGS=-ldflags "-w -s -X main.Version=${VERSION}"
+LDFLAGS=-ldflags "-w -s -X main.version=${VERSION}:${GIT_BRANCH}:${COMMIT}"
 
 all:
 	$(CC) build ${LDFLAGS} -o $(APP)

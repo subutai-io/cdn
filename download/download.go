@@ -3,7 +3,6 @@ package download
 import (
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,40 +17,23 @@ import (
 	"github.com/subutai-io/gorjun/db"
 )
 
-type AptItem struct {
+// ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
+type ListItem struct {
 	ID           string            `json:"id"`
-	Size         string            `json:"size"`
+	Size         int               `json:"size,omitempty"`
 	Name         string            `json:"name,omitempty"`
+	Tags         []string          `json:"tags,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`
+	Parent       string            `json:"parent,omitempty"`
 	Version      string            `json:"version,omitempty"`
 	Filename     string            `json:"filename,omitempty"`
+	Prefsize     string            `json:"prefsize,omitempty"`
 	Signature    map[string]string `json:"signature,omitempty"`
 	Description  string            `json:"description,omitempty"`
 	Architecture string            `json:"architecture,omitempty"`
 }
 
-type RawItem struct {
-	ID        string            `json:"id"`
-	Size      int64             `json:"size"`
-	Name      string            `json:"name,omitempty"`
-	Owner     []string          `json:"owner,omitempty"`
-	Version   string            `json:"version,omitempty"`
-	Signature map[string]string `json:"signature,omitempty"`
-}
-
-type ListItem struct {
-	ID           string            `json:"id"`
-	Size         int64             `json:"size"`
-	Name         string            `json:"name"`
-	Owner        []string          `json:"owner"`
-	Parent       string            `json:"parent"`
-	Version      string            `json:"version"`
-	Filename     string            `json:"filename"`
-	Prefsize     string            `json:"prefsize"`
-	Architecture string            `json:"architecture"`
-	Signature    map[string]string `json:"signature,omitempty"`
-}
-
+// Handler provides download functionality for all artifacts.
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	hash := r.URL.Query().Get("hash")
 	name := r.URL.Query().Get("name")
@@ -138,10 +120,10 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, f)
 }
 
+// Info returns JSON formatted list of elements. It allows to apply some filters to Search.
 func Info(repo string, r *http.Request) []byte {
-	var js []byte
+	var items []ListItem
 	var info map[string]string
-	var counter int
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -156,7 +138,12 @@ func Info(repo string, r *http.Request) []byte {
 	if len(id) > 0 {
 		list = append(list[:0], id)
 	} else if verified == "true" {
-		return getVerified(list, name, repo)
+		items := append(items, getVerified(list, name, repo))
+		output, err := json.Marshal(items)
+		if err != nil || string(output) == "null" {
+			return nil
+		}
+		return output
 	}
 
 	pstr := strings.Split(page, ",")
@@ -172,7 +159,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if counter++; counter < p[0] {
+		if p[0]--; p[0] > 0 {
 			continue
 		}
 
@@ -185,79 +172,26 @@ func Info(repo string, r *http.Request) []byte {
 			info = db.Info(k)
 		}
 
-		item, _ := formatItem(info, repo, name)
+		item := formatItem(info, repo, name)
 
 		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
 			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], repo) {
-				return item
+				items = []ListItem{item}
+				break
 			}
 			continue
 		}
 
-		if counter == p[0]+p[1] {
+		if len(items) >= p[1] {
 			break
-		} else if len(js) > 0 {
-			js = append(js, []byte(",")...)
 		}
-
-		js = append(js, item...)
+		items = append(items, item)
 	}
-	if counter > 1 {
-		js = append([]byte("["), js...)
-		js = append(js, []byte("]")...)
-	}
-	return js
-}
-
-// ProxyList retrieves list of artifacts from main CDN nodes if no data found in local database
-// It creates simple JSON list of artifacts to provide it to Subutai Social.
-func ProxyList(t string) []byte {
-	if len(config.CDN.Node) == 0 {
-		return nil
-	}
-	list := make([]ListItem, 0)
-
-	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	resp, err := client.Get(config.CDN.Node + "/kurjun/rest/" + t + "/list")
-	defer resp.Body.Close()
-	if log.Check(log.WarnLevel, "Getting list from CDN", err) {
-		return nil
-	}
-
-	rsp, err := ioutil.ReadAll(resp.Body)
-	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
-		return nil
-	}
-
-	if log.Check(log.WarnLevel, "Decrypting request", json.Unmarshal([]byte(rsp), &list)) {
-		return nil
-	}
-
-	output, err := json.Marshal(list)
-	if log.Check(log.WarnLevel, "Marshaling list", err) {
+	output, err := json.Marshal(items)
+	if err != nil || string(output) == "null" {
 		return nil
 	}
 	return output
-}
-
-// ProxyInfo retrieves information from main CDN nodes if no data found in local database
-// It creates simple info JSON to provide it to Subutai Social.
-func ProxyInfo(uri string) []byte {
-	if len(config.CDN.Node) == 0 {
-		return nil
-	}
-	client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	resp, err := client.Get(config.CDN.Node + uri)
-	defer resp.Body.Close()
-	if log.Check(log.WarnLevel, "Getting list of templates from CDN", err) {
-		return nil
-	}
-
-	rsp, err := ioutil.ReadAll(resp.Body)
-	if log.Check(log.WarnLevel, "Reading from CDN response", err) {
-		return nil
-	}
-	return rsp
 }
 
 func in(str string, list []string) bool {
@@ -269,72 +203,45 @@ func in(str string, list []string) bool {
 	return false
 }
 
-func getVerified(list []string, name, repo string) []byte {
+func getVerified(list []string, name, repo string) ListItem {
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", repo, k) > 0 {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
-				for _, owner := range db.FileOwner(info["id"]) {
+				for _, owner := range db.FileField(info["id"], "owner") {
 					if in(owner, []string{"subutai", "jenkins", "docker"}) {
-						item, _ := formatItem(info, repo, name)
-						return item
+						return formatItem(info, repo, name)
 					}
 				}
 			}
 		}
 	}
-	return nil
+	return ListItem{}
 }
 
-func formatItem(info map[string]string, repo, name string) ([]byte, error) {
-	size, err := strconv.ParseInt(info["size"], 10, 64)
-	if err != nil {
-		return nil, err
+func formatItem(info map[string]string, repo, name string) ListItem {
+	if len(info["prefsize"]) == 0 && repo == "template" {
+		info["prefsize"] = "tiny"
 	}
 
-	switch repo {
+	item := ListItem{
+		ID:           info["id"],
+		Name:         strings.Split(info["name"], "-subutai-template")[0],
+		Tags:         db.FileField(info["id"], "tags"),
+		Owner:        db.FileField(info["id"], "owner"),
+		Version:      info["version"],
+		Filename:     info["name"],
+		Parent:       info["parent"],
+		Prefsize:     info["prefsize"],
+		Architecture: strings.ToUpper(info["arch"]),
+		Signature:    db.FileSignatures(info["id"], name),
+		Description:  info["Description"],
+	}
+	item.Size, _ = strconv.Atoi(info["size"])
 
-	case "template":
-		if len(info["prefsize"]) == 0 {
-			info["prefsize"] = "tiny"
-		}
-		item, err := json.Marshal(ListItem{
-			ID:           info["id"],
-			Name:         strings.Split(info["name"], "-subutai-template")[0],
-			Size:         size,
-			Owner:        db.FileOwner(info["id"]),
-			Version:      info["version"],
-			Filename:     info["name"],
-			Parent:       info["parent"],
-			Prefsize:     info["prefsize"],
-			Architecture: strings.ToUpper(info["arch"]),
-			Signature:    db.FileSignatures(info["id"], name),
-		})
-		return item, err
-
-	case "apt":
-		item, err := json.Marshal(AptItem{
-			ID:           info["id"],
-			Name:         info["name"],
-			Size:         info["size"],
-			Owner:        db.FileOwner(info["id"]),
-			Version:      info["Version"],
-			Description:  info["Description"],
-			Architecture: info["Architecture"],
-			Signature:    db.FileSignatures(info["id"], name),
-		})
-		return item, err
-
-	case "raw":
-		item, err := json.Marshal(RawItem{
-			ID:        info["id"],
-			Name:      info["name"],
-			Size:      size,
-			Owner:     db.FileOwner(info["id"]),
-			Version:   info["version"],
-			Signature: db.FileSignatures(info["id"], name),
-		})
-		return item, err
+	if repo == "apt" {
+		item.Version = info["Version"]
+		item.Architecture = info["Architecture"]
 	}
 
-	return nil, errors.New("Failed to process item.")
+	return item
 }
