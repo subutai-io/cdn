@@ -268,7 +268,7 @@ func LastHash(name, t string) (hash string) {
 
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.Bucket(users).CreateBucket(name)
+		b, err := tx.Bucket(users).CreateBucket([]byte(strings.ToLower(string(name))))
 		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
 			b.Put([]byte("key"), key)
 		}
@@ -278,7 +278,7 @@ func RegisterUser(name, key []byte) {
 
 func UserKey(name string) (key string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(users).Bucket([]byte(name)); b != nil {
+		if b := tx.Bucket(users).Bucket([]byte(strings.ToLower(name))); b != nil {
 			if value := b.Get([]byte("key")); value != nil {
 				key = string(value)
 			}
