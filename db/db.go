@@ -163,6 +163,12 @@ func Delete(owner, repo, key string) (total int) {
 				})
 			}
 
+			for _, tag := range FileField(key, "tags") {
+				if s := tx.Bucket(tags).Bucket([]byte(tag)); s != nil {
+					log.Check(log.DebugLevel, "Removing tag "+tag+" from index bucket", s.Delete([]byte(key)))
+				}
+			}
+
 			// Removing file from DB
 			tx.Bucket(bucket).DeleteBucket([]byte(key))
 		}
@@ -686,7 +692,7 @@ func RemoveTags(key, list string) error {
 					if s := tx.Bucket(tags).Bucket(tag); s != nil {
 						log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from index bucket", s.Delete(tag))
 					}
-					log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from file information", t.Delete(tag))
+					log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from file information", t.Delete([]byte(key)))
 				}
 			}
 		}
