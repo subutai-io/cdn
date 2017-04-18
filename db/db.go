@@ -76,7 +76,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 			b.Put(now, []byte(key))
 		}
 
-		// Adding owners and shares to files
+		// Adding owners, shares and tags to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
 			for i := range options {
 				for k, v := range options[i] {
@@ -92,7 +92,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
 								t, _ := tx.Bucket(tags).CreateBucketIfNotExists(tag)
 								c.Put(tag, []byte("w"))
-								t.Put(tag, []byte("w"))
+								t.Put([]byte(key), []byte("w"))
 							}
 						}
 					} else if b.Get([]byte(k)) == nil {
@@ -672,4 +672,39 @@ func CheckRepo(owner, repo, hash string) (val int) {
 		return nil
 	})
 	return val
+}
+
+// RemoveTags deletes tag from index bucket and file information.
+// It should be executed on every file deletion to keep DB consistant.
+func RemoveTags(key, list string) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if t := b.Bucket([]byte("tags")); t != nil {
+
+				for _, v := range strings.Split(list, ",") {
+					tag := []byte(strings.ToLower(strings.TrimSpace(v)))
+					if s := tx.Bucket(tags).Bucket(tag); s != nil {
+						log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from index bucket", s.Delete(tag))
+					}
+					log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from file information", t.Delete(tag))
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// Tag returns a list of artifacts that contains requested tags.
+// If no records found list will be empty.
+func Tag(query string) (list []string, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(tags).Bucket([]byte(strings.ToLower(query))); b != nil {
+			return b.ForEach(func(k, v []byte) error {
+				list = append(list, string(k))
+				return nil
+			})
+		}
+		return fmt.Errorf("Tag not found")
+	})
+	return list, err
 }

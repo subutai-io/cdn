@@ -11,6 +11,8 @@ import (
 
 	"github.com/subutai-io/agent/log"
 
+	"fmt"
+
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
@@ -165,4 +167,64 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusBadRequest)
 	w.Write([]byte("Incorrect method"))
+}
+
+// Tag sets or removes additional tags for template artifact.
+// It receives HTTP POST request for adding tags, and HTTP DELETE request for removing tags.
+func Tag(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		if r.ParseMultipartForm(32<<20) != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		if code, err := addTag(r.MultipartForm.Value); err != nil {
+			w.WriteHeader(code)
+			if _, err = w.Write([]byte(err.Error())); err != nil {
+				log.Warn("Failed to write HTTP response")
+			}
+		}
+	} else if r.Method == http.MethodDelete {
+		if r.ParseMultipartForm(32<<20) != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		if code, err := delTag(r.MultipartForm.Value); err != nil {
+			w.WriteHeader(code)
+			if _, err = w.Write([]byte(err.Error())); err != nil {
+				log.Warn("Failed to write HTTP response")
+			}
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		if _, err := w.Write([]byte("Incorrect method")); err != nil {
+			log.Warn("Failed to write HTTP response")
+		}
+
+	}
+}
+
+func addTag(values map[string][]string) (int, error) {
+	if len(values["token"]) > 0 {
+		if user := db.CheckToken(values["token"][0]); len(values["token"][0]) == 0 || len(user) == 0 {
+			return http.StatusUnauthorized, fmt.Errorf("Failed to authorize using provided token")
+		} else if len(values["id"]) > 0 && len(values["tags"]) > 0 {
+			if db.CheckRepo(user, "template", values["id"][0]) > 0 {
+				db.Write(user, values["id"][0], "", map[string]string{"tags": values["tags"][0]})
+				return http.StatusOK, nil
+			}
+		}
+	}
+	return http.StatusBadRequest, fmt.Errorf("Bad request")
+}
+
+func delTag(values map[string][]string) (int, error) {
+	if len(values["token"]) > 0 {
+		if user := db.CheckToken(values["token"][0]); len(values["token"][0]) == 0 || len(user) == 0 {
+			return http.StatusUnauthorized, fmt.Errorf("Failed to authorize using provided token")
+		} else if len(values["id"]) > 0 && len(values["tags"]) > 0 {
+			if db.CheckRepo(user, "template", values["id"][0]) > 0 {
+				db.RemoveTags(values["id"][0], values["tags"][0])
+				return http.StatusOK, nil
+			}
+		}
+	}
+	return http.StatusBadRequest, fmt.Errorf("Bad request")
 }
