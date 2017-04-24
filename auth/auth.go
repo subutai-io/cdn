@@ -140,7 +140,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		log.Warn("File and signature have different owner")
 		return
 	}
-	db.Write(owner, hash, signature)
+	db.Write(owner, hash, "", map[string]string{"signature": signature})
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("File has been signed"))
 	log.Info("File " + hash + " has been signed by " + owner)

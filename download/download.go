@@ -127,6 +127,7 @@ func Info(repo string, r *http.Request) []byte {
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
+	tag := r.URL.Query().Get("tag")
 	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
 	owner := r.URL.Query().Get("owner")
@@ -135,10 +136,16 @@ func Info(repo string, r *http.Request) []byte {
 	verified := r.URL.Query().Get("verified")
 
 	list := db.Search(name)
+	if len(tag) > 0 {
+		listByTag, err := db.Tag(tag)
+		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
+		list = intersect(list, listByTag)
+	}
+
 	if len(id) > 0 {
 		list = append(list[:0], id)
 	} else if verified == "true" {
-		items := append(items, getVerified(list, name, repo))
+		items = append(items, getVerified(list, name, repo))
 		output, err := json.Marshal(items)
 		if err != nil || string(output) == "null" {
 			return nil
@@ -244,4 +251,17 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 	}
 
 	return item
+}
+
+func intersect(listA, listB []string) (list []string) {
+	mapA := map[string]bool{}
+	for _, item := range listA {
+		mapA[item] = true
+	}
+	for _, item := range listB {
+		if mapA[item] {
+			list = append(list, item)
+		}
+	}
+	return list
 }

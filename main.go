@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/subutai-io/agent/log"
+
 	"github.com/subutai-io/gorjun/apt"
 	"github.com/subutai-io/gorjun/auth"
 	"github.com/subutai-io/gorjun/config"
@@ -27,7 +29,7 @@ func main() {
 			Scheme: "https",
 			Host:   config.CDN.Node,
 		})
-		http.ListenAndServe(":"+config.Network.Port, proxy)
+		log.Check(log.ErrorLevel, "Starting to listen :"+config.Network.Port, http.ListenAndServe(":"+config.Network.Port, proxy))
 		return
 	}
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
@@ -50,12 +52,13 @@ func main() {
 	http.HandleFunc("/kurjun/rest/raw/download", raw.Download)
 
 	http.HandleFunc("/kurjun/rest/template/", template.Download)
+	http.HandleFunc("/kurjun/rest/template/tag", template.Tag)
 	http.HandleFunc("/kurjun/rest/template/info", template.Info)
 	http.HandleFunc("/kurjun/rest/template/list", template.Info)
 	http.HandleFunc("/kurjun/rest/template/delete", template.Delete)
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)
-	// http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
 	http.HandleFunc("/kurjun/rest/template/download", template.Download)
+	// http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
 
 	http.HandleFunc("/kurjun/rest/auth/key", auth.Key)
 	http.HandleFunc("/kurjun/rest/auth/sign", auth.Sign)
@@ -67,12 +70,13 @@ func main() {
 	http.HandleFunc("/kurjun/rest/quota", upload.Quota)
 	http.HandleFunc("/kurjun/rest/about", about)
 
-	http.ListenAndServe(":"+config.Network.Port, nil)
+	log.Check(log.ErrorLevel, "Starting to listen :"+config.Network.Port, http.ListenAndServe(":"+config.Network.Port, nil))
 }
 
 func about(w http.ResponseWriter, r *http.Request) {
 	if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" {
-		w.Write([]byte(version))
+		_, err := w.Write([]byte(version))
+		log.Check(log.DebugLevel, "Writing Kurjun version", err)
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
 	}

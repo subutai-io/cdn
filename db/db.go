@@ -76,37 +76,38 @@ func Write(owner, key, value string, options ...map[string]string) {
 			b.Put(now, []byte(key))
 		}
 
-		// Adding owners and shares to files
+		// Adding owners, shares and tags to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if c, err := b.CreateBucket([]byte("owner")); err == nil {
+				c.Put([]byte(owner), []byte("w"))
+			}
 			for i := range options {
 				for k, v := range options[i] {
-					if k == "type" {
+					switch k {
+					case "type":
 						if c, err := b.CreateBucketIfNotExists([]byte("type")); err == nil {
 							if c, err := c.CreateBucketIfNotExists([]byte(v)); err == nil {
 								c.Put([]byte(owner), []byte("w"))
 							}
 						}
-					} else if k == "tags" {
+					case "tags":
 						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
 							for _, v := range strings.Split(v, ",") {
 								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
 								t, _ := tx.Bucket(tags).CreateBucketIfNotExists(tag)
 								c.Put(tag, []byte("w"))
-								t.Put(tag, []byte("w"))
+								t.Put([]byte(key), []byte("w"))
 							}
 						}
-					} else if b.Get([]byte(k)) == nil {
-						b.Put([]byte(k), []byte(v))
+					case "signature":
+						if c, err := b.CreateBucketIfNotExists([]byte("owner")); err == nil {
+							c.Put([]byte(owner), []byte(v))
+						}
+					default:
+						if b.Get([]byte(k)) == nil {
+							b.Put([]byte(k), []byte(v))
+						}
 					}
-				}
-			}
-			if c, _ := b.CreateBucketIfNotExists([]byte("owner")); c != nil {
-				//If value is not empty, we are assuming that it is a signature (or any other personal info)
-				//Otherwise we are just adding new owner
-				if len(value) != 0 && len(options) == 0 {
-					c.Put([]byte(owner), []byte(value))
-				} else {
-					c.Put([]byte(owner), []byte("w"))
 				}
 			}
 			if b, _ = b.CreateBucketIfNotExists([]byte("scope")); b != nil {
@@ -161,6 +162,12 @@ func Delete(owner, repo, key string) (total int) {
 					}
 					return nil
 				})
+			}
+
+			for _, tag := range FileField(key, "tags") {
+				if s := tx.Bucket(tags).Bucket([]byte(tag)); s != nil {
+					log.Check(log.DebugLevel, "Removing tag "+tag+" from index bucket", s.Delete([]byte(key)))
+				}
 			}
 
 			// Removing file from DB
@@ -268,7 +275,7 @@ func LastHash(name, t string) (hash string) {
 
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.Bucket(users).CreateBucket(name)
+		b, err := tx.Bucket(users).CreateBucket([]byte(strings.ToLower(string(name))))
 		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
 			b.Put([]byte("key"), key)
 		}
@@ -278,7 +285,7 @@ func RegisterUser(name, key []byte) {
 
 func UserKey(name string) (key string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(users).Bucket([]byte(name)); b != nil {
+		if b := tx.Bucket(users).Bucket([]byte(strings.ToLower(name))); b != nil {
 			if value := b.Get([]byte("key")); value != nil {
 				key = string(value)
 			}
@@ -672,4 +679,39 @@ func CheckRepo(owner, repo, hash string) (val int) {
 		return nil
 	})
 	return val
+}
+
+// RemoveTags deletes tag from index bucket and file information.
+// It should be executed on every file deletion to keep DB consistant.
+func RemoveTags(key, list string) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if t := b.Bucket([]byte("tags")); t != nil {
+
+				for _, v := range strings.Split(list, ",") {
+					tag := []byte(strings.ToLower(strings.TrimSpace(v)))
+					if s := tx.Bucket(tags).Bucket(tag); s != nil {
+						log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from index bucket", s.Delete(tag))
+					}
+					log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from file information", t.Delete([]byte(key)))
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// Tag returns a list of artifacts that contains requested tags.
+// If no records found list will be empty.
+func Tag(query string) (list []string, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(tags).Bucket([]byte(strings.ToLower(query))); b != nil {
+			return b.ForEach(func(k, v []byte) error {
+				list = append(list, string(k))
+				return nil
+			})
+		}
+		return fmt.Errorf("Tag not found")
+	})
+	return list, err
 }
