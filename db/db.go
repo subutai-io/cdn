@@ -78,15 +78,19 @@ func Write(owner, key, value string, options ...map[string]string) {
 
 		// Adding owners, shares and tags to files
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if c, err := b.CreateBucket([]byte("owner")); err == nil {
+				c.Put([]byte(owner), []byte("w"))
+			}
 			for i := range options {
 				for k, v := range options[i] {
-					if k == "type" {
+					switch k {
+					case "type":
 						if c, err := b.CreateBucketIfNotExists([]byte("type")); err == nil {
 							if c, err := c.CreateBucketIfNotExists([]byte(v)); err == nil {
 								c.Put([]byte(owner), []byte("w"))
 							}
 						}
-					} else if k == "tags" {
+					case "tags":
 						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
 							for _, v := range strings.Split(v, ",") {
 								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
@@ -95,18 +99,15 @@ func Write(owner, key, value string, options ...map[string]string) {
 								t.Put([]byte(key), []byte("w"))
 							}
 						}
-					} else if b.Get([]byte(k)) == nil {
-						b.Put([]byte(k), []byte(v))
+					case "signature":
+						if c, err := b.CreateBucketIfNotExists([]byte("owner")); err == nil {
+							c.Put([]byte(owner), []byte(v))
+						}
+					default:
+						if b.Get([]byte(k)) == nil {
+							b.Put([]byte(k), []byte(v))
+						}
 					}
-				}
-			}
-			if c, _ := b.CreateBucketIfNotExists([]byte("owner")); c != nil {
-				//If value is not empty, we are assuming that it is a signature (or any other personal info)
-				//Otherwise we are just adding new owner
-				if len(value) != 0 && len(options) == 0 {
-					c.Put([]byte(owner), []byte(value))
-				} else {
-					c.Put([]byte(owner), []byte("w"))
 				}
 			}
 			if b, _ = b.CreateBucketIfNotExists([]byte("scope")); b != nil {
