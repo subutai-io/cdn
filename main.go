@@ -61,7 +61,6 @@ func main() {
 	// http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
 
 	http.HandleFunc("/kurjun/rest/auth/key", auth.Key)
-	http.HandleFunc("/kurjun/rest/auth/keys", auth.Keys)
 	http.HandleFunc("/kurjun/rest/auth/sign", auth.Sign)
 	http.HandleFunc("/kurjun/rest/auth/token", auth.Token)
 	http.HandleFunc("/kurjun/rest/auth/register", auth.Register)

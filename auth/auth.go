@@ -3,7 +3,6 @@ package auth
 import (
 	"crypto/md5"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -41,11 +40,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			if len(r.MultipartForm.Value["name"]) > 0 {
-				db.RegisterUser([]byte(r.MultipartForm.Value["name"][0]), []byte(key))
-			} else {
-				db.RegisterUser([]byte(fmt.Sprintf("%x", fingerprint)), []byte(key))
-			}
+			db.RegisterUser([]byte(fmt.Sprintf("%x", fingerprint)), []byte(key))
 			return
 		}
 	}
@@ -100,18 +95,6 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Success"))
 }
 
-// Keys returns list of users GPG keys
-func Keys(w http.ResponseWriter, r *http.Request) {
-	if keys := db.UserKeys(r.URL.Query().Get("user")); len(keys) > 0 {
-		if out, err := json.Marshal(keys); err == nil {
-			w.Write(out)
-			return
-		}
-	}
-	w.WriteHeader(http.StatusNotFound)
-}
-
-// Key is replaced by Keys and left for compatibility. This function should be removed later.
 func Key(w http.ResponseWriter, r *http.Request) {
 	user := r.URL.Query().Get("user")
 	if len(user) == 0 {
