@@ -139,13 +139,13 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if file != "Packages" && file != "InRelease" && file != "Release" {
 		file = db.LastHash(file, "apt")
 	}
-	f, err := os.Open(config.Storage.Path + file)
-	if log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+file, err) {
+
+	if f, err := os.Open(config.Storage.Path + file); err == nil {
+		defer f.Close()
+		io.Copy(w, f)
+	} else {
 		w.WriteHeader(http.StatusNotFound)
-		return
 	}
-	defer f.Close()
-	io.Copy(w, f)
 }
 
 func readPackages() []string {
