@@ -214,9 +214,8 @@ func Close() {
 func Search(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
-		query = strings.ToLower(query)
 		b.ForEach(func(k, v []byte) error {
-			if bytes.Contains(k, []byte(query)) {
+			if strings.Contains(strings.ToLower(string(k)), strings.ToLower(query)) {
 				// for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
 				//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
 				b.Bucket(k).ForEach(func(kk, vv []byte) error {
