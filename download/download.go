@@ -20,7 +20,7 @@ import (
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
 type ListItem struct {
 	ID           string            `json:"id"`
-	hash         hashsums          `json:"hash"`
+	Hash         hashsums          `json:"hash"`
 	Size         int               `json:"size,omitempty"`
 	Name         string            `json:"name,omitempty"`
 	Tags         []string          `json:"tags,omitempty"`
@@ -35,8 +35,8 @@ type ListItem struct {
 }
 
 type hashsums struct {
-	md5    string `json:"md5,omitempty"`
-	sha256 string `json:"sha256,omitempty"`
+	Md5    string `json:"md5,omitempty"`
+	Sha256 string `json:"sha256,omitempty"`
 }
 
 // Handler provides download functionality for all artifacts.
@@ -238,7 +238,7 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 
 	item := ListItem{
 		ID:           info["id"],
-		hash:         hashsums{md5: info["id"], sha256: ""},
+		Hash:         hashsums{Md5: info["id"], Sha256: ""},
 		Name:         strings.Split(info["name"], "-subutai-template")[0],
 		Tags:         db.FileField(info["id"], "tags"),
 		Owner:        db.FileField(info["id"], "owner"),
