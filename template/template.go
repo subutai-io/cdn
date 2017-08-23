@@ -93,12 +93,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		t := getConf(hash, configfile)
 		db.Write(owner, t.ID, t.Name+"-subutai-template_"+t.Version+"_"+t.Architecture+".tar.gz", map[string]string{
-			"type":     "template",
-			"arch":     t.Architecture,
-			"tags":     strings.Join(t.Tags, ","),
-			"parent":   t.Parent,
-			"version":  t.Version,
-			"prefsize": t.Prefsize,
+			"type":        "template",
+			"arch":        t.Architecture,
+			"tags":        strings.Join(t.Tags, ","),
+			"parent":      t.Parent,
+			"version":     t.Version,
+			"prefsize":    t.Prefsize,
+			"Description": t.Description,
 		})
 		w.Write([]byte(t.ID))
 		log.Info(t.Name + " saved to template repo by " + owner)
