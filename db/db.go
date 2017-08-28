@@ -244,7 +244,7 @@ func LatestTmpl(name, version string) (info map[string]string) {
 				if c := tx.Bucket(search).Bucket(k).Cursor(); c != nil {
 					_, m := c.Last()
 					if tmp := Info(string(m)); CheckRepo("", "template", string(m)) > 0 && info["date"] < tmp["date"] {
-						if (len(version) != 0 && strings.HasSuffix(tmp["version"], version)) || (len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
+						if (len(version) != 0 && strings.HasSuffix(tmp["version"], version)) || len(version) == 0 {
 							info = tmp
 						}
 					}
@@ -277,11 +277,29 @@ func RegisterUser(name, key []byte) {
 		b, err := tx.Bucket(users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
 		if !log.Check(log.WarnLevel, "Registering user "+string(name), err) {
 			b.Put([]byte("key"), key)
+			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
+				b.Put(key, nil)
+			}
 		}
 		return err
 	})
 }
 
+// UserKeys returns list of users GPG keys
+func UserKeys(name string) (keys []string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(strings.ToLower(name))); b != nil {
+			if k := b.Bucket([]byte("keys")); k != nil {
+				return k.ForEach(func(k, v []byte) error { keys = append(keys, string(k)); return nil })
+			}
+			keys = append(keys, string(b.Get([]byte("key"))))
+		}
+		return nil
+	})
+	return keys
+}
+
+// UserKey is replaced by UserKeys and left for compatibility. This function should be removed later.
 func UserKey(name string) (key string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(strings.ToLower(name))); b != nil {
