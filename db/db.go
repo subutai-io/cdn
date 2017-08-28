@@ -244,7 +244,7 @@ func LatestTmpl(name, version string) (info map[string]string) {
 				if c := tx.Bucket(search).Bucket(k).Cursor(); c != nil {
 					_, m := c.Last()
 					if tmp := Info(string(m)); CheckRepo("", "template", string(m)) > 0 && info["date"] < tmp["date"] {
-						if (len(version) != 0 && strings.HasSuffix(tmp["version"], version)) || (len(version) == 0 && !strings.Contains(tmp["version"], "-")) {
+						if (len(version) != 0 && strings.HasSuffix(tmp["version"], version)) || len(version) == 0 {
 							info = tmp
 						}
 					}
