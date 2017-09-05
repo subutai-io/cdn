@@ -41,38 +41,30 @@ type hashsums struct {
 
 // Handler provides download functionality for all artifacts.
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
-	hash := r.URL.Query().Get("hash")
+	id := r.URL.Query().Get("hash")
 	name := r.URL.Query().Get("name")
-	if len(r.URL.Query().Get("id")) > 0 {
-		hash = r.URL.Query().Get("id")
-		if tmp := strings.Split(hash, "."); len(tmp) > 1 {
-			hash = tmp[1]
-		}
-	}
-	if len(hash) == 0 && len(name) == 0 {
-		io.WriteString(w, "Please specify hash or name")
+	if len(id) == 0 && len(name) == 0 {
+		io.WriteString(w, "Please specify id or name")
 		return
 	} else if len(name) != 0 {
-		hash = db.LastHash(name, repo)
+		id = db.LastHash(name, repo)
 	}
 
-	if len(db.Read(hash)) > 0 && !db.Public(hash) && !db.CheckShare(hash, db.CheckToken(r.URL.Query().Get("token"))) {
+	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.CheckToken(r.URL.Query().Get("token"))) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 		return
 	}
 
-	// if len(db.Read(hash)) == 0 && repo == "template" && !torrent.IsDownloaded(hash) {
-	// 	torrent.AddTorrent(hash)
-	// 	w.WriteHeader(http.StatusAccepted)
-	// 	w.Write([]byte(torrent.Info(hash)))
-	// 	return
-	// }
+	path := config.Storage.Path + id
+	if md5, sha256 := db.Hash(id); len(md5) != 0 || len(sha256) != 0 {
+		path = config.Storage.Path + md5
+	}
 
-	f, err := os.Open(config.Storage.Path + hash)
+	f, err := os.Open(path)
 	defer f.Close()
 
-	if log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+hash, err) || len(hash) == 0 {
+	if log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+id, err) || len(id) == 0 {
 		if len(config.CDN.Node) > 0 {
 			client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 			resp, err := client.Get(config.CDN.Node + r.URL.RequestURI())
@@ -103,9 +95,9 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
 
-	if name = db.Read(hash); len(name) == 0 && len(config.CDN.Node) > 0 {
+	if name = db.Read(id); len(name) == 0 && len(config.CDN.Node) > 0 {
 		httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-		resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/info?id=" + hash)
+		resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/info?id=" + id)
 		if !log.Check(log.WarnLevel, "Getting info from CDN", err) {
 			var info ListItem
 			rsp, err := ioutil.ReadAll(resp.Body)
@@ -120,7 +112,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 			resp.Body.Close()
 		}
 	} else {
-		w.Header().Set("Content-Disposition", "attachment; filename=\""+db.Read(hash)+"\"")
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+db.Read(id)+"\"")
 	}
 
 	io.Copy(w, f)

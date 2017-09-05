@@ -201,6 +201,24 @@ func Read(key string) (name string) {
 	return name
 }
 
+// Hash returns hash sums by ID
+func Hash(key string) (md5, sha256 string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if b := b.Bucket([]byte("hash")); b != nil {
+				if value := b.Get([]byte("md5")); value != nil {
+					md5 = string(value)
+				}
+				if value := b.Get([]byte("sha256")); value != nil {
+					sha256 = string(value)
+				}
+			}
+		}
+		return nil
+	})
+	return md5, sha256
+}
+
 func Info(id string) map[string]string {
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
