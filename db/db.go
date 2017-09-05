@@ -90,6 +90,10 @@ func Write(owner, key, value string, options ...map[string]string) {
 								c.Put([]byte(owner), []byte("w"))
 							}
 						}
+					case "md5", "sha256":
+						if c, err := b.CreateBucketIfNotExists([]byte("hash")); err == nil {
+							c.Put([]byte(k), []byte(v))
+						}
 					case "tags":
 						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
 							for _, v := range strings.Split(v, ",") {
@@ -191,18 +195,22 @@ func Read(key string) (name string) {
 	return name
 }
 
-func Info(hash string) map[string]string {
+func Info(id string) map[string]string {
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+		if b := tx.Bucket(bucket).Bucket([]byte(id)); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				list[string(k)] = string(v)
 				return nil
 			})
+			if hash := b.Bucket([]byte("hash")); hash != nil {
+				list["md5"] = string(hash.Get([]byte("md5")))
+				list["sha256"] = string(hash.Get([]byte("sha256")))
+			}
 		}
 		return nil
 	})
-	list["id"] = hash
+	list["id"] = id
 	list["owner"] = "subutai"
 	return list
 }

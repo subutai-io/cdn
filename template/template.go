@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/satori/go.uuid"
+
 	"github.com/subutai-io/agent/log"
 
 	"fmt"
@@ -45,8 +47,8 @@ func readTempl(hash string) (configfile string, err error) {
 }
 
 func getConf(hash string, configfile string) (t *download.ListItem) {
-	t = &download.ListItem{ID: hash}
-
+	t = &download.ListItem{ID: uuid.NewV4().String()}
+	t.Hash.Md5 = hash
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.TrimSpace(line[0])
@@ -95,6 +97,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		db.Write(owner, t.ID, t.Name+"-subutai-template_"+t.Version+"_"+t.Architecture+".tar.gz", map[string]string{
 			"type":        "template",
 			"arch":        t.Architecture,
+			"md5":         hash,
 			"tags":        strings.Join(t.Tags, ","),
 			"parent":      t.Parent,
 			"version":     t.Version,

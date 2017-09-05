@@ -184,7 +184,6 @@ func Info(repo string, r *http.Request) []byte {
 		} else {
 			info = db.Info(k)
 		}
-
 		item := formatItem(info, repo, name)
 
 		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
@@ -238,7 +237,7 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 
 	item := ListItem{
 		ID:           info["id"],
-		Hash:         hashsums{Md5: info["id"], Sha256: ""},
+		Hash:         hashsums{Md5: info["md5"], Sha256: info["sha256"]},
 		Name:         strings.Split(info["name"], "-subutai-template")[0],
 		Tags:         db.FileField(info["id"], "tags"),
 		Owner:        db.FileField(info["id"], "owner"),
@@ -256,7 +255,9 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 		item.Version = info["Version"]
 		item.Architecture = info["Architecture"]
 	}
-
+	if len(item.Hash.Md5) == 0 {
+		item.Hash.Md5 = item.ID
+	}
 	return item
 }
 
