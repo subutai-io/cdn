@@ -41,7 +41,7 @@ type hashsums struct {
 
 // Handler provides download functionality for all artifacts.
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("hash")
+	id := r.URL.Query().Get("id")
 	name := r.URL.Query().Get("name")
 	if len(id) == 0 && len(name) == 0 {
 		io.WriteString(w, "Please specify id or name")
