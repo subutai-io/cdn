@@ -93,6 +93,12 @@ func Write(owner, key, value string, options ...map[string]string) {
 					case "md5", "sha256":
 						if c, err := b.CreateBucketIfNotExists([]byte("hash")); err == nil {
 							c.Put([]byte(k), []byte(v))
+							// Getting file size
+							if f, err := os.Open(config.Storage.Path + v); err == nil {
+								fi, _ := f.Stat()
+								f.Close()
+								b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
+							}
 						}
 					case "tags":
 						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
