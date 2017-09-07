@@ -21,7 +21,7 @@ import (
 type ListItem struct {
 	ID           string            `json:"id"`
 	Hash         hashsums          `json:"hash"`
-	Size         int               `json:"size,omitempty"`
+	Size         int               `json:"size"`
 	Name         string            `json:"name,omitempty"`
 	Tags         []string          `json:"tags,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`

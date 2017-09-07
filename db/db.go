@@ -64,13 +64,6 @@ func Write(owner, key, value string, options ...map[string]string) {
 			b.Put([]byte("date"), now)
 			b.Put([]byte("name"), []byte(value))
 
-			// Getting file size
-			if f, err := os.Open(config.Storage.Path + key); err == nil {
-				fi, _ := f.Stat()
-				f.Close()
-				b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
-			}
-
 			// Adding search index for files
 			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(strings.ToLower(value)))
 			b.Put(now, []byte(key))
