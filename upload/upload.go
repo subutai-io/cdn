@@ -163,7 +163,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	if db.Delete(user, repo[3], id) == 0 {
 		log.Warn("Removing " + id + " from disk")
 		// torrent.Delete(id)
-		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+id)) {
+		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+md5)) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))
 			return ""
