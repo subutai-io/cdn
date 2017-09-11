@@ -129,7 +129,12 @@ func Delete(owner, repo, key string) (total int) {
 		var filename []byte
 
 		owned := CheckRepo(owner, "", key)
-		total = CheckRepo("", "", key)
+		md5, _ := Hash(key)
+		if key == md5 {
+			total = CheckRepo("", "", key)
+		} else {
+			total = CheckRepo("", "", md5)
+		}
 
 		// Deleting user association with file
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
@@ -156,7 +161,7 @@ func Delete(owner, repo, key string) (total int) {
 		}
 
 		// Removing indexes and file only if no file owners left
-		if total == 1 {
+		if total == 1 || key != md5 {
 			// Deleting search index
 			if b := tx.Bucket(search).Bucket(bytes.ToLower(filename)); b != nil {
 				b.ForEach(func(k, v []byte) error {
@@ -699,6 +704,16 @@ func CheckRepo(owner, repo, hash string) (val int) {
 		reps = []string{"apt", "template", "raw"}
 	}
 	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if b := b.Bucket(k).Bucket([]byte("hash")); b != nil {
+					if string(b.Get([]byte("md5"))) == hash {
+						val++
+					}
+				}
+				return nil
+			})
+		}
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if c := b.Bucket([]byte("type")); c != nil {
 				for _, v := range reps {
