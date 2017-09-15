@@ -5,7 +5,8 @@ ifeq (${GIT_BRANCH}, )
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD | grep -iv head)
 endif
 ifneq (${GIT_BRANCH}, )
-	VERSION:=${VERSION}-SNAPSHOT
+	#VERSION:=${VERSION}-SNAPSHOT
+	VERSION:=6.0.0-SNAPSHOT
 endif
 COMMIT=$(shell git rev-parse HEAD)
 
