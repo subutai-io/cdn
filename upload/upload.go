@@ -116,9 +116,9 @@ func Hash(file string, algo ...string) string {
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) string {
-	hash := r.URL.Query().Get("id")
+	id := r.URL.Query().Get("id")
 	token := r.URL.Query().Get("token")
-	if len(hash) == 0 {
+	if len(id) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Empty file id"))
 		log.Warn(r.RemoteAddr + " - empty file id")
@@ -131,9 +131,9 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		log.Warn(r.RemoteAddr + " - Failed to authorize using provided token")
 		return ""
 	}
-	info := db.Info(hash)
+	info := db.Info(id)
 	if len(info) == 0 {
-		log.Warn("File not found by hash")
+		log.Warn("File not found by id")
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("File not found"))
 		return ""
@@ -147,23 +147,23 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 
-	if db.CheckRepo(user, repo[3], hash) == 0 {
-		log.Warn("File " + info["name"] + "(" + hash + ") in " + repo[3] + " repo is not owned by " + user + ", rejecting deletion request")
+	if db.CheckRepo(user, repo[3], id) == 0 {
+		log.Warn("File " + info["name"] + "(" + id + ") in " + repo[3] + " repo is not owned by " + user + ", rejecting deletion request")
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("File " + info["name"] + " not found or it has different owner"))
 		return ""
 	}
-
-	f, err := os.Stat(config.Storage.Path + hash)
+	md5, _ := db.Hash(id)
+	f, err := os.Stat(config.Storage.Path + md5)
 	if !log.Check(log.WarnLevel, "Reading file stats", err) {
 		db.QuotaUsageSet(user, -int(f.Size()))
 		log.Info("User " + user + ", quota usage -" + strconv.Itoa(int(f.Size())))
 	}
 
-	if db.Delete(user, repo[3], hash) == 0 {
-		log.Warn("Removing " + hash + " from disk")
-		// torrent.Delete(hash)
-		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+hash)) {
+	if db.Delete(user, repo[3], id) == 0 {
+		log.Warn("Removing " + id + " from disk")
+		// torrent.Delete(id)
+		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+md5)) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))
 			return ""
@@ -171,7 +171,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	}
 
 	log.Info("Removing " + info["name"] + " from " + repo[3] + " repo")
-	return hash
+	return id
 }
 
 func Share(w http.ResponseWriter, r *http.Request) {

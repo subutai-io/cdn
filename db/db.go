@@ -64,13 +64,6 @@ func Write(owner, key, value string, options ...map[string]string) {
 			b.Put([]byte("date"), now)
 			b.Put([]byte("name"), []byte(value))
 
-			// Getting file size
-			if f, err := os.Open(config.Storage.Path + key); err == nil {
-				fi, _ := f.Stat()
-				f.Close()
-				b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
-			}
-
 			// Adding search index for files
 			b, _ = tx.Bucket(search).CreateBucketIfNotExists([]byte(strings.ToLower(value)))
 			b.Put(now, []byte(key))
@@ -88,6 +81,16 @@ func Write(owner, key, value string, options ...map[string]string) {
 						if c, err := b.CreateBucketIfNotExists([]byte("type")); err == nil {
 							if c, err := c.CreateBucketIfNotExists([]byte(v)); err == nil {
 								c.Put([]byte(owner), []byte("w"))
+							}
+						}
+					case "md5", "sha256":
+						if c, err := b.CreateBucketIfNotExists([]byte("hash")); err == nil {
+							c.Put([]byte(k), []byte(v))
+							// Getting file size
+							if f, err := os.Open(config.Storage.Path + v); err == nil {
+								fi, _ := f.Stat()
+								f.Close()
+								b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
 							}
 						}
 					case "tags":
@@ -126,7 +129,12 @@ func Delete(owner, repo, key string) (total int) {
 		var filename []byte
 
 		owned := CheckRepo(owner, "", key)
-		total = CheckRepo("", "", key)
+		md5, _ := Hash(key)
+		if key == md5 {
+			total = CheckRepo("", "", key)
+		} else {
+			total = CheckRepo("", "", md5)
+		}
 
 		// Deleting user association with file
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
@@ -153,7 +161,7 @@ func Delete(owner, repo, key string) (total int) {
 		}
 
 		// Removing indexes and file only if no file owners left
-		if total == 1 {
+		if total == 1 || key != md5 {
 			// Deleting search index
 			if b := tx.Bucket(search).Bucket(bytes.ToLower(filename)); b != nil {
 				b.ForEach(func(k, v []byte) error {
@@ -191,18 +199,40 @@ func Read(key string) (name string) {
 	return name
 }
 
-func Info(hash string) map[string]string {
+// Hash returns hash sums by ID
+func Hash(key string) (md5, sha256 string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if b := b.Bucket([]byte("hash")); b != nil {
+				if value := b.Get([]byte("md5")); value != nil {
+					md5 = string(value)
+				}
+				if value := b.Get([]byte("sha256")); value != nil {
+					sha256 = string(value)
+				}
+			}
+		}
+		return nil
+	})
+	return md5, sha256
+}
+
+func Info(id string) map[string]string {
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
+		if b := tx.Bucket(bucket).Bucket([]byte(id)); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				list[string(k)] = string(v)
 				return nil
 			})
+			if hash := b.Bucket([]byte("hash")); hash != nil {
+				list["md5"] = string(hash.Get([]byte("md5")))
+				list["sha256"] = string(hash.Get([]byte("sha256")))
+			}
 		}
 		return nil
 	})
-	list["id"] = hash
+	list["id"] = id
 	list["owner"] = "subutai"
 	return list
 }
@@ -674,6 +704,16 @@ func CheckRepo(owner, repo, hash string) (val int) {
 		reps = []string{"apt", "template", "raw"}
 	}
 	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if b := b.Bucket(k).Bucket([]byte("hash")); b != nil {
+					if string(b.Get([]byte("md5"))) == hash {
+						val++
+					}
+				}
+				return nil
+			})
+		}
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
 			if c := b.Bucket([]byte("type")); c != nil {
 				for _, v := range reps {

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 
 	"github.com/subutai-io/gorjun/db"
@@ -18,6 +19,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		info := map[string]string{
+			"md5":  hash,
 			"type": "raw",
 		}
 		r.ParseMultipartForm(32 << 20)
@@ -25,8 +27,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			info["version"] = r.MultipartForm.Value["version"][0]
 		}
 		_, header, _ := r.FormFile("file")
-		db.Write(owner, hash, header.Filename, info)
-		w.Write([]byte(hash))
+		id := uuid.NewV4().String()
+		db.Write(owner, id, header.Filename, info)
+		w.Write([]byte(id))
 		log.Info(header.Filename + " saved to raw repo by " + owner)
 	}
 }
