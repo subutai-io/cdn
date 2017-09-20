@@ -157,6 +157,9 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 
+	if name == "management" && repo == "template" {
+		info = db.LatestTmpl(name, version)
+	}
 	for _, k := range list {
 		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
 			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
@@ -169,7 +172,6 @@ func Info(repo string, r *http.Request) []byte {
 		}
 
 		if name == "management" && repo == "template" {
-			info = db.LatestTmpl(name, version)
 			if len(info["name"]) == 0 {
 				continue
 			}
