@@ -704,7 +704,7 @@ func CheckRepo(owner, repo, hash string) (val int) {
 		reps = []string{"apt", "template", "raw"}
 	}
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket); b != nil {
+		if b := tx.Bucket(bucket); b != nil && strings.Contains(hash, "-") {
 			b.ForEach(func(k, v []byte) error {
 				if b := b.Bucket(k).Bucket([]byte("hash")); b != nil {
 					if string(b.Get([]byte("md5"))) == hash {
