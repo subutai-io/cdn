@@ -101,7 +101,7 @@ def notifyBuild(String buildStatus = 'STARTED', String details = '') {
 	summary = "${subject} (${env.BUILD_URL})${details}"
   }
   // Get token
-  def slackToken = getSlackToken('sysnet-bots-slack-token')
+  def slackToken = getSlackToken('sysnet-bots')
   // Send notifications
   slackSend (color: colorCode, message: summary, teamDomain: 'optdyn', token: "${slackToken}")
 }
