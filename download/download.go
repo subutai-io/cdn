@@ -58,7 +58,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	path := config.Storage.Path + id
-	if md5, sha256 := db.Hash(id); len(md5) != 0 || len(sha256) != 0 {
+	if md5, _ := db.Hash(id); len(md5) != 0 {
 		path = config.Storage.Path + md5
 	}
 
