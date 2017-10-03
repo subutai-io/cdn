@@ -76,28 +76,29 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 }
 
 func Upload(w http.ResponseWriter, r *http.Request) {
-	var hash, owner string
 	if r.Method == "POST" {
-		if hash, owner = upload.Handler(w, r); len(hash) == 0 {
+		md5, sha256, owner := upload.Handler(w, r)
+		if len(md5) == 0 || len(sha256) == 0 {
 			return
 		}
-		configfile, err := readTempl(hash)
+		configfile, err := readTempl(md5)
 		if err != nil || len(configfile) == 0 {
 			log.Warn("Unable to read template config")
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
-			if db.Delete(owner, "template", hash) < 1 {
-				f, _ := os.Stat(config.Storage.Path + hash)
+			if db.Delete(owner, "template", md5) < 1 {
+				f, _ := os.Stat(config.Storage.Path + md5)
 				db.QuotaUsageSet(owner, -int(f.Size()))
-				os.Remove(config.Storage.Path + hash)
+				os.Remove(config.Storage.Path + md5)
 			}
 			return
 		}
-		t := getConf(hash, configfile)
+		t := getConf(md5, configfile)
 		db.Write(owner, t.ID, t.Name+"-subutai-template_"+t.Version+"_"+t.Architecture+".tar.gz", map[string]string{
 			"type":        "template",
 			"arch":        t.Architecture,
-			"md5":         hash,
+			"md5":         md5,
+			"sha256":      sha256,
 			"tags":        strings.Join(t.Tags, ","),
 			"parent":      t.Parent,
 			"version":     t.Version,
@@ -107,8 +108,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(t.ID))
 		log.Info(t.Name + " saved to template repo by " + owner)
 		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
-			log.Info("Sharing " + hash + " with " + owner)
-			db.ShareWith(hash, owner, owner)
+			log.Info("Sharing " + md5 + " with " + owner)
+			db.ShareWith(md5, owner, owner)
 		}
 	}
 }

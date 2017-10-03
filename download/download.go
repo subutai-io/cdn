@@ -15,6 +15,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/gorjun/upload"
 )
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
@@ -177,6 +178,13 @@ func Info(repo string, r *http.Request) []byte {
 			}
 		} else {
 			info = db.Info(k)
+		}
+		if len(info["sha256"]) == 0 {
+			if len(info["md5"]) == 0 {
+				info["md5"] = info["id"]
+			}
+			info["sha256"] = upload.Hash(config.Storage.Path+info["md5"], "sha256")
+			db.Write(db.FileField(info["id"], "owner")[0], info["id"], info["name"], map[string]string{"sha256": info["sha256"]})
 		}
 		item := formatItem(info, repo, name)
 

@@ -27,7 +27,7 @@ type share struct {
 }
 
 //Handler function works with income upload requests, makes sanity checks, etc
-func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
+func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner string) {
 	r.ParseMultipartForm(32 << 20)
 	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -79,18 +79,19 @@ func Handler(w http.ResponseWriter, r *http.Request) (hash, owner string) {
 		log.Info("User " + owner + ", quota usage +" + strconv.Itoa(int(copied)))
 	}
 
-	hash = Hash(config.Storage.Path + header.Filename)
-	if len(hash) == 0 {
+	md5sum = Hash(config.Storage.Path + header.Filename)
+	sha256sum = Hash(config.Storage.Path+header.Filename, "sha256")
+	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + header.Filename)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to calculate hash"))
 		return
 	}
 
-	os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+hash)
-	log.Info("File received: " + header.Filename + "(" + hash + ")")
+	os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+md5sum)
+	log.Info("File received: " + header.Filename + "(" + md5sum + ")")
 
-	return hash, owner
+	return md5sum, sha256sum, owner
 }
 
 func Hash(file string, algo ...string) string {
