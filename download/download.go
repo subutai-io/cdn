@@ -186,16 +186,17 @@ func Info(repo string, r *http.Request) []byte {
 			db.Write(db.FileField(info["id"], "owner")[0], info["id"], info["name"], map[string]string{"sha256": info["sha256"]})
 		}
 		item := formatItem(info, repo, name)
-		if len(items) >= p[1] {
-			break
-		}
-
+		
 		if !substr && name == item.Name {
 			if version == item.Version || len(version) == 0 {
 				items = []ListItem{item}
 			}
 		} else if len(version) == 0 || item.Version == version {
 			items = append(items, item)
+		}
+		
+		if len(items) >= p[1] {
+			break
 		}
 	}
 	output, err := json.Marshal(items)
