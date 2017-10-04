@@ -123,6 +123,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
 	var info map[string]string
+	var substr bool
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -131,8 +132,14 @@ func Info(repo string, r *http.Request) []byte {
 	page := r.URL.Query().Get("page")
 	owner := r.URL.Query().Get("owner")
 	token := r.URL.Query().Get("token")
+	subname := r.URL.Query().Get("subname")
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
+
+	if len(subname) != 0 {
+		substr = true
+		name = subname
+	}
 
 	list := db.Search(name)
 	if len(tag) > 0 {
@@ -158,9 +165,6 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 
-	if name == "management" && repo == "template" {
-		info = db.LatestTmpl(name, version)
-	}
 	for _, k := range list {
 		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
 			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
@@ -172,13 +176,8 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if name == "management" && repo == "template" {
-			if len(info["name"]) == 0 {
-				continue
-			}
-		} else {
-			info = db.Info(k)
-		}
+		info = db.Info(k)
+
 		if len(info["sha256"]) == 0 {
 			if len(info["md5"]) == 0 {
 				info["md5"] = info["id"]
@@ -187,19 +186,17 @@ func Info(repo string, r *http.Request) []byte {
 			db.Write(db.FileField(info["id"], "owner")[0], info["id"], info["name"], map[string]string{"sha256": info["sha256"]})
 		}
 		item := formatItem(info, repo, name)
-
-		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
-			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], repo) {
-				items = []ListItem{item}
-				break
-			}
-			continue
-		}
-
 		if len(items) >= p[1] {
 			break
 		}
-		items = append(items, item)
+
+		if !substr && name == item.Name {
+			if version == item.Version || len(version) == 0 {
+				items = []ListItem{item}
+			}
+		} else if len(version) == 0 || item.Version == version {
+			items = append(items, item)
+		}
 	}
 	output, err := json.Marshal(items)
 	if err != nil || string(output) == "null" {
