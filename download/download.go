@@ -123,7 +123,6 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
 	var info map[string]string
-	var substr bool
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -135,9 +134,7 @@ func Info(repo string, r *http.Request) []byte {
 	subname := r.URL.Query().Get("subname")
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
-
 	if len(subname) != 0 {
-		substr = true
 		name = subname
 	}
 
@@ -186,18 +183,21 @@ func Info(repo string, r *http.Request) []byte {
 			db.Write(db.FileField(info["id"], "owner")[0], info["id"], info["name"], map[string]string{"sha256": info["sha256"]})
 		}
 		item := formatItem(info, repo, name)
-		
-		if !substr && name == item.Name {
+
+		if len(subname) == 0 && name == item.Name {
 			if version == item.Version || len(version) == 0 {
 				items = []ListItem{item}
 			}
 		} else if len(version) == 0 || item.Version == version {
 			items = append(items, item)
 		}
-		
+
 		if len(items) >= p[1] {
 			break
 		}
+	}
+	if len(items) == 1 {
+		items[0].Signature = db.FileSignatures(info["id"])
 	}
 	output, err := json.Marshal(items)
 	if err != nil || string(output) == "null" {
@@ -246,7 +246,6 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 		Parent:       info["parent"],
 		Prefsize:     info["prefsize"],
 		Architecture: strings.ToUpper(info["arch"]),
-		Signature:    db.FileSignatures(info["id"], name),
 		Description:  info["Description"],
 	}
 	item.Size, _ = strconv.Atoi(info["size"])

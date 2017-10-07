@@ -390,11 +390,7 @@ func FileField(hash, field string) (list []string) {
 }
 
 // FileSignatures returns map with file owners and theirs signatures
-func FileSignatures(hash string, opt ...string) (list map[string]string) {
-	//workaround to hide signatures from full list of artifacts and to show it only when certain name is specified
-	if len(opt[0]) == 0 {
-		return nil
-	}
+func FileSignatures(hash string) (list map[string]string) {
 	list = map[string]string{}
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
