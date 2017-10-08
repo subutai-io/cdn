@@ -60,12 +60,12 @@ try {
 			ssh root@${cdnHost} -p8022 <<- EOF
 			set -e
 			/bin/mv /tmp/gorjun /mnt/lib/lxc/gorjun/opt/gorjun/bin/gorjun
-			/apps/bin/lxc-attach -n gorjun -- systemctl restart gorjun
+			sudo subutai attach gorjun systemctl restart gorjun
 		EOF"""
 
 		// check remote gorjun version
 		sh """
-			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 /apps/bin/lxc-attach -n gorjun -- curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
+			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 sudo subutai attach gorjun curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
 		"""
 	}
 
