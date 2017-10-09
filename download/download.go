@@ -185,7 +185,7 @@ func Info(repo string, r *http.Request) []byte {
 		item := formatItem(info, repo, name)
 
 		if len(subname) == 0 && name == item.Name {
-			if version == item.Version || strings.HasPrefix(item.Version, version) || len(version) == 0 {
+			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
 			}
 		} else if len(version) == 0 || item.Version == version {
