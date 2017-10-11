@@ -102,31 +102,31 @@ func writePackage(meta map[string]string) {
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
-		hash, owner := upload.Handler(w, r)
-		if len(hash) == 0 {
+		md5, sha256, owner := upload.Handler(w, r)
+		if len(md5) == 0 || len(sha256) == 0 {
 			return
 		}
-		control, err := readDeb(hash)
+		control, err := readDeb(md5)
 		if err != nil {
 			log.Warn(err.Error())
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			w.Write([]byte(err.Error()))
-			if db.Delete(owner, "apt", hash) == 0 {
-				os.Remove(config.Storage.Path + hash)
+			if db.Delete(owner, "apt", md5) == 0 {
+				os.Remove(config.Storage.Path + md5)
 			}
 			return
 		}
 		meta := getControl(control)
 		meta["Filename"] = header.Filename
-		meta["Size"] = getSize(config.Storage.Path + hash)
-		meta["SHA512"] = upload.Hash(config.Storage.Path+hash, "sha512")
-		meta["SHA256"] = upload.Hash(config.Storage.Path+hash, "sha256")
-		meta["SHA1"] = upload.Hash(config.Storage.Path+hash, "sha1")
-		meta["MD5sum"] = hash
+		meta["Size"] = getSize(config.Storage.Path + md5)
+		meta["SHA512"] = upload.Hash(config.Storage.Path+md5, "sha512")
+		meta["SHA256"] = upload.Hash(config.Storage.Path+md5, "sha256")
+		meta["SHA1"] = upload.Hash(config.Storage.Path+md5, "sha1")
+		meta["MD5sum"] = md5
 		meta["type"] = "apt"
 		writePackage(meta)
-		db.Write(owner, hash, header.Filename, meta)
-		w.Write([]byte(hash))
+		db.Write(owner, md5, header.Filename, meta)
+		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}
 }

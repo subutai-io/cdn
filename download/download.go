@@ -15,6 +15,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/gorjun/upload"
 )
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
@@ -57,7 +58,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	path := config.Storage.Path + id
-	if md5, sha256 := db.Hash(id); len(md5) != 0 || len(sha256) != 0 {
+	if md5, _ := db.Hash(id); len(md5) != 0 {
 		path = config.Storage.Path + md5
 	}
 
@@ -130,8 +131,12 @@ func Info(repo string, r *http.Request) []byte {
 	page := r.URL.Query().Get("page")
 	owner := r.URL.Query().Get("owner")
 	token := r.URL.Query().Get("token")
+	subname := r.URL.Query().Get("subname")
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
+	if len(subname) != 0 {
+		name = subname
+	}
 
 	list := db.Search(name)
 	if len(tag) > 0 {
@@ -157,9 +162,6 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 
-	if name == "management" && repo == "template" {
-		info = db.LatestTmpl(name, version)
-	}
 	for _, k := range list {
 		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
 			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
@@ -171,27 +173,31 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		if name == "management" && repo == "template" {
-			if len(info["name"]) == 0 {
-				continue
+		info = db.Info(k)
+
+		if len(info["sha256"]) == 0 {
+			if len(info["md5"]) == 0 {
+				info["md5"] = info["id"]
 			}
-		} else {
-			info = db.Info(k)
+			info["sha256"] = upload.Hash(config.Storage.Path+info["md5"], "sha256")
+			db.Write(db.FileField(info["id"], "owner")[0], info["id"], info["name"], map[string]string{"sha256": info["sha256"]})
 		}
 		item := formatItem(info, repo, name)
 
-		if strings.HasPrefix(info["name"], name+"-subutai-template") || name == info["name"] {
-			if (len(version) == 0 || strings.Contains(info["version"], version)) && k == db.LastHash(info["name"], repo) {
+		if len(subname) == 0 && name == item.Name {
+			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
-				break
 			}
-			continue
+		} else if len(version) == 0 || item.Version == version {
+			items = append(items, item)
 		}
 
 		if len(items) >= p[1] {
 			break
 		}
-		items = append(items, item)
+	}
+	if len(items) == 1 {
+		items[0].Signature = db.FileSignatures(info["id"])
 	}
 	output, err := json.Marshal(items)
 	if err != nil || string(output) == "null" {
@@ -240,7 +246,6 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 		Parent:       info["parent"],
 		Prefsize:     info["prefsize"],
 		Architecture: strings.ToUpper(info["arch"]),
-		Signature:    db.FileSignatures(info["id"], name),
 		Description:  info["Description"],
 	}
 	item.Size, _ = strconv.Atoi(info["size"])

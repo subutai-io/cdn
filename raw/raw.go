@@ -14,13 +14,14 @@ import (
 
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		hash, owner := upload.Handler(w, r)
-		if len(hash) == 0 {
+		md5, sha256, owner := upload.Handler(w, r)
+		if len(md5) == 0 || len(sha256) == 0 {
 			return
 		}
 		info := map[string]string{
-			"md5":  hash,
-			"type": "raw",
+			"md5":    md5,
+			"sha256": sha256,
+			"type":   "raw",
 		}
 		r.ParseMultipartForm(32 << 20)
 		if len(r.MultipartForm.Value["version"]) != 0 {
