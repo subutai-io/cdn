@@ -197,7 +197,7 @@ func Info(repo string, r *http.Request) []byte {
 		}
 	}
 	if len(items) == 1 {
-		items[0].Signature = db.FileSignatures(info["id"])
+		items[0].Signature = db.FileSignatures(items[0].ID)
 	}
 	output, err := json.Marshal(items)
 	if err != nil || string(output) == "null" {
