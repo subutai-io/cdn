@@ -121,7 +121,6 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 // Info returns JSON formatted list of elements. It allows to apply some filters to Search.
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
-	var info map[string]string
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
