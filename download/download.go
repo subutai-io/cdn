@@ -121,6 +121,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 // Info returns JSON formatted list of elements. It allows to apply some filters to Search.
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
+	var fullname bool
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -176,8 +177,9 @@ func Info(repo string, r *http.Request) []byte {
 		if len(subname) == 0 && name == item.Name {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
+				fullname = true
 			}
-		} else if len(version) == 0 || item.Version == version {
+		} else if !fullname && (len(version) == 0 || item.Version == version) {
 			items = append(items, item)
 		}
 
