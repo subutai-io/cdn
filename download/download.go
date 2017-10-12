@@ -149,10 +149,10 @@ func Info(repo string, r *http.Request) []byte {
 	} else if verified == "true" {
 		items = append(items, getVerified(list, name, repo))
 		output, err := json.Marshal(items)
-		if err != nil || string(output) == "null" {
-			return nil
+		if err == nil && len(items) > 0 && items[0].ID != "" {
+			return output
 		}
-		return output
+		return nil
 	}
 
 	pstr := strings.Split(page, ",")
