@@ -36,7 +36,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 
-	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
+	owner = strings.ToLower(db.CheckToken(r.MultipartForm.Value["token"][0]))
 
 	file, header, err := r.FormFile("file")
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
@@ -267,13 +267,14 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		fix := r.URL.Query().Get("fix")
 		token := r.URL.Query().Get("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" && db.CheckToken(token) != user {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" && strings.EqualFold(db.CheckToken(token), user) {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 
 		if len(user) != 0 {
+			user = strings.ToLower(user)
 			q, _ := json.Marshal(map[string]int{
 				"quota": db.QuotaGet(user),
 				"used":  db.QuotaUsageGet(user),
