@@ -695,7 +695,7 @@ func CheckRepo(owner, repo, hash string) (val int) {
 					if d := c.Bucket([]byte(v)); d != nil {
 						if k, _ := d.Cursor().First(); len(owner) == 0 && k != nil {
 							val += d.Stats().KeyN
-						} else if d.Get([]byte(owner)) != nil {
+						} else if d.Get([]byte(owner)) != nil || d.Get([]byte(strings.ToLower(owner))) != nil {
 							val++
 						}
 					}
@@ -703,7 +703,7 @@ func CheckRepo(owner, repo, hash string) (val int) {
 			} else if len(repo) == 0 || len(repo) != 0 && repo == string(b.Get([]byte("type"))) {
 				if len(owner) == 0 {
 					val = b.Bucket([]byte("owner")).Stats().KeyN
-				} else if len(owner) != 0 && b.Bucket([]byte("owner")).Get([]byte(owner)) != nil {
+				} else if b.Bucket([]byte("owner")).Get([]byte(owner)) != nil || b.Bucket([]byte("owner")).Get([]byte(strings.ToLower(owner))) != nil {
 					val++
 				}
 			}
