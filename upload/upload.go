@@ -253,7 +253,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			log.Warn("User tried to request scope of another's file, rejecting")
 			return
 		}
-		js, _ := json.Marshal(db.GetScope(id, owner))
+		js, _ := json.Marshal(db.GetScope(id, strings.ToLower(owner)))
 		w.Write(js)
 	}
 }
