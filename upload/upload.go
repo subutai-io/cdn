@@ -212,7 +212,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			log.Warn("Empty repo name, rejecting share request")
 			return
 		}
-		owner := db.CheckToken(data.Token)
+		owner := strings.ToLower(db.CheckToken(data.Token))
 		if db.CheckRepo(owner, data.Repo, data.Id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
