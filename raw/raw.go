@@ -30,6 +30,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		_, header, _ := r.FormFile("file")
 		id := uuid.NewV4().String()
 		db.Write(owner, id, header.Filename, info)
+		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
+			log.Info("Sharing " + md5 + " with " + owner)
+			db.ShareWith(id, owner, owner)
+		}
+
 		w.Write([]byte(id))
 		log.Info(header.Filename + " saved to raw repo by " + owner)
 	}

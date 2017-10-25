@@ -88,11 +88,6 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 
-	if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
-		log.Info("Sharing " + md5sum + " with " + owner)
-		db.ShareWith(md5sum, owner, owner)
-	}
-
 	os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+md5sum)
 	log.Info("File received: " + header.Filename + "(" + md5sum + ")")
 
