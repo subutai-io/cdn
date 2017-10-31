@@ -51,8 +51,8 @@ try {
 		notifyBuildDetails = "\nFailed on Stage - Deploy Gorjun"
 
 		switch (env.BRANCH_NAME) {
-			case ~/master/: cdnHost = "stagecdn.subut.ai"; break;
-			default: cdnHost = "devcdn.subut.ai"
+			case ~/master/: cdnHost = "eu0.mastercdn.subut.ai"; break;
+			default: cdnHost = "eu0.devcdn.subut.ai"
 		}
 
 		sh """
