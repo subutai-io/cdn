@@ -15,7 +15,6 @@ import (
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/upload"
 )
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
@@ -122,7 +121,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 // Info returns JSON formatted list of elements. It allows to apply some filters to Search.
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
-	var info map[string]string
+	var fullname bool
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -150,10 +149,10 @@ func Info(repo string, r *http.Request) []byte {
 	} else if verified == "true" {
 		items = append(items, getVerified(list, name, repo))
 		output, err := json.Marshal(items)
-		if err != nil || string(output) == "null" {
-			return nil
+		if err == nil && len(items) > 0 && items[0].ID != "" {
+			return output
 		}
-		return output
+		return nil
 	}
 
 	pstr := strings.Split(page, ",")
@@ -173,22 +172,14 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		info = db.Info(k)
-
-		if len(info["sha256"]) == 0 {
-			if len(info["md5"]) == 0 {
-				info["md5"] = info["id"]
-			}
-			info["sha256"] = upload.Hash(config.Storage.Path+info["md5"], "sha256")
-			db.Write(db.FileField(info["id"], "owner")[0], info["id"], info["name"], map[string]string{"sha256": info["sha256"]})
-		}
-		item := formatItem(info, repo, name)
+		item := formatItem(db.Info(k), repo, name)
 
 		if len(subname) == 0 && name == item.Name {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
+				fullname = true
 			}
-		} else if len(version) == 0 || item.Version == version {
+		} else if !fullname && (len(version) == 0 || item.Version == version) {
 			items = append(items, item)
 		}
 

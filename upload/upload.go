@@ -36,7 +36,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 
-	owner = db.CheckToken(r.MultipartForm.Value["token"][0])
+	owner = strings.ToLower(db.CheckToken(r.MultipartForm.Value["token"][0]))
 
 	file, header, err := r.FormFile("file")
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
@@ -207,7 +207,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			log.Warn("Empty repo name, rejecting share request")
 			return
 		}
-		owner := db.CheckToken(data.Token)
+		owner := strings.ToLower(db.CheckToken(data.Token))
 		if db.CheckRepo(owner, data.Repo, data.Id) == 0 {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("File is not owned by authorized user"))
@@ -248,7 +248,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			log.Warn("User tried to request scope of another's file, rejecting")
 			return
 		}
-		js, _ := json.Marshal(db.GetScope(id, owner))
+		js, _ := json.Marshal(db.GetScope(id, strings.ToLower(owner)))
 		w.Write(js)
 	}
 }
@@ -267,13 +267,14 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 		fix := r.URL.Query().Get("fix")
 		token := r.URL.Query().Get("token")
 
-		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && db.CheckToken(token) != "subutai" && db.CheckToken(token) != user {
+		if len(token) == 0 || len(db.CheckToken(token)) == 0 || db.CheckToken(token) != "Hub" && !strings.EqualFold(db.CheckToken(token), user) {
 			w.Write([]byte("Forbidden"))
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 
 		if len(user) != 0 {
+			user = strings.ToLower(user)
 			q, _ := json.Marshal(map[string]int{
 				"quota": db.QuotaGet(user),
 				"used":  db.QuotaUsageGet(user),

@@ -105,12 +105,13 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			"prefsize":    t.Prefsize,
 			"Description": t.Description,
 		})
+		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
+			log.Info("Sharing " + t.ID + " with " + owner)
+			db.ShareWith(t.ID, owner, owner)
+		}
+
 		w.Write([]byte(t.ID))
 		log.Info(t.Name + " saved to template repo by " + owner)
-		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
-			log.Info("Sharing " + md5 + " with " + owner)
-			db.ShareWith(md5, owner, owner)
-		}
 	}
 }
 

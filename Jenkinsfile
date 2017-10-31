@@ -39,6 +39,7 @@ try {
 			export GOPATH=${workspace}/${goenvDir}
 			export GOBIN=${workspace}/${goenvDir}/bin
 			export GIT_BRANCH=${env.BRANCH_NAME}
+			export PATH=\$PATH:/usr/local/go/bin
 			go get
 			make | cut -d ' ' -f 7 | cut -d '=' -f 2 | tr -d '\"'
 			""", returnStdout: true).trim()
@@ -50,8 +51,8 @@ try {
 		notifyBuildDetails = "\nFailed on Stage - Deploy Gorjun"
 
 		switch (env.BRANCH_NAME) {
-			case ~/master/: cdnHost = "stagecdn.subut.ai"; break;
-			default: cdnHost = "devcdn.subut.ai"
+			case ~/master/: cdnHost = "eu0.mastercdn.subut.ai"; break;
+			default: cdnHost = "eu0.devcdn.subut.ai"
 		}
 
 		sh """
