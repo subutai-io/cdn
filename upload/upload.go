@@ -28,15 +28,18 @@ type share struct {
 
 //Handler function works with income upload requests, makes sanity checks, etc
 func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner string) {
-	r.ParseMultipartForm(32 << 20)
-	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
+
+	token := r.Header.Get("token")
+
+	if len(token) == 0 || len(db.CheckToken(token)) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))
 		log.Warn(r.RemoteAddr + " - rejecting unauthorized upload request")
 		return
 	}
+	r.ParseMultipartForm(32 << 20)
 
-	owner = strings.ToLower(db.CheckToken(r.MultipartForm.Value["token"][0]))
+	owner = strings.ToLower(db.CheckToken(token))
 
 	file, header, err := r.FormFile("file")
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
