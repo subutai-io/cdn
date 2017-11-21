@@ -339,7 +339,7 @@ func CheckToken(token string) (name string) {
 		if b := tx.Bucket(tokens).Bucket([]byte(token)); b != nil {
 			date := new(time.Time)
 			date.UnmarshalText(b.Get([]byte("date")))
-			if date.Add(time.Minute * 60).Before(time.Now()) {
+			if date.Add(time.Minute * 5).Before(time.Now()) {
 				return nil
 			}
 			if value := b.Get([]byte("name")); value != nil {
