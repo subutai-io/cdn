@@ -1,3 +1,5 @@
 gorjun
 my.db
 gorjun_*
+.idea/
+/db_helper

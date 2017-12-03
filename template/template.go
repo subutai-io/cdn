@@ -113,6 +113,10 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(t.ID))
 		log.Info(t.Name + " saved to template repo by " + owner)
 	}
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Allow", "GET,POST,OPTIONS")
+	}
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
