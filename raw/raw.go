@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 
 	"github.com/subutai-io/gorjun/db"
@@ -37,6 +37,10 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte(id))
 		log.Info(header.Filename + " saved to raw repo by " + owner)
+	}
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Allow", "POST,OPTIONS")
 	}
 }
 

@@ -129,6 +129,10 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Allow", "POST,OPTIONS")
+	}
 }
 
 func Download(w http.ResponseWriter, r *http.Request) {
