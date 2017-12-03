@@ -131,7 +131,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Allow", "POST,OPTIONS")
+		w.Header().Set("Allow", "GET,POST,OPTIONS")
 	}
 }
 
