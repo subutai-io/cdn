@@ -22,7 +22,8 @@ type ListItem struct {
 	ID           string            `json:"id"`
 	Hash         hashsums          `json:"hash"`
 	Size         int               `json:"size"`
-	Date         string            `json:"date"`
+	Date         string            `json:"upload-date-formated"`
+	Timestamp    string            `json:"upload-date-timestamp,omitempty"`
 	Name         string            `json:"name,omitempty"`
 	Tags         []string          `json:"tags,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`
@@ -227,6 +228,9 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 		info["prefsize"] = "tiny"
 	}
 
+	date, _ := time.Parse(time.RFC3339Nano, info["date"])
+	timestamp := strconv.FormatInt(date.Unix(), 10)
+
 	item := ListItem{
 		ID:           info["id"],
 		Date:         info["date"],
@@ -240,6 +244,7 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 		Prefsize:     info["prefsize"],
 		Architecture: strings.ToUpper(info["arch"]),
 		Description:  info["Description"],
+		Timestamp:    timestamp,
 	}
 	item.Size, _ = strconv.Atoi(info["size"])
 
