@@ -22,6 +22,7 @@ type ListItem struct {
 	ID           string            `json:"id"`
 	Hash         hashsums          `json:"hash"`
 	Size         int               `json:"size"`
+	Date         string            `json:"date"`
 	Name         string            `json:"name,omitempty"`
 	Tags         []string          `json:"tags,omitempty"`
 	Owner        []string          `json:"owner,omitempty"`
@@ -228,6 +229,7 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 
 	item := ListItem{
 		ID:           info["id"],
+		Date:         info["date"],
 		Hash:         hashsums{Md5: info["md5"], Sha256: info["sha256"]},
 		Name:         strings.Split(info["name"], "-subutai-template")[0],
 		Tags:         db.FileField(info["id"], "tags"),
