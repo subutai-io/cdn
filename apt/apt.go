@@ -102,6 +102,14 @@ func writePackage(meta map[string]string) {
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
+		token := r.Header.Get("token")
+		owner := strings.ToLower(db.CheckToken(token))
+		if owner != "subutai" && owner != "jenkins" {
+			log.Info("Only system users can upload to apt repo")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Only system users can upload to apt repo"))
+			return
+		}
 		md5, sha256, owner := upload.Handler(w, r)
 		if len(md5) == 0 || len(sha256) == 0 {
 			return
