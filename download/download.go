@@ -251,6 +251,7 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 	if repo == "apt" {
 		item.Version = info["Version"]
 		item.Architecture = info["Architecture"]
+		item.Size, _ = strconv.Atoi(info["Size"])
 	}
 	if len(item.Hash.Md5) == 0 {
 		item.Hash.Md5 = item.ID
