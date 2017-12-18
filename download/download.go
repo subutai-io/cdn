@@ -22,7 +22,7 @@ type ListItem struct {
 	ID           string            `json:"id"`
 	Hash         hashsums          `json:"hash"`
 	Size         int               `json:"size"`
-	Date         string            `json:"upload-date-formated"`
+	Date         time.Time         `json:"upload-date-formated"`
 	Timestamp    string            `json:"upload-date-timestamp,omitempty"`
 	Name         string            `json:"name,omitempty"`
 	Tags         []string          `json:"tags,omitempty"`
@@ -230,10 +230,9 @@ func formatItem(info map[string]string, repo, name string) ListItem {
 
 	date, _ := time.Parse(time.RFC3339Nano, info["date"])
 	timestamp := strconv.FormatInt(date.Unix(), 10)
-
 	item := ListItem{
 		ID:           info["id"],
-		Date:         info["date"],
+		Date:         date,
 		Hash:         hashsums{Md5: info["md5"], Sha256: info["sha256"]},
 		Name:         strings.Split(info["name"], "-subutai-template")[0],
 		Tags:         db.FileField(info["id"], "tags"),
