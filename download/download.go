@@ -22,7 +22,7 @@ type ListItem struct {
 	ID           string            `json:"id"`
 	Hash         hashsums          `json:"hash"`
 	Size         int               `json:"size"`
-	Date         time.Time         `json:"upload-date-formated"`
+	Date         time.Time         `json:"upload-date-formatted"`
 	Timestamp    string            `json:"upload-date-timestamp,omitempty"`
 	Name         string            `json:"name,omitempty"`
 	Tags         []string          `json:"tags,omitempty"`
