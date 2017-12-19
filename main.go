@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/subutai-io/agent/log"
 
@@ -18,6 +20,12 @@ import (
 )
 
 var version = "unknown"
+
+var (
+	srv      *http.Server
+	testMode bool = false
+	stop     chan bool
+)
 
 func main() {
 	defer db.Close()
@@ -85,7 +93,20 @@ func main() {
 	http.HandleFunc("/kurjun/rest/quota", upload.Quota)
 	http.HandleFunc("/kurjun/rest/about", about)
 
-	log.Check(log.ErrorLevel, "Starting to listen :"+config.Network.Port, http.ListenAndServe(":"+config.Network.Port, nil))
+	if testMode {
+		http.HandleFunc("/kurjun/rest/shutdown", shutdown)
+	}
+
+	srv = &http.Server{
+		Addr:    ":" + config.Network.Port,
+		Handler: nil,
+	}
+	srv.ListenAndServe()
+}
+
+func shutdown(w http.ResponseWriter, r *http.Request) {
+	log.Info("Shutting down the server")
+	stop <- true
 }
 
 func about(w http.ResponseWriter, r *http.Request) {
@@ -107,4 +128,18 @@ func singleJoiningSlash(a, b string) string {
 		return a + "/" + b
 	}
 	return a + b
+}
+
+func runMain() {
+	// start the stop channel
+	stop = make(chan bool)
+	// put the service in "testMode"
+	testMode = true
+	// run the main entry point
+	go main()
+	// watch for the stop channel
+	<-stop
+	// stop the graceful server
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	srv.Shutdown(ctx)
 }
