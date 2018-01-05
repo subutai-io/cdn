@@ -40,7 +40,7 @@ try {
 			export GOBIN=${workspace}/${goenvDir}/bin
 			export GIT_BRANCH=${env.BRANCH_NAME}
 			export PATH=\$PATH:/usr/local/go/bin
-			go get
+			go get -u
 			make | cut -d ' ' -f 7 | cut -d '=' -f 2 | tr -d '\"'
 			""", returnStdout: true).trim()
 
