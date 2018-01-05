@@ -1,0 +1,3 @@
+[submodule "gorjun-perl-cli"]
+	path = gorjun-perl-cli
+	url = https://github.com/marcoarthur/gorjun-perl-cli
