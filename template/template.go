@@ -47,7 +47,8 @@ func readTempl(hash string) (configfile string, err error) {
 }
 
 func getConf(hash string, configfile string) (t *download.ListItem) {
-	t = &download.ListItem{ID: uuid.NewV4().String()}
+	my_uuid, _ := uuid.NewV4()
+	t = &download.ListItem{ID: my_uuid.String()}
 	t.Hash.Md5 = hash
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
