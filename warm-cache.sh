@@ -25,6 +25,6 @@ for type in template; do
 	while IFS= read -r ID 
 	do
      		echo "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token="
-     		curl -m 3 -k "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token=" -o /dev/null
+     		curl -k "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token=" -o /dev/null
 	done
 done
