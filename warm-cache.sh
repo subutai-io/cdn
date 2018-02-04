@@ -19,12 +19,12 @@ esac
 shift 
 done
 
-for type in template raw; do
+for type in template; do
 	echo $type
 	curl -s -k https://${ENV}cdn.subut.ai:8338/kurjun/rest/$type/info | jq '.[] | .id' | tr -d '"'|
 	while IFS= read -r ID 
 	do
-     		echo "https://$addr:8338/kurjun/rest/$type/get?id=$ID" 
-     		curl -m 3 -k "https://$addr:8338/kurjun/rest/$type/get?id=$ID" -o /dev/null
+     		echo "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token="
+     		curl -k "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token=" -o /dev/null
 	done
 done

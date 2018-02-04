@@ -1,0 +1,33 @@
+[Agent]
+Debug = true
+GpgUser =
+AppPrefix = /snap/subutai/current/
+LxcPrefix = /var/snap/subutai/common/lxc/
+DataPrefix = /var/snap/subutai/current/
+GpgPassword = ***
+
+[Management]
+Host =
+Port = 8443
+Secret = secret
+GpgUser =
+RestPublicKey = /rest/v1/security/keyman/getpublickeyring
+Fingerprint =
+Allowinsecure = true
+
+[Influxdb]
+Server =
+Db = metrics
+User = root
+Pass = root
+
+[CDN]
+Allowinsecure = true
+URL = cdn1
+SSLport = 8338
+Kurjun =
+
+[Template]
+Branch =
+Version = 6.3.0
+Arch = amd64`
