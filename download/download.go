@@ -165,7 +165,7 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 	latestVersion, _ := semver.Make("0.0.0")
-	if version == "" {
+	if repo == "template" && version == "" {
 		for _, k := range list {
 			item := formatItem(db.Info(k), repo, name)
 			itemVersion, _ := semver.Make(item.Version)
