@@ -1,0 +1,13 @@
+[Unit]
+Description=Subutai Kurjun Server
+After=network.target auditd.service
+
+[Service]
+ExecStart=
+ExecStart=/home/vagrant/go/bin/gorjun
+Restart=on-failure
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
+Alias=gorjun.service"

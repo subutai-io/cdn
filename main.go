@@ -54,6 +54,9 @@ func main() {
 		log.Check(log.ErrorLevel, "Starting to listen :"+config.Network.Port, http.ListenAndServe(":"+config.Network.Port, proxy))
 		return
 	}
+
+	log.Info("Server has started. " + "Listening at " + "127.0.0.1:8080")
+
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
 	http.HandleFunc("/kurjun/rest/file/info", raw.Info)
 	http.HandleFunc("/kurjun/rest/raw/get", raw.Download)
