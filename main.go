@@ -19,7 +19,7 @@ import (
 	"github.com/subutai-io/gorjun/upload"
 )
 
-var version = "unknown"
+var version = "6.2.2"
 
 var (
 	srv      *http.Server
