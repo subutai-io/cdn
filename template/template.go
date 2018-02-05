@@ -19,6 +19,7 @@ import (
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
+	"net/url"
 )
 
 func readTempl(hash string) (configfile string, err error) {
@@ -47,7 +48,8 @@ func readTempl(hash string) (configfile string, err error) {
 }
 
 func getConf(hash string, configfile string) (t *download.ListItem) {
-	t = &download.ListItem{ID: uuid.NewV4().String()}
+	my_uuid, _ := uuid.NewV4()
+	t = &download.ListItem{ID: my_uuid.String()}
 	t.Hash.Md5 = hash
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
@@ -123,8 +125,16 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(args) > 1 {
-		if list := db.UserFile(args[0], args[1]); len(list) > 0 {
-			http.Redirect(w, r, "/kurjun/rest/template/download?id="+list[0], 302)
+		parsedUrl, _ := url.Parse(uri)
+		parameters, _ := url.ParseQuery(parsedUrl.RawQuery)
+		var token string
+		if len(parameters["token"]) > 0 {
+			token = parameters["token"][0]
+		}
+		owner := args[0]
+		file := strings.Split(args[1], "?")[0]
+		if list := db.UserFile(owner, file); len(list) > 0 {
+			http.Redirect(w, r, "/kurjun/rest/template/download?id="+list[0] + "&token="+token, 302)
 		}
 	}
 }

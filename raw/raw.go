@@ -10,6 +10,7 @@ import (
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
+	"net/url"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +29,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			info["version"] = r.MultipartForm.Value["version"][0]
 		}
 		_, header, _ := r.FormFile("file")
-		id := uuid.NewV4().String()
+		my_uuid, _ := uuid.NewV4()
+		id := my_uuid.String()
 		db.Write(owner, id, header.Filename, info)
 		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
 			log.Info("Sharing " + md5 + " with " + owner)
@@ -50,8 +52,16 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(args) > 1 {
-		if list := db.UserFile(args[0], args[1]); len(list) > 0 {
-			http.Redirect(w, r, "/kurjun/rest/raw/download?id="+list[0], 302)
+		parsedUrl, _ := url.Parse(uri)
+		parameters, _ := url.ParseQuery(parsedUrl.RawQuery)
+		var token string
+		if len(parameters["token"]) > 0 {
+			token = parameters["token"][0]
+		}
+		owner := args[0]
+		file := strings.Split(args[1], "?")[0]
+		if list := db.UserFile(owner, file); len(list) > 0 {
+			http.Redirect(w, r, "/kurjun/rest/raw/download?id="+list[0]+"&token="+token, 302)
 		}
 	}
 }
