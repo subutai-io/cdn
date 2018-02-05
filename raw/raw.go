@@ -54,7 +54,10 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if len(args) > 1 {
 		parsedUrl, _ := url.Parse(uri)
 		parameters, _ := url.ParseQuery(parsedUrl.RawQuery)
-		token := parameters["token"][0]
+		var token string
+		if len(parameters["token"]) > 0 {
+			token = parameters["token"][0]
+		}
 		owner := args[0]
 		file := strings.Split(args[1], "?")[0]
 		if list := db.UserFile(owner, file); len(list) > 0 {
