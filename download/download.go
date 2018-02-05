@@ -15,6 +15,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
+	"github.com/blang/semver"
 )
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
@@ -124,6 +125,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
 	var fullname bool
+	var latestVersionId string
 	p := []int{0, 1000}
 
 	id := r.URL.Query().Get("id")
@@ -162,6 +164,17 @@ func Info(repo string, r *http.Request) []byte {
 	if len(pstr) == 2 {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
+	latestVersion, _ := semver.Make("0.0.0")
+	if repo == "template" && version == "" {
+		for _, k := range list {
+			item := formatItem(db.Info(k), repo, name)
+			itemVersion, _ := semver.Make(item.Version)
+			if itemVersion.Compare(latestVersion) == 1 {
+				latestVersion = itemVersion
+				latestVersionId = k
+			}
+		}
+	}
 
 	for _, k := range list {
 		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
@@ -175,7 +188,6 @@ func Info(repo string, r *http.Request) []byte {
 		}
 
 		item := formatItem(db.Info(k), repo, name)
-
 		if len(subname) == 0 && name == item.Name {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
@@ -189,7 +201,8 @@ func Info(repo string, r *http.Request) []byte {
 			break
 		}
 	}
-	if len(items) == 1 {
+	if len(items) == 1 && latestVersionId != "" {
+		items[0] = formatItem(db.Info(latestVersionId), repo, name)
 		items[0].Signature = db.FileSignatures(items[0].ID)
 	}
 	output, err := json.Marshal(items)
@@ -270,3 +283,4 @@ func intersect(listA, listB []string) (list []string) {
 	}
 	return list
 }
+
