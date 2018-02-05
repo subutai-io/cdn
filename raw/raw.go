@@ -10,6 +10,7 @@ import (
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
+	"net/url"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -51,8 +52,13 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(args) > 1 {
-		if list := db.UserFile(args[0], args[1]); len(list) > 0 {
-			http.Redirect(w, r, "/kurjun/rest/raw/download?id="+list[0], 302)
+		parsedUrl, _ := url.Parse(uri)
+		parameters, _ := url.ParseQuery(parsedUrl.RawQuery)
+		token := parameters["token"][0]
+		owner := args[0]
+		file := strings.Split(args[1], "?")[0]
+		if list := db.UserFile(owner, file); len(list) > 0 {
+			http.Redirect(w, r, "/kurjun/rest/raw/download?id="+list[0]+"&token="+token, 302)
 		}
 	}
 }
