@@ -195,7 +195,7 @@ func Info(repo string, r *http.Request) []byte {
 		}
 	}
 	if len(items) == 1 {
-		if version == "" && repo == "template" {
+		if version == "" && repo == "template" && itemLatestVersion.ID != "" {
 			items[0] = itemLatestVersion
 		}
 		items[0].Signature = db.FileSignatures(items[0].ID)
