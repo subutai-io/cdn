@@ -125,9 +125,8 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	var items []ListItem
 	var fullname bool
-	var latestVersionId string
+	var itemLatestVersion ListItem
 	p := []int{0, 1000}
-
 	id := r.URL.Query().Get("id")
 	tag := r.URL.Query().Get("tag")
 	name := r.URL.Query().Get("name")
@@ -165,17 +164,6 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 	latestVersion, _ := semver.Make("0.0.0")
-	if repo == "template" && version == "" {
-		for _, k := range list {
-			item := formatItem(db.Info(k), repo, name)
-			itemVersion, _ := semver.Make(item.Version)
-			if itemVersion.Compare(latestVersion) == 1 {
-				latestVersion = itemVersion
-				latestVersionId = k
-			}
-		}
-	}
-
 	for _, k := range list {
 		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
 			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
@@ -192,6 +180,11 @@ func Info(repo string, r *http.Request) []byte {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
 				fullname = true
+				itemVersion, _:= semver.Make(item.Version)
+				if itemVersion.Compare(latestVersion) == 1 {
+					latestVersion = itemVersion
+					itemLatestVersion = item
+				}
 			}
 		} else if !fullname && (len(version) == 0 || item.Version == version) {
 			items = append(items, item)
@@ -201,8 +194,10 @@ func Info(repo string, r *http.Request) []byte {
 			break
 		}
 	}
-	if len(items) == 1 && latestVersionId != "" {
-		items[0] = formatItem(db.Info(latestVersionId), repo, name)
+	if len(items) == 1 {
+		if version == "" && repo == "template" && itemLatestVersion.ID != "" {
+			items[0] = itemLatestVersion
+		}
 		items[0].Signature = db.FileSignatures(items[0].ID)
 	}
 	output, err := json.Marshal(items)
