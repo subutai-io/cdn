@@ -232,7 +232,9 @@ func Info(id string) map[string]string {
 		}
 		return nil
 	})
-	list["id"] = id
+	if len(list) != 0 {
+		list["id"] = id
+	}
 	return list
 }
 
