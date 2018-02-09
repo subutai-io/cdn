@@ -147,13 +147,14 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		w.Write([]byte("Bad request"))
 		return ""
 	}
-
-	if db.CheckRepo(user, repo[3], id) == 0 {
+	if db.CheckRepo(user, repo[3], id) == 0 && user != "subutai" {
 		log.Warn("File " + info["name"] + "(" + id + ") in " + repo[3] + " repo is not owned by " + user + ", rejecting deletion request")
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("File " + info["name"] + " not found or it has different owner"))
 		return ""
 	}
+	user = db.FileField(id, "owner")[0]
+
 	md5, _ := db.Hash(id)
 	f, err := os.Stat(config.Storage.Path + md5)
 	if !log.Check(log.WarnLevel, "Reading file stats", err) {
