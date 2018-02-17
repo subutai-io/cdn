@@ -65,6 +65,11 @@ try {
 			/bin/mv /tmp/gorjun /var/snap/subutai-sysnet/common/lxc/gorjun/opt/gorjun/bin/
 			sudo subutai attach gorjun systemctl restart gorjun
 		EOF"""
+		// check remote gorjun version
+		sh """
+			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 subutai attach gorjun 'curl -s -q http://127.0.0.1:8080/kurjun/rest/about)'" ]
+		"""
+
 		} else {
 		sh """
 			set +x
@@ -74,12 +79,13 @@ try {
 			/bin/mv /tmp/gorjun /var/snap/subutai-dev/common/lxc/gorjun/opt/gorjun/bin/
 			sudo subutai attach gorjun systemctl restart gorjun
 		EOF"""
-		}
-
+		
 		// check remote gorjun version
 		sh """
 			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 sudo subutai attach gorjun curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
 		"""
+		}
+		
 	}
 
 } catch (e) { 
