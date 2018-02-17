@@ -67,7 +67,7 @@ try {
 		EOF"""
 		// check remote gorjun version
 		sh """
-			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 subutai attach gorjun 'curl -s -q http://127.0.0.1:8080/kurjun/rest/about)'" ]
+			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 subutai attach gorjun "curl -s -q http://127.0.0.1:8080/kurjun/rest/about)"\" ]
 		"""
 
 		} else {
