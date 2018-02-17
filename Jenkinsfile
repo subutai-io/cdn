@@ -63,7 +63,7 @@ try {
 			ssh root@${cdnHost} -p8022 <<- EOF
 			set -e
 			/bin/mv /tmp/gorjun /var/snap/subutai-sysnet/common/lxc/gorjun/opt/gorjun/bin/
-			sudo subutai attach gorjun systemctl restart gorjun
+			subutai attach gorjun "systemctl restart gorjun.service"
 		EOF"""
 		// check remote gorjun version
 		sh """
