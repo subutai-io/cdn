@@ -53,6 +53,7 @@ try {
 
 		switch (env.BRANCH_NAME) {
 			case ~/master/: cdnHost = "eu0.mastercdn.subut.ai"; break;
+			case ~/sysnet/: cdnHost = "eu0.sysnetcdn.subut.ai"; break;
 			default: cdnHost = "eu0.devcdn.subut.ai"
 		}
 
