@@ -56,7 +56,16 @@ try {
 			case ~/sysnet/: cdnHost = "eu0.sysnetcdn.subut.ai"; break;
 			default: cdnHost = "eu0.devcdn.subut.ai"
 		}
-
+		if (env.BRANCH_NAME == 'sysnet') {
+		sh """
+			set +x
+			scp -P 8022 gorjun root@${cdnHost}:/tmp
+			ssh root@${cdnHost} -p8022 <<- EOF
+			set -e
+			/bin/mv /tmp/gorjun /var/snap/subutai-sysnet/common/lxc/gorjun/opt/gorjun/bin/
+			sudo subutai attach gorjun systemctl restart gorjun
+		EOF"""
+		} else {
 		sh """
 			set +x
 			scp -P 8022 gorjun root@${cdnHost}:/tmp
@@ -65,6 +74,7 @@ try {
 			/bin/mv /tmp/gorjun /var/snap/subutai-dev/common/lxc/gorjun/opt/gorjun/bin/
 			sudo subutai attach gorjun systemctl restart gorjun
 		EOF"""
+		}
 
 		// check remote gorjun version
 		sh """
