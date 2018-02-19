@@ -96,7 +96,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		t := getConf(md5, configfile)
-		db.Write(owner, t.ID, t.Name+"-subutai-template_"+t.Version+"_"+t.Architecture+".tar.gz", map[string]string{
+		filename := t.Name+"-subutai-template_"+t.Version+"_"+t.Architecture+".tar.gz"
+		db.Write(owner, t.ID, filename, map[string]string{
 			"type":        "template",
 			"arch":        t.Architecture,
 			"md5":         md5,
@@ -114,6 +115,22 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte(t.ID))
 		log.Info(t.Name + " saved to template repo by " + owner)
+
+		if IDs := db.UserFile(owner, filename); len(IDs) > 0 {
+			for _, ID := range IDs {
+				if ID == t.ID {
+					continue
+				}
+				item := download.FormatItem(db.Info(ID), "template", filename)
+				if db.Delete(owner, "template", item.ID) < 1 {
+					f, _ := os.Stat(config.Storage.Path + item.Hash.Md5)
+					db.QuotaUsageSet(owner, -int(f.Size()))
+					if item.Hash.Md5 != t.Hash.Md5 {
+						os.Remove(config.Storage.Path + item.Hash.Md5)
+					}
+				}
+			}
+		}
 	}
 }
 
