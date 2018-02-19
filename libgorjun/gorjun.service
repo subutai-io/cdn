@@ -3,7 +3,7 @@ Description=Subutai Kurjun Server
 After=network.target auditd.service
 [Service]
 ExecStart=
-ExecStart=/home/travis/gopath/src/github.com/emli/gorjun/gorjun
+ExecStart=/home/travis/gopath/src/github.com/subutai-io/gorjun/gorjun
 Restart=on-failure
 Type=simple
 [Install]
