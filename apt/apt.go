@@ -140,7 +140,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		file = db.LastHash(file, "apt")
 	}
 
-	if f, err := os.Open(config.Storage.Path + file); err == nil {
+	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
 		defer f.Close()
 		io.Copy(w, f)
 	} else {
