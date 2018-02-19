@@ -15,6 +15,6 @@ script:
   - sudo rngd -r /dev/urandom
   - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/gpg.txt
   - sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
-  - cd /home/travis/gopath/src/github.com/subutai-io/libgorjun/; ./register.sh
-  - cd /home/travis/gopath/src/github.com/subutai-io/libgorjun; go get github.com/stretchr/testify/assert;
+  - cd /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/; ./register.sh
+  - cd /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun; go get github.com/stretchr/testify/assert;
   - go test -v
