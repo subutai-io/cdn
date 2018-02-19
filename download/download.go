@@ -175,7 +175,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		item := formatItem(db.Info(k), repo, name)
+		item := FormatItem(db.Info(k), repo, name)
 		if len(subname) == 0 && name == item.Name {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
@@ -222,7 +222,7 @@ func getVerified(list []string, name, repo string) ListItem {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					if in(owner, []string{"subutai", "jenkins", "docker"}) {
-						return formatItem(info, repo, name)
+						return FormatItem(info, repo, name)
 					}
 				}
 			}
@@ -231,7 +231,7 @@ func getVerified(list []string, name, repo string) ListItem {
 	return ListItem{}
 }
 
-func formatItem(info map[string]string, repo, name string) ListItem {
+func FormatItem(info map[string]string, repo, name string) ListItem {
 	if len(info["prefsize"]) == 0 && repo == "template" {
 		info["prefsize"] = "tiny"
 	}
