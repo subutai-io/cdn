@@ -1,8 +1,21 @@
-language: perl
-perl:
-    - "5.22"
-before_install:
-    - git clone git://github.com/travis-perl/helpers ~/travis-perl-helpers
-    - source ~/travis-perl-helpers/init --auto
+language: go
+
+sudo: enabled
+go:
+  - 1.10
+  - 1.9.4
 script:
-  - cd gorjun-perl-cli; prove -v t/test_cover.t
+  - go get
+  - make
+  - sudo apt-get install systemd
+  - sudo cp -f /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/gorjun.service /etc/systemd/system/gorjun.service
+  - sudo systemctl daemon-reload
+  - sudo systemctl start gorjun.service
+  - sudo systemctl status gorjun.service
+  - sudo apt install -y rng-tools
+  - sudo rngd -r /dev/urandom
+  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/gpg.txt
+  - sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
+  - cd /home/travis/gopath/src/github.com/emli/subutai-io/libgorjun/; ./register.sh
+  - cd /home/travis/gopath/src/github.com/emli/subutai-io/libgorjun; go get github.com/stretchr/testify/assert;
+  - go test -v
