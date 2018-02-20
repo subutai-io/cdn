@@ -84,10 +84,10 @@ func TestRemoveTemplate(t *testing.T) {
 		t.Errorf("Failed to upload: %v", err)
 	}
 	fmt.Printf("Template uploaded successfully, id : %s\n", id)
-	//err = g.RemoveFileByID(id,"template")
-	//if err != nil {
-	//	t.Errorf("Failed to remove file: %v", err)
-	//}
+	err = g.RemoveFileByID(id,"template")
+	if err != nil {
+		t.Errorf("Failed to remove file: %v", err)
+	}
 	fmt.Printf("Template removed successfully, id : %s\n", id)
 }
 
