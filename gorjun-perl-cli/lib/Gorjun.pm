@@ -291,7 +291,7 @@ sub upload {
     croak "Upload requires token" unless $params{token};
 
     # change placeholder in path and delete type from params
-    $info->{path} =~ s/\(:type\)/$params{type}/mx;
+    my $path = $info->{path} =~ s/\(:type\)/$params{type}/rmx;
     delete $params{type};
 
     # token goes to http header
@@ -300,7 +300,7 @@ sub upload {
 
     my $res = $self->send(
         method => $info->{method},
-        path   => $info->{path},
+        path   => $path,
         form   => \%params,
         header => $header
     );

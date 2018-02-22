@@ -99,7 +99,7 @@ sub _set_repo {
     unless ( -d $path ) {
         carp "Can't find gorjun on $path trying to get it";
 
-        my $github_src = join '', $self->_mk_github_path;
+        my $github_src = $self->_mk_github_path;
         my @cmd = ( qw( go get ), $github_src );
 
         run \@cmd, timeout(TIMEOUT) or croak "Can't set repository";
@@ -296,7 +296,7 @@ sub _mk_github_path {
       $self->remote->path =~ s/\.git$//r;    # strip out .git ending of path
     my @ghub_path = ( $self->remote->authority, $rpath );
 
-    return @ghub_path;
+    return wantarray ? @ghub_path : join '', @ghub_path;
 }
 
 1;

@@ -95,6 +95,20 @@ while ( my ( $type, $file ) = each %UPLOADS ) {
     push @uploads, $upload; # save upload id's
 }
 
+# check for Package file in deb repository
+ok $res = $g->send(
+    method => 'get',
+    path => '/kurjun/rest/apt/Packages',
+);
+note($res);
+
+# check for Release file in deb repository
+ok $res = $g->send(
+    method => 'get',
+    path => '/kurjun/rest/apt/Release',
+);
+note($res);
+
 # Share repositories
 #
 # TODO: share repository with another user
