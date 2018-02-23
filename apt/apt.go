@@ -18,6 +18,7 @@ import (
 
 	"github.com/mkrautz/goar"
 	"github.com/subutai-io/agent/log"
+	"os/exec"
 )
 
 func readDeb(hash string) (control bytes.Buffer, err error) {
@@ -127,6 +128,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		db.Write(owner, md5, header.Filename, meta)
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
+		os.Rename(config.Storage.Path+md5, config.Storage.Path+header.Filename)
+		renameOldDebFiles()
+		generateReleaseFile()
 	}
 }
 
@@ -135,10 +139,6 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if len(file) == 0 {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
-	if file != "Packages" && file != "InRelease" && file != "Release" {
-		file = db.LastHash(file, "apt")
-	}
-
 	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
 		defer f.Close()
 		io.Copy(w, f)
@@ -221,4 +221,40 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte("Not found"))
+}
+
+func renameOldDebFiles()  {
+	list := db.Search("")
+	for _, k := range list {
+		if db.CheckRepo("", "apt", k) == 0 {
+			continue
+		}
+		item := download.FormatItem(db.Info(k), "apt", "")
+		os.Rename(config.Storage.Path+item.Hash.Md5, config.Storage.Path+item.Name)
+	}
+}
+
+func generateReleaseFile()  {
+	cmd := exec.Command("bash", "-c", "dpkg-scanpackages . /dev/null | tee Packages | gzip > Packages.gz")
+	cmd.Dir = config.Storage.Path
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't run dpkg-scanpackages")
+	}
+
+	cmd = exec.Command("bash", "-c", "apt-ftparchive release . > Release")
+	cmd.Dir = config.Storage.Path
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't run apt-ftparchive")
+	}
+	cmd = exec.Command("bash", "-c", "gpg --batch --yes --armor -u subutai-release@subut.ai -abs -o Release.gpg Release")
+	cmd.Dir = config.Storage.Path
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't sign Realease file")
+	}
 }
