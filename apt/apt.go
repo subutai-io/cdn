@@ -124,7 +124,6 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["SHA1"] = upload.Hash(config.Storage.Path+md5, "sha1")
 		meta["MD5sum"] = md5
 		meta["type"] = "apt"
-		writePackage(meta)
 		db.Write(owner, md5, header.Filename, meta)
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
