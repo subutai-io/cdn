@@ -125,11 +125,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["SHA1"] = upload.Hash(config.Storage.Path+md5, "sha1")
 		meta["MD5sum"] = md5
 		meta["type"] = "apt"
-		writePackage(meta)
 		db.Write(owner, md5, header.Filename, meta)
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 		os.Rename(config.Storage.Path+md5, config.Storage.Path+header.Filename)
+		renameOldDebFiles()
 		generateReleaseFile()
 	}
 }
@@ -216,7 +216,6 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
-	renameOldDebFiles()
 	if info := download.Info("apt", r); len(info) != 0 {
 		w.Write(info)
 		return
@@ -241,7 +240,7 @@ func generateReleaseFile()  {
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
-		panic("Can't run dpkg-scanpackages")
+		log.Info("Can't run dpkg-scanpackages")
 	}
 
 	cmd = exec.Command("bash", "-c", "apt-ftparchive release . > Release")
@@ -249,7 +248,13 @@ func generateReleaseFile()  {
 	err = cmd.Run()
 	if err != nil {
 		log.Fatal(err)
-		panic("Can't run apt-ftparchive")
+		log.Info("Can't run apt-ftparchive")
 	}
-
+	cmd = exec.Command("bash", "-c", "gpg --batch --yes --armor -u subutai-release@subut.ai -abs -o Release.gpg Release")
+	cmd.Dir = config.Storage.Path
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't sign Realease file")
+	}
 }
