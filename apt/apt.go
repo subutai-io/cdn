@@ -106,7 +106,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 		os.Rename(config.Storage.Path+md5, config.Storage.Path+header.Filename)
-		renameOldDebFiles()
+		go renameOldDebFiles()
 		go generateReleaseFile()
 	}
 }
