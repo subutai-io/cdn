@@ -106,8 +106,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 		os.Rename(config.Storage.Path+md5, config.Storage.Path+header.Filename)
-		go renameOldDebFiles()
-		go generateReleaseFile()
+		renameOldDebFiles()
 	}
 }
 
@@ -127,7 +126,6 @@ func Download(w http.ResponseWriter, r *http.Request) {
 func Delete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "DELETE" {
 		if hash := upload.Delete(w, r); len(hash) != 0 {
-			generateReleaseFile()
 			w.Write([]byte("Removed"))
 			return
 		}
@@ -156,7 +154,7 @@ func renameOldDebFiles()  {
 	}
 }
 
-func generateReleaseFile()  {
+func GenerateReleaseFile()  {
 	cmd := exec.Command("bash", "-c", "dpkg-scanpackages . /dev/null | tee Packages | gzip > Packages.gz")
 	cmd.Dir = config.Storage.Path
 	err := cmd.Run()
