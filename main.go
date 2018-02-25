@@ -17,20 +17,22 @@ import (
 	"github.com/subutai-io/gorjun/raw"
 	"github.com/subutai-io/gorjun/template"
 	"github.com/subutai-io/gorjun/upload"
+	"github.com/jasonlvhit/gocron"
 )
 
-var version = "6.2.2"
+var version = "6.3.0"
 
 var (
 	srv      *http.Server
 	testMode bool = false
 	stop     chan bool
 )
-
 func main() {
 	defer db.Close()
 	// defer torrent.Close()
 	// go torrent.SeedLocal()
+	gocron.Every(6).Hours().Do(apt.GenerateReleaseFile)
+	<- gocron.Start()
 
 	if len(config.CDN.Node) > 0 {
 		target := url.URL{Scheme: "https", Host: config.CDN.Node}
