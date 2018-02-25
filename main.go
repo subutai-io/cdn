@@ -17,7 +17,7 @@ import (
 	"github.com/subutai-io/gorjun/raw"
 	"github.com/subutai-io/gorjun/template"
 	"github.com/subutai-io/gorjun/upload"
-	"github.com/jasonlvhit/gocron"
+	//"github.com/jasonlvhit/gocron"
 )
 
 var version = "6.3.0"
@@ -31,8 +31,8 @@ func main() {
 	defer db.Close()
 	// defer torrent.Close()
 	// go torrent.SeedLocal()
-	gocron.Every(6).Hours().Do(apt.GenerateReleaseFile)
-	<- gocron.Start()
+	//gocron.Every(6).Hours().Do(apt.GenerateReleaseFile)
+	//<- gocron.Start()
 
 	if len(config.CDN.Node) > 0 {
 		target := url.URL{Scheme: "https", Host: config.CDN.Node}
