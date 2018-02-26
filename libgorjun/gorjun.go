@@ -84,7 +84,7 @@ func (g *GorjunServer) ListUserFiles() ([]GorjunFile, error) {
 
 // GetFileByName will return information about a file with specified name
 func (g *GorjunServer) GetFileByName(filename string,artifactType string) ([]GorjunFile, error) {
-	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s", g.Hostname,artifactType,filename))
+	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&owner=%s", g.Hostname,artifactType,filename,g.Username))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve file information from %s: %v", g.Hostname, err)
 	}
