@@ -170,7 +170,7 @@ func GenerateReleaseFile()  {
 		log.Fatal(err)
 		log.Info("Can't run apt-ftparchive")
 	}
-	cmd = exec.Command("bash", "-c", "gpg --batch --yes --armor -u subutai-release@subut.ai -abs -o Release.gpg Release")
+	cmd = exec.Command("bash", "-c", "gpg --batch --yes --armor -u subutai-release@subutai.io -abs -o Release.gpg Release")
 	cmd.Dir = config.Storage.Path
 	err = cmd.Run()
 	if err != nil {
