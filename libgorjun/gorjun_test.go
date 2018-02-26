@@ -200,7 +200,7 @@ func TestGorjunServer_GetLatestRaw(t *testing.T) {
 		time.Sleep(101 * time.Millisecond)
 	}
 	sort.Ints(dates)
-	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/raw/info?name=%s", g.Hostname,"abdysamat-apache"))
+	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/raw/info?name=%s&owner=%s", g.Hostname,"abdysamat-apache",g.Username))
 	data, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
