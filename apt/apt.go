@@ -115,6 +115,10 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if len(file) == 0 {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
+	size := getSize(config.Storage.Path + "Packages")
+	if file == "Packages" && (size == "" || size == "0"){
+		GenerateReleaseFile()
+	}
 	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
 		defer f.Close()
 		io.Copy(w, f)
