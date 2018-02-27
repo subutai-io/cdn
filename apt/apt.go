@@ -182,3 +182,21 @@ func GenerateReleaseFile()  {
 		log.Info("Can't sign Realease file")
 	}
 }
+
+func Generate(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("token")
+	owner := strings.ToLower(db.CheckToken(token))
+	if len(token) == 0 || len(owner) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Not authorized"))
+		log.Warn(r.RemoteAddr + " - rejecting generate request")
+		return
+	}
+	if owner != "subutai" && owner != "jenkins" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Only allowed users can generate release file"))
+		log.Warn(r.RemoteAddr + " - rejecting generate request")
+		return
+	}
+	GenerateReleaseFile()
+}

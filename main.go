@@ -74,6 +74,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/apt/delete", apt.Delete)
 	http.HandleFunc("/kurjun/rest/apt/upload", apt.Upload)
 	http.HandleFunc("/kurjun/rest/apt/download", apt.Download)
+	http.HandleFunc("/kurjun/rest/apt/generate", apt.Generate)
 
 	http.HandleFunc("/kurjun/rest/raw/", raw.Download)
 	http.HandleFunc("/kurjun/rest/raw/info", raw.Info)
