@@ -17,9 +17,10 @@ import (
 	"github.com/subutai-io/gorjun/raw"
 	"github.com/subutai-io/gorjun/template"
 	"github.com/subutai-io/gorjun/upload"
+	"github.com/jasonlvhit/gocron"
 )
 
-var version = "6.2.2"
+var version = "6.3.0"
 
 var (
 	srv      *http.Server
@@ -27,10 +28,15 @@ var (
 	stop     chan bool
 )
 
+func RunTask() {
+	gocron.Every(6).Hours().Do(apt.GenerateReleaseFile)
+	<- gocron.Start()
+}
 func main() {
 	defer db.Close()
 	// defer torrent.Close()
 	// go torrent.SeedLocal()
+	go RunTask()
 
 	if len(config.CDN.Node) > 0 {
 		target := url.URL{Scheme: "https", Host: config.CDN.Node}
@@ -68,6 +74,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/apt/delete", apt.Delete)
 	http.HandleFunc("/kurjun/rest/apt/upload", apt.Upload)
 	http.HandleFunc("/kurjun/rest/apt/download", apt.Download)
+	http.HandleFunc("/kurjun/rest/apt/generate", apt.Generate)
 
 	http.HandleFunc("/kurjun/rest/raw/", raw.Download)
 	http.HandleFunc("/kurjun/rest/raw/info", raw.Info)
@@ -104,7 +111,9 @@ func main() {
 		Addr:    ":" + config.Network.Port,
 		Handler: nil,
 	}
+
 	srv.ListenAndServe()
+
 }
 
 func shutdown(w http.ResponseWriter, r *http.Request) {

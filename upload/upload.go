@@ -172,6 +172,14 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		}
 	}
 
+	if repo[3] == "apt" {
+		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+info["Filename"])) {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Failed to remove file"))
+			return ""
+		}
+	}
+
 	log.Info("Removing " + info["name"] + " from " + repo[3] + " repo")
 	return id
 }

@@ -2,7 +2,6 @@ package apt
 
 import (
 	"archive/tar"
-	"bufio"
 	"bytes"
 	"compress/gzip"
 	"io"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/mkrautz/goar"
 	"github.com/subutai-io/agent/log"
+	"os/exec"
 )
 
 func readDeb(hash string) (control bytes.Buffer, err error) {
@@ -77,28 +77,6 @@ func getSize(file string) (size string) {
 	return size
 }
 
-func writePackage(meta map[string]string) {
-	var f *os.File
-	if _, err := os.Stat(config.Storage.Path + "Packages"); os.IsNotExist(err) {
-		f, err = os.Create(config.Storage.Path + "Packages")
-		log.Check(log.WarnLevel, "Creating packages file", err)
-		defer f.Close()
-	} else if err == nil {
-		f, err = os.OpenFile(config.Storage.Path+"Packages", os.O_APPEND|os.O_WRONLY, 0600)
-		log.Check(log.WarnLevel, "Opening packages file", err)
-		defer f.Close()
-	} else {
-		log.Warn(err.Error())
-	}
-
-	for k, v := range meta {
-		_, err := f.WriteString(string(k) + ": " + string(v) + "\n")
-		log.Check(log.WarnLevel, "Appending package data", err)
-	}
-	_, err := f.Write([]byte("\n"))
-	log.Check(log.WarnLevel, "Appending endline", err)
-}
-
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
@@ -124,10 +102,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["SHA1"] = upload.Hash(config.Storage.Path+md5, "sha1")
 		meta["MD5sum"] = md5
 		meta["type"] = "apt"
-		writePackage(meta)
 		db.Write(owner, md5, header.Filename, meta)
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
+		os.Rename(config.Storage.Path+md5, config.Storage.Path+header.Filename)
+		renameOldDebFiles()
 	}
 }
 
@@ -136,10 +115,10 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if len(file) == 0 {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
-	if file != "Packages" && file != "InRelease" && file != "Release" {
-		file = db.LastHash(file, "apt")
+	size := getSize(config.Storage.Path + "Packages")
+	if file == "Packages" && (size == "" || size == "0"){
+		GenerateReleaseFile()
 	}
-
 	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
 		defer f.Close()
 		io.Copy(w, f)
@@ -148,65 +127,9 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func readPackages() []string {
-	file, err := os.Open(config.Storage.Path + "Packages")
-	log.Check(log.WarnLevel, "Opening packages file", err)
-	defer file.Close()
-
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	log.Check(log.WarnLevel, "Scanning packages list", scanner.Err())
-	return lines
-}
-
-func deleteInfo(hash string) {
-	list := readPackages()
-	if len(list) == 0 {
-		log.Warn("Empty packages list")
-		return
-	}
-
-	var newlist, block string
-	changed, skip := false, false
-	for _, line := range list {
-		if len(line) != 0 && skip {
-			continue
-		} else if len(line) == 0 {
-			skip = false
-			if len(block) != 0 {
-				newlist = newlist + block + "\n"
-				block = ""
-			}
-		} else if len(line) != 0 && !skip {
-			if strings.HasSuffix(line, hash) {
-				block = ""
-				skip = true
-				changed = true
-			} else {
-				block = block + line + "\n"
-			}
-		}
-	}
-	if changed {
-		log.Info("Updating packages list")
-		file, err := os.Create(config.Storage.Path + "Packages.new")
-		log.Check(log.WarnLevel, "Opening packages file", err)
-		defer file.Close()
-
-		_, err = file.WriteString(newlist)
-		log.Check(log.WarnLevel, "Writing new list", err)
-		log.Check(log.WarnLevel, "Replacing old list",
-			os.Rename(config.Storage.Path+"Packages.new", config.Storage.Path+"Packages"))
-	}
-}
-
 func Delete(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "DELETE" {
 		if hash := upload.Delete(w, r); len(hash) != 0 {
-			deleteInfo(hash)
 			w.Write([]byte("Removed"))
 			return
 		}
@@ -222,4 +145,58 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte("Not found"))
+}
+
+func renameOldDebFiles()  {
+	list := db.Search("")
+	for _, k := range list {
+		if db.CheckRepo("", "apt", k) == 0 {
+			continue
+		}
+		item := download.FormatItem(db.Info(k), "apt", "")
+		os.Rename(config.Storage.Path+item.Hash.Md5, config.Storage.Path+item.Name)
+	}
+}
+
+func GenerateReleaseFile()  {
+	cmd := exec.Command("bash", "-c", "dpkg-scanpackages . /dev/null | tee Packages | gzip > Packages.gz")
+	cmd.Dir = config.Storage.Path
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't run dpkg-scanpackages")
+	}
+
+	cmd = exec.Command("bash", "-c", "apt-ftparchive release . > Release")
+	cmd.Dir = config.Storage.Path
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't run apt-ftparchive")
+	}
+	cmd = exec.Command("bash", "-c", "gpg --batch --yes --armor -u subutai-release@subutai.io -abs -o Release.gpg Release")
+	cmd.Dir = config.Storage.Path
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't sign Realease file")
+	}
+}
+
+func Generate(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("token")
+	owner := strings.ToLower(db.CheckToken(token))
+	if len(token) == 0 || len(owner) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Not authorized"))
+		log.Warn(r.RemoteAddr + " - rejecting generate request")
+		return
+	}
+	if owner != "subutai" && owner != "jenkins" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Only allowed users can generate release file"))
+		log.Warn(r.RemoteAddr + " - rejecting generate request")
+		return
+	}
+	GenerateReleaseFile()
 }
