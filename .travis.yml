@@ -2,7 +2,7 @@ language: go
 
 sudo: enabled
 go:
-  - '1.10'
+  - '1.9'
 script:
   - go get
   - make

@@ -158,7 +158,7 @@ func TestGorjunServer_GetLatestTemplateByVersion(t *testing.T) {
 		dates = append(dates, timestamp)
 		time.Sleep(100 * time.Millisecond)
 	}
-	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/template/info?name=%s", g.Hostname,"nginx"))
+	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/template/info?name=%s&owner=%s", g.Hostname,"nginx",g.Username))
 	data, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
