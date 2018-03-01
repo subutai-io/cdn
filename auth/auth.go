@@ -27,6 +27,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("PGP key: " + key + "\n"))
 
 			db.RegisterUser([]byte(name), []byte(key))
+			log.Info("User " + name + " registired with this key " + key)
 			return
 		} else if len(r.MultipartForm.Value["key"]) > 0 {
 			key := pgp.Verify("Hub", r.MultipartForm.Value["key"][0])
