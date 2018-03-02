@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
-	"github.com/blang/semver"
 	"net/url"
 )
 
@@ -147,7 +147,7 @@ func Info(repo string, r *http.Request) []byte {
 		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 		list = intersect(list, listByTag)
 	}
-	if onlyOneParameterProvided("name",r) {
+	if onlyOneParameterProvided("name", r) {
 		verified = "true"
 	}
 	if len(id) > 0 {
@@ -183,7 +183,7 @@ func Info(repo string, r *http.Request) []byte {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
 				fullname = true
-				itemVersion, _:= semver.Make(item.Version)
+				itemVersion, _ := semver.Make(item.Version)
 				if itemVersion.Compare(latestVersion) == 1 {
 					latestVersion = itemVersion
 					itemLatestVersion = item
@@ -226,7 +226,7 @@ func getVerified(list []string, name, repo string) ListItem {
 		if info := db.Info(k); db.CheckRepo("", repo, k) > 0 {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
-					itemVersion, _:= semver.Make(info["version"])
+					itemVersion, _ := semver.Make(info["version"])
 					if in(owner, []string{"subutai", "jenkins", "docker"}) &&
 						itemVersion.Compare(latestVersion) == 1 {
 						latestVersion = itemVersion
@@ -287,7 +287,7 @@ func intersect(listA, listB []string) (list []string) {
 	return list
 }
 
-func onlyOneParameterProvided(parameter string,r *http.Request) bool {
+func onlyOneParameterProvided(parameter string, r *http.Request) bool {
 	u, _ := url.Parse(r.RequestURI)
 	parameters, _ := url.ParseQuery(u.RawQuery)
 	for key, _ := range parameters {

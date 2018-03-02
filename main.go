@@ -10,6 +10,7 @@ import (
 
 	"github.com/subutai-io/agent/log"
 
+	"github.com/jasonlvhit/gocron"
 	"github.com/subutai-io/gorjun/apt"
 	"github.com/subutai-io/gorjun/auth"
 	"github.com/subutai-io/gorjun/config"
@@ -17,7 +18,6 @@ import (
 	"github.com/subutai-io/gorjun/raw"
 	"github.com/subutai-io/gorjun/template"
 	"github.com/subutai-io/gorjun/upload"
-	"github.com/jasonlvhit/gocron"
 )
 
 var version = "6.3.0"
@@ -30,7 +30,7 @@ var (
 
 func RunTask() {
 	gocron.Every(6).Hours().Do(apt.GenerateReleaseFile)
-	<- gocron.Start()
+	<-gocron.Start()
 }
 func main() {
 	defer db.Close()

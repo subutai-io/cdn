@@ -116,7 +116,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
 	size := getSize(config.Storage.Path + "Packages")
-	if file == "Packages" && (size == "" || size == "0"){
+	if file == "Packages" && (size == "" || size == "0") {
 		GenerateReleaseFile()
 	}
 	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
@@ -147,7 +147,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Not found"))
 }
 
-func renameOldDebFiles()  {
+func renameOldDebFiles() {
 	list := db.Search("")
 	for _, k := range list {
 		if db.CheckRepo("", "apt", k) == 0 {
@@ -158,7 +158,7 @@ func renameOldDebFiles()  {
 	}
 }
 
-func GenerateReleaseFile()  {
+func GenerateReleaseFile() {
 	cmd := exec.Command("bash", "-c", "dpkg-scanpackages . /dev/null | tee Packages | gzip > Packages.gz")
 	cmd.Dir = config.Storage.Path
 	err := cmd.Run()
