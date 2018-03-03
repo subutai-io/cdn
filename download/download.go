@@ -184,7 +184,7 @@ func Info(repo string, r *http.Request) []byte {
 				items = []ListItem{item}
 				fullname = true
 				itemVersion, _ := semver.Make(item.Version)
-				if itemVersion.Compare(latestVersion) == 1 {
+				if itemVersion.GTE(latestVersion) {
 					latestVersion = itemVersion
 					itemLatestVersion = item
 				}
@@ -228,7 +228,7 @@ func getVerified(list []string, name, repo string) ListItem {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
 					if in(owner, []string{"subutai", "jenkins", "docker"}) &&
-						itemVersion.Compare(latestVersion) == 1 {
+						itemVersion.GTE(latestVersion) {
 						latestVersion = itemVersion
 						itemLatestVersion = FormatItem(db.Info(k), repo, name)
 					}
