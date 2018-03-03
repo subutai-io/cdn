@@ -166,7 +166,7 @@ func Info(repo string, r *http.Request) []byte {
 	if len(pstr) == 2 {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
-	latestVersion, _ := semver.Make("0.0.0")
+	latestVersion, _ := semver.Make("")
 	for _, k := range list {
 		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
 			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
@@ -220,7 +220,7 @@ func in(str string, list []string) bool {
 }
 
 func getVerified(list []string, name, repo string) ListItem {
-	latestVersion, _ := semver.Make("0.0.0")
+	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", repo, k) > 0 {

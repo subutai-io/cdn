@@ -67,12 +67,12 @@ func getControl(control bytes.Buffer) map[string]string {
 	return d
 }
 
-func getSize(file string) (size string) {
+func getSize(file string) (size int) {
 	f, err := os.Open(file)
 	if !log.Check(log.WarnLevel, "Opening file "+file, err) {
 		stat, _ := f.Stat()
 		f.Close()
-		size = strconv.Itoa(int(stat.Size()))
+		size = int(stat.Size())
 	}
 	return size
 }
@@ -96,7 +96,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		meta := getControl(control)
 		meta["Filename"] = header.Filename
-		meta["Size"] = getSize(config.Storage.Path + md5)
+		meta["Size"] = strconv.Itoa(getSize(config.Storage.Path + md5))
 		meta["SHA512"] = upload.Hash(config.Storage.Path+md5, "sha512")
 		meta["SHA256"] = upload.Hash(config.Storage.Path+md5, "sha256")
 		meta["SHA1"] = upload.Hash(config.Storage.Path+md5, "sha1")
@@ -116,7 +116,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
 	size := getSize(config.Storage.Path + "Packages")
-	if file == "Packages" && (size == "" || size == "0") {
+	if file == "Packages" && size == 0 {
 		GenerateReleaseFile()
 	}
 	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
