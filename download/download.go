@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
-	"github.com/blang/semver"
 	"net/url"
 )
 
@@ -147,7 +147,7 @@ func Info(repo string, r *http.Request) []byte {
 		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 		list = intersect(list, listByTag)
 	}
-	if onlyOneParameterProvided("name",r) {
+	if onlyOneParameterProvided("name", r) {
 		verified = "true"
 	}
 	if len(id) > 0 {
@@ -166,7 +166,7 @@ func Info(repo string, r *http.Request) []byte {
 	if len(pstr) == 2 {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
-	latestVersion, _ := semver.Make("0.0.0")
+	latestVersion, _ := semver.Make("")
 	for _, k := range list {
 		if (!db.Public(k) && !db.CheckShare(k, db.CheckToken(token))) ||
 			(len(owner) > 0 && db.CheckRepo(owner, repo, k) == 0) ||
@@ -183,8 +183,8 @@ func Info(repo string, r *http.Request) []byte {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
 				fullname = true
-				itemVersion, _:= semver.Make(item.Version)
-				if itemVersion.Compare(latestVersion) == 1 {
+				itemVersion, _ := semver.Make(item.Version)
+				if itemVersion.GTE(latestVersion) {
 					latestVersion = itemVersion
 					itemLatestVersion = item
 				}
@@ -220,15 +220,15 @@ func in(str string, list []string) bool {
 }
 
 func getVerified(list []string, name, repo string) ListItem {
-	latestVersion, _ := semver.Make("0.0.0")
+	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", repo, k) > 0 {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
-					itemVersion, _:= semver.Make(info["version"])
+					itemVersion, _ := semver.Make(info["version"])
 					if in(owner, []string{"subutai", "jenkins", "docker"}) &&
-						itemVersion.Compare(latestVersion) == 1 {
+						itemVersion.GTE(latestVersion) {
 						latestVersion = itemVersion
 						itemLatestVersion = FormatItem(db.Info(k), repo, name)
 					}
@@ -287,7 +287,7 @@ func intersect(listA, listB []string) (list []string) {
 	return list
 }
 
-func onlyOneParameterProvided(parameter string,r *http.Request) bool {
+func onlyOneParameterProvided(parameter string, r *http.Request) bool {
 	u, _ := url.Parse(r.RequestURI)
 	parameters, _ := url.ParseQuery(u.RawQuery)
 	for key, _ := range parameters {

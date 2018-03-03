@@ -1,14 +1,14 @@
 package gorjun
 
 import (
+	"encoding/json"
 	"fmt"
-	"testing"
-	"time"
+	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"io/ioutil"
-	"encoding/json"
-	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 var r *rand.Rand // Rand for this package.
@@ -27,7 +27,7 @@ func RandomString(strlen int) string {
 }
 
 func TestGorjunServer_AuthenticateUser(t *testing.T) {
-	g := NewGorjunServer();
+	g := NewGorjunServer()
 	_, err := g.RegisterUser("tester", "publickey")
 	if err != nil {
 		t.Errorf("Failed to register user: %v", err)
@@ -35,9 +35,9 @@ func TestGorjunServer_AuthenticateUser(t *testing.T) {
 }
 
 func TestGorjunServer_RegisterUserWithMultipleKeys(t *testing.T) {
-	g := NewGorjunServer();
+	g := NewGorjunServer()
 	randomUserName := RandomString(10)
-	for i:= 1; i <= 100; i++ {
+	for i := 1; i <= 100; i++ {
 		randomKey := RandomString(100)
 		_, err := g.RegisterUser(randomUserName, randomKey)
 		if err != nil {
@@ -62,10 +62,10 @@ func TestGorjunServer_RegisterUserWithMultipleKeys(t *testing.T) {
 }
 
 func TestGorjunServer_GetKeysByOwner(t *testing.T) {
-	g := NewGorjunServer();
+	g := NewGorjunServer()
 	artifactTypes := [3]string{"template", "raw", "apt"}
-	for i:= 0; i < len(artifactTypes); i++ {
-		resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/" + artifactTypes[i] + "/list", g.Hostname))
+	for i := 0; i < len(artifactTypes); i++ {
+		resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/"+artifactTypes[i]+"/list", g.Hostname))
 		if err != nil {
 			fmt.Errorf("Failed to retrieve list of %s  s: %v", artifactTypes[i], err)
 		}
@@ -73,7 +73,7 @@ func TestGorjunServer_GetKeysByOwner(t *testing.T) {
 		resp.Body.Close()
 		var artifacts []GorjunFile
 		err = json.Unmarshal(data, &artifacts)
-		for j:= 0; j < len(artifacts); j++ {
+		for j := 0; j < len(artifacts); j++ {
 			if len(artifacts[j].Owner) > 0 {
 				resp, _ := http.Get(fmt.Sprintf("http://%s/kurjun/rest/auth/keys?user=%s", g.Hostname, artifacts[j].Owner[0]))
 				data, _ := ioutil.ReadAll(resp.Body)
@@ -87,7 +87,7 @@ func TestGorjunServer_GetKeysByOwner(t *testing.T) {
 
 }
 func TestGetAuthTokenCode(t *testing.T) {
-	g := NewGorjunServer();
+	g := NewGorjunServer()
 	err := g.GetAuthTokenCode()
 	if err != nil {
 		t.Errorf("Failed to retrieve token: %v", err)
