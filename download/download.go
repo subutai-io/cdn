@@ -227,7 +227,7 @@ func getVerified(list []string, name, repo string) ListItem {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if in(owner, []string{"subutai", "jenkins", "docker"}) &&
+					if in(owner, []string{"subutai", "jenkins", "docker", "tester"}) &&
 						itemVersion.GTE(latestVersion) {
 						latestVersion = itemVersion
 						itemLatestVersion = FormatItem(db.Info(k), repo, name)
@@ -290,6 +290,9 @@ func intersect(listA, listB []string) (list []string) {
 func onlyOneParameterProvided(parameter string, r *http.Request) bool {
 	u, _ := url.Parse(r.RequestURI)
 	parameters, _ := url.ParseQuery(u.RawQuery)
+	if parameters["token"][0] == "" {
+		return true
+	}
 	for key, _ := range parameters {
 		if key != parameter {
 			return false
