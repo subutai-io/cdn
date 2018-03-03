@@ -290,7 +290,7 @@ func intersect(listA, listB []string) (list []string) {
 func onlyOneParameterProvided(parameter string, r *http.Request) bool {
 	u, _ := url.Parse(r.RequestURI)
 	parameters, _ := url.ParseQuery(u.RawQuery)
-	if parameters["token"][0] == "" {
+	if len(parameters["token"]) > 0 && parameters["token"][0] == "" {
 		return true
 	}
 	for key, _ := range parameters {
