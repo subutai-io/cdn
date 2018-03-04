@@ -24,7 +24,8 @@ for type in template; do
 	curl -s -k https://${ENV}cdn.subut.ai:8338/kurjun/rest/$type/info | jq '.[] | .id' | tr -d '"'|
 	while IFS= read -r ID 
 	do
+	        ID=f2d2839e-3aee-4f05-a275-30dff8188e50
      		echo "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token="
-     		curl -k "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token=" -o /dev/null
+     		curl -vk "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token=" -o /dev/null
 	done
 done
