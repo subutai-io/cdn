@@ -154,6 +154,7 @@ func Info(repo string, r *http.Request) []byte {
 		list = append(list[:0], id)
 	} else if verified == "true" {
 		items = append(items, getVerified(list, name, repo))
+		items[0].Signature = db.FileSignatures(items[0].ID)
 		output, err := json.Marshal(items)
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
