@@ -96,7 +96,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		t := getConf(md5, configfile)
-		filename := t.Name+"-subutai-template_"+t.Version+"_"+t.Architecture+".tar.gz"
+		filename := t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
 		db.Write(owner, t.ID, filename, map[string]string{
 			"type":        "template",
 			"arch":        t.Architecture,
@@ -151,7 +151,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		owner := args[0]
 		file := strings.Split(args[1], "?")[0]
 		if list := db.UserFile(owner, file); len(list) > 0 {
-			http.Redirect(w, r, "/kurjun/rest/template/download?id="+list[0] + "&token="+token, 302)
+			http.Redirect(w, r, "/kurjun/rest/template/download?id="+list[0]+"&token="+token, 302)
 		}
 	}
 }

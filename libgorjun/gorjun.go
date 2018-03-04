@@ -6,28 +6,28 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
-	"log"
 )
 
 // GorjunServer is a representation for Gorjun bucket
 type GorjunServer struct {
-	Username     string  // Username of gorjun user
-	Email        string  // Email used to identify user in GPG
-	Hostname     string  // Hostname of the Gorjun server
-	GPGDirectory string  // GPGDirectory points to a gnupg directory in the file system
-	Token        string  // Active token
-	TokenCode    string  // Clean token code
-	Passphrase   string  // Passphrase used to decrypt private key
+	Username     string // Username of gorjun user
+	Email        string // Email used to identify user in GPG
+	Hostname     string // Hostname of the Gorjun server
+	GPGDirectory string // GPGDirectory points to a gnupg directory in the file system
+	Token        string // Active token
+	TokenCode    string // Clean token code
+	Passphrase   string // Passphrase used to decrypt private key
 }
 
 func NewGorjunServer() GorjunServer {
-	return GorjunServer{"tester", "tester@gmail.com","127.0.0.1:8080",os.Getenv("HOME") + "/.gnupg",
-	"", "","pantano"}
+	return GorjunServer{"tester", "tester@gmail.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+		"", "", "pantano"}
 }
 
 // GorjunFile is a file located on Gorjun bucket server
@@ -83,8 +83,8 @@ func (g *GorjunServer) ListUserFiles() ([]GorjunFile, error) {
 }
 
 // GetFileByName will return information about a file with specified name
-func (g *GorjunServer) GetFileByName(filename string,artifactType string) ([]GorjunFile, error) {
-	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&owner=%s", g.Hostname,artifactType,filename,g.Username))
+func (g *GorjunServer) GetFileByName(filename string, artifactType string) ([]GorjunFile, error) {
+	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&owner=%s", g.Hostname, artifactType, filename, g.Username))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve file information from %s: %v", g.Hostname, err)
 	}
@@ -129,12 +129,12 @@ func (g *GorjunServer) Upload(filename string, artifactType string) (string, err
 
 	w.Close()
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/kurjun/rest/" + artifactType + "/upload", g.Hostname), &b)
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/kurjun/rest/"+artifactType+"/upload", g.Hostname), &b)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
-	req.Header.Set("token",g.Token)
+	req.Header.Set("token", g.Token)
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
@@ -152,13 +152,13 @@ func (g *GorjunServer) Upload(filename string, artifactType string) (string, err
 
 // RemoveFile will delete file on gorjun with specified name. If multiple files with the same
 // name exists belong to the same user only the last one (most recent) will be removed
-func (g *GorjunServer) RemoveFile(filename string,artifactType string) error {
-	file, err := g.GetFileByName(filename,artifactType)
+func (g *GorjunServer) RemoveFile(filename string, artifactType string) error {
+	file, err := g.GetFileByName(filename, artifactType)
 	if err != nil {
 		return fmt.Errorf("Failed to get file: %v", err)
 	}
-	fmt.Printf("\nId of artifact with type %s is %s going to deleted",artifactType, file[0].ID)
-	return g.RemoveFileByID(file[0].ID,"raw")
+	fmt.Printf("\nId of artifact with type %s is %s going to deleted", artifactType, file[0].ID)
+	return g.RemoveFileByID(file[0].ID, "raw")
 }
 
 // RemoveFileByID will remove file with specified ID
@@ -177,8 +177,8 @@ func (g *GorjunServer) RemoveFileByID(ID string, artifactType string) error {
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("Can't remove file - HTTP request returned %s code", res.Status)
 	}
-	fmt.Printf("\nId of artifact with type %s is %s deleted\n",artifactType, ID)
-	fmt.Printf("\n%s\n",req.URL)
+	fmt.Printf("\nId of artifact with type %s is %s deleted\n", artifactType, ID)
+	fmt.Printf("\n%s\n", req.URL)
 	return nil
 }
 
