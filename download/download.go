@@ -140,7 +140,6 @@ func Info(repo string, r *http.Request) []byte {
 	if len(subname) != 0 {
 		name = subname
 	}
-
 	list := db.Search(name)
 	if len(tag) > 0 {
 		listByTag, err := db.Tag(tag)
@@ -162,7 +161,7 @@ func Info(repo string, r *http.Request) []byte {
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
 		}
-		return nil
+		//return nil
 	}
 
 	pstr := strings.Split(page, ",")
