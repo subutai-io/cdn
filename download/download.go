@@ -150,6 +150,9 @@ func Info(repo string, r *http.Request) []byte {
 	if onlyOneParameterProvided("name", r) {
 		verified = "true"
 	}
+	if len(name) > 0 && token == "" {
+		verified = "true"
+	}
 	if len(id) > 0 {
 		list = append(list[:0], id)
 	} else if verified == "true" {
