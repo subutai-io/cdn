@@ -150,7 +150,7 @@ func Info(repo string, r *http.Request) []byte {
 	if onlyOneParameterProvided("name", r) {
 		verified = "true"
 	}
-	if len(name) > 0 && token == "" {
+	if len(name) > 0 && token == "" && owner == "" {
 		verified = "true"
 	}
 	if len(id) > 0 {
