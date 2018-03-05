@@ -52,9 +52,9 @@ try {
 		notifyBuildDetails = "\nFailed on Stage - Deploy Gorjun"
 
 		switch (env.BRANCH_NAME) {
-			case ~/master/: cdnHost = "eu0.mastercdn.subut.ai"; break;
-			case ~/sysnet/: cdnHost = "eu0.sysnetcdn.subut.ai"; break;
-			default: cdnHost = "eu0.devcdn.subut.ai"
+			case ~/master/: cdnHost = "eu0.mastercdn.subutai.io"; break;
+			case ~/sysnet/: cdnHost = "eu0.sysnetcdn.subutai.io"; break;
+			default: cdnHost = "eu0.devcdn.subutai.io"
 		}
 		if (env.BRANCH_NAME == 'sysnet') {
 		sh """
