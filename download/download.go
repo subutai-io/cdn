@@ -139,9 +139,8 @@ func Info(repo string, r *http.Request) []byte {
 	verified := r.URL.Query().Get("verified")
 	ownerObtainedFromToken := strings.ToLower(db.CheckToken(token))
 	if len(ownerObtainedFromToken) > 0 && owner == "" && verified != "true" {
-		owner = ownerObtainedFromToken
 		if len(name) > 0 {
-			if list := db.All(owner, repo); len(list) > 0 {
+			if list := db.All(ownerObtainedFromToken, repo); len(list) > 0 {
 				itemLatestVersion = latestVersion(list, repo, name, version)
 				itemLatestVersion.Signature = db.FileSignatures(itemLatestVersion.ID)
 				items = append(items, itemLatestVersion)
@@ -149,10 +148,12 @@ func Info(repo string, r *http.Request) []byte {
 				if err != nil {
 					return nil
 				}
-				return output
+				if itemLatestVersion.ID != "" {
+					return output
+				}
 			}
 		} else {
-			if list := db.All(owner, repo); len(list) > 0 {
+			if list := db.All(ownerObtainedFromToken, repo); len(list) > 0 {
 				for _, k := range list {
 					item := FormatItem(db.Info(k), repo, name)
 					items = append(items, item)
@@ -177,9 +178,9 @@ func Info(repo string, r *http.Request) []byte {
 				return output
 			}
 		}
-		list := SearchInShared(name, owner, token, repo,version)
+		list := SearchInShared(name, ownerObtainedFromToken, token, repo, version)
 		if len(name) > 0 {
-			itemLatestVersion = latestVersion(list,repo,name,version)
+			itemLatestVersion = latestVersion(list, repo, name, version)
 			if itemLatestVersion.ID != "" {
 				itemLatestVersion.Signature = db.FileSignatures(itemLatestVersion.ID)
 				output, err := json.Marshal(itemLatestVersion)
@@ -193,13 +194,13 @@ func Info(repo string, r *http.Request) []byte {
 			item := FormatItem(db.Info(k), repo, name)
 			items = append(items, item)
 		}
-		if len(items) == 1 {
+		if len(items) == 1 && len(list) > 0 {
 			if version == "" && repo == "template" && itemLatestVersion.ID != "" {
 				items[0] = itemLatestVersion
 			}
 			items[0].Signature = db.FileSignatures(items[0].ID)
 		}
-		if len(items) > 0 {
+		if len(items) > 0 && len(list) > 0 {
 			output, err := json.Marshal(items)
 			if err != nil {
 				return nil
@@ -225,9 +226,9 @@ func Info(repo string, r *http.Request) []byte {
 	if len(id) > 0 {
 		list = append(list[:0], id)
 	} else if verified == "true" {
-		itemLatestVersion = getVerified(list, name, repo,version)
+		itemLatestVersion = getVerified(list, name, repo, version)
 		if itemLatestVersion.ID != "" {
-			items = append(items, getVerified(list, name, repo,version))
+			items = append(items, getVerified(list, name, repo, version))
 			items[0].Signature = db.FileSignatures(items[0].ID)
 		}
 		output, err := json.Marshal(items)
@@ -295,7 +296,7 @@ func in(str string, list []string) bool {
 	return false
 }
 
-func getVerified(list []string, name, repo string,versionTemplate string) ListItem {
+func getVerified(list []string, name, repo string, versionTemplate string) ListItem {
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
 	for _, k := range list {
@@ -307,7 +308,7 @@ func getVerified(list []string, name, repo string,versionTemplate string) ListIt
 						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
 							latestVersion = itemVersion
 							itemLatestVersion = FormatItem(db.Info(k), repo, name)
-						} else if (versionTemplate == itemVersion.String()){
+						} else if versionTemplate == itemVersion.String() {
 							itemLatestVersion = FormatItem(db.Info(k), repo, name)
 						}
 					}
@@ -377,7 +378,7 @@ func onlyOneParameterProvided(parameter string, r *http.Request) bool {
 	return len(parameters) > 0
 }
 
-func latestVersion(list []string, repo,name,version string) ListItem {
+func latestVersion(list []string, repo, name, version string) ListItem {
 	var items []ListItem
 	var itemLatestVersion ListItem
 	latestVersion, _ := semver.Make("")
@@ -392,19 +393,19 @@ func latestVersion(list []string, repo,name,version string) ListItem {
 					itemLatestVersion = item
 				}
 			}
-		} else if (len(version) == 0 || item.Version == version) {
+		} else if len(version) == 0 || item.Version == version {
 			items = append(items, item)
 		}
 	}
 	return itemLatestVersion
 }
 
-func SearchInShared(name,owner,token,repo,version string) []string{
+func SearchInShared(name, owner, token, repo, version string) []string {
 	listByName := db.Search(name)
 	var list []string
 	for _, k := range listByName {
-		if (!db.Public(k) && db.CheckShare(k, db.CheckToken(token))) {
-			list = append(list,k)
+		if !db.Public(k) && db.CheckShare(k, db.CheckToken(token)) {
+			list = append(list, k)
 		}
 	}
 	return list
