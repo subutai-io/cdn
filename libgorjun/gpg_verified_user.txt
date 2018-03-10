@@ -6,5 +6,4 @@ Expire-Date: 0
 Name-Real: subutai
 Name-Email: subutai@subut.ai
 Name-Comment: teste gpg key
-Passphrase:
 %commit
