@@ -14,6 +14,8 @@ script:
   - sudo apt install -y rng-tools
   - sudo rngd -r /dev/urandom
   - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg.txt
+  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_user.txt
+  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_verified_user.txt
   - sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
   - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
   - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
