@@ -20,4 +20,4 @@ script:
   - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
   - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
   - go test -v
-  - journalctl -u gorjun.service
+  - sudo journalctl -u gorjun.service
