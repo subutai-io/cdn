@@ -22,7 +22,7 @@ func TestListUserFiles(t *testing.T) {
 
 	d1 := []byte("This is a test file\n")
 	ioutil.WriteFile("/tmp/libgorjun-test", d1, 0644)
-	id, err := g.Upload("/tmp/libgorjun-test", "raw")
+	id, err := g.Upload("/tmp/libgorjun-test", "raw","false")
 	if err != nil {
 		t.Errorf("Failed to upload: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestUploadRaw(t *testing.T) {
 	}
 	d1 := []byte("This is a test file\n")
 	ioutil.WriteFile("/tmp/libgorjun-test", d1, 0644)
-	id, err := g.Upload("/tmp/libgorjun-test", "raw")
+	id, err := g.Upload("/tmp/libgorjun-test", "raw","false")
 	if err != nil {
 		t.Errorf("Failed to upload: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestRemoveTemplate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Authnetication failure: %v", err)
 	}
-	id, err := g.Upload("data/abdysamat-apache-subutai-template_4.0.0_amd64.tar.gz", "template")
+	id, err := g.Upload("data/abdysamat-apache-subutai-template_4.0.0_amd64.tar.gz", "template","false")
 	if err != nil {
 		t.Errorf("Failed to upload: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestGorjunServer_GetLatestTemplateByVersion(t *testing.T) {
 	Shuffle(templateVersions)
 
 	for _, version := range templateVersions {
-		id, err := g.Upload("data/nginx-subutai-template_"+version+"_amd64.tar.gz", "template")
+		id, err := g.Upload("data/nginx-subutai-template_"+version+"_amd64.tar.gz", "template","false")
 		if err != nil {
 			t.Errorf("Failed to upload: %v", err)
 		}
@@ -181,7 +181,7 @@ func TestGorjunServer_GetLatestRaw(t *testing.T) {
 	rawNumber := 10
 
 	for i := 1; i <= rawNumber; i++ {
-		id, err := g.Upload("data/abdysamat-apache-subutai-template_4.0.0_amd64.tar.gz", "raw")
+		id, err := g.Upload("data/abdysamat-apache-subutai-template_4.0.0_amd64.tar.gz", "raw","false")
 		if err != nil {
 			t.Errorf("Failed to upload: %v", err)
 		}
