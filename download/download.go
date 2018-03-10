@@ -182,8 +182,9 @@ func Info(repo string, r *http.Request) []byte {
 		if len(name) > 0 {
 			itemLatestVersion = latestVersion(list, repo, name, version)
 			if itemLatestVersion.ID != "" {
-				itemLatestVersion.Signature = db.FileSignatures(itemLatestVersion.ID)
-				output, err := json.Marshal(itemLatestVersion)
+				items[0] = itemLatestVersion
+				items[0].Signature = db.FileSignatures(items[0].ID)
+				output, err := json.Marshal(items)
 				if err != nil {
 					return nil
 				}
