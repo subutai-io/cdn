@@ -1,9 +1,9 @@
 package gorjun
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 // Test for info rest
@@ -18,7 +18,7 @@ func TestList(t *testing.T) {
 
 	repos := [2]string{"template", "raw"}
 
-	for i:= 0; i < len(repos) ;i++ {
+	for i := 0; i < len(repos); i++ {
 
 		artifactType := repos[i]
 
@@ -92,7 +92,7 @@ func TestPrivateTemplates(t *testing.T) {
 
 	repos := [2]string{"template", "raw"}
 
-	for i:= 0; i < len(repos) ;i++ {
+	for i := 0; i < len(repos); i++ {
 
 		artifactType := repos[i]
 
@@ -153,7 +153,7 @@ func TestShareTemplates(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
 	}
-	g.Share(g.Token,flist,k.Username,artifactType)
+	g.Share(g.Token, flist, k.Username, artifactType)
 
 	err = g.Deletes(artifactType, "?token="+g.Token)
 	if err != nil {
@@ -173,12 +173,12 @@ func TestListByName(t *testing.T) {
 
 	err := g.Uploads(artifactType, "false")
 	if err != nil {
-		t.Errorf("Failed to uploads %s: %v", err,artifactType)
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
 	}
 
-	err  = v.Uploads(artifactType, "false")
+	err = v.Uploads(artifactType, "false")
 	if err != nil {
-		t.Errorf("Failed to uploads %s: %v", err,artifactType)
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
 	}
 
 	fmt.Println("Token for user " + g.Username + " = " + g.Token)
@@ -193,7 +193,7 @@ func TestListByName(t *testing.T) {
 	assert.Equal(t, owner, v.Username)
 	assert.Equal(t, version, "0.1.11")
 
-	flist, err = g.List(artifactType, "?name=nginx&token=" + g.Token)
+	flist, err = g.List(artifactType, "?name=nginx&token="+g.Token)
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestListByName(t *testing.T) {
 	assert.Equal(t, owner, g.Username)
 	assert.Equal(t, version, "0.1.11")
 
-	flist, err = g.List(artifactType, "?name=nginx&owner=" + g.Username)
+	flist, err = g.List(artifactType, "?name=nginx&owner="+g.Username)
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestListByName(t *testing.T) {
 	assert.Equal(t, owner, g.Username)
 	assert.Equal(t, version, "0.1.11")
 
-	flist, err = g.List(artifactType, "?name=nginx&owner=" + v.Username)
+	flist, err = g.List(artifactType, "?name=nginx&owner="+v.Username)
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
 	}
@@ -241,18 +241,18 @@ func TestListByVersion(t *testing.T) {
 
 	err := g.Uploads(artifactType, "false")
 	if err != nil {
-		t.Errorf("Failed to uploads %s: %v", err,artifactType)
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
 	}
 
-	err  = v.Uploads(artifactType, "false")
+	err = v.Uploads(artifactType, "false")
 	if err != nil {
-		t.Errorf("Failed to uploads %s: %v", err,artifactType)
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
 	}
 
 	fmt.Println("Token for user " + g.Username + " = " + g.Token)
 	fmt.Println("Token for user " + v.Username + " = " + v.Token)
 
-	flist, err := g.List(artifactType, "?name=nginx&token=" + g.Token+ "&version=0.1.6")
+	flist, err := g.List(artifactType, "?name=nginx&token="+g.Token+"&version=0.1.6")
 
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
@@ -262,7 +262,7 @@ func TestListByVersion(t *testing.T) {
 	assert.Equal(t, owner, g.Username)
 	assert.Equal(t, version, "0.1.6")
 
-	flist, err = g.List(artifactType, "?name=nginx&version=0.1.6" )
+	flist, err = g.List(artifactType, "?name=nginx&version=0.1.6")
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
 	}
@@ -294,7 +294,7 @@ remove user1 private and public templates
 only user2 finds user2 private template
 2) use name+owner+token,  specify another user as owner, only user2 templates are found
 vse
- */
+*/
 func TestListHardTest(t *testing.T) {
 	k := NewGorjunServer()
 	k.Register(k.Username)
@@ -306,12 +306,12 @@ func TestListHardTest(t *testing.T) {
 
 	err := g.Uploads(artifactType, "false")
 	if err != nil {
-		t.Errorf("Failed to uploads %s: %v", err,artifactType)
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
 	}
 
-	err  = k.Uploads(artifactType, "false")
+	err = k.Uploads(artifactType, "false")
 	if err != nil {
-		t.Errorf("Failed to uploads %s: %v", err,artifactType)
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
 	}
 
 	fmt.Println("Token for user " + g.Username + " = " + g.Token)
@@ -322,8 +322,7 @@ func TestListHardTest(t *testing.T) {
 		t.Errorf("Failed to delete templates: %v", err)
 	}
 
-
-	flist, err := g.List(artifactType, "?name=nginx" )
+	flist, err := g.List(artifactType, "?name=nginx")
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
 	}
@@ -332,7 +331,7 @@ func TestListHardTest(t *testing.T) {
 	assert.Equal(t, owner, k.Username)
 	assert.Equal(t, version, "0.1.11")
 
-	err = k.Deletes(artifactType,"?token="+g.Token)
+	err = k.Deletes(artifactType, "?token="+k.Token)
 	if err != nil {
 		t.Errorf("Failed to delete templates: %v", err)
 	}
