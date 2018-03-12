@@ -13,6 +13,7 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
 	"mime/multipart"
+	"os/exec"
 )
 
 func (g *GorjunServer) RegisterUser(username string, publicKey string) (string, error) {
@@ -55,6 +56,11 @@ func (g *GorjunServer) RegisterUser(username string, publicKey string) (string, 
 	return string(response), nil
 }
 
+func (g *GorjunServer) Register(username string)  {
+	output, _ := exec.Command("bash", "-c", "gpg --armor --export " + username).Output()
+	g.RegisterUser(g.Username, string(output))
+}
+
 // AuthenticateUser will try to authenticate user by downloading his token code, signing it with GPG
 // and sending it back to server to get user token
 // If passphrase is not empty, PGP will try to decrypt the private key before signing the code
@@ -78,6 +84,7 @@ func (g *GorjunServer) AuthenticateUser() error {
 // GetAuthTokenCode is a first step of authentication - it requests a special code from the server.
 // This code needs to be PGP-signed later
 func (g *GorjunServer) GetAuthTokenCode() error {
+	fmt.Println("Getting auth id for user " + g.Username)
 	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/auth/token?user=%s", g.Hostname, g.Username))
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve unsigned token: %v", err)

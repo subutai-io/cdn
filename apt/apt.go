@@ -199,4 +199,5 @@ func Generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	GenerateReleaseFile()
+	w.Write([]byte("New Packages file generated and Release file signed"))
 }

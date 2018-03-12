@@ -137,6 +137,78 @@ func Info(repo string, r *http.Request) []byte {
 	subname := r.URL.Query().Get("subname")
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
+	ownerObtainedFromToken := strings.ToLower(db.CheckToken(token))
+	if len(ownerObtainedFromToken) > 0 && owner == "" && verified != "true" {
+		if len(name) > 0 {
+			if list := db.All(ownerObtainedFromToken, repo); len(list) > 0 {
+				itemLatestVersion = latestVersion(list, repo, name, version)
+				itemLatestVersion.Signature = db.FileSignatures(itemLatestVersion.ID)
+				items = append(items, itemLatestVersion)
+				output, err := json.Marshal(items)
+				if err != nil {
+					return nil
+				}
+				if itemLatestVersion.ID != "" {
+					return output
+				}
+			}
+		} else {
+			if list := db.All(ownerObtainedFromToken, repo); len(list) > 0 {
+				for _, k := range list {
+					item := FormatItem(db.Info(k), repo, name)
+					items = append(items, item)
+				}
+			}
+			if len(items) == 1 {
+				if version == "" && repo == "template" && itemLatestVersion.ID != "" {
+					items[0] = itemLatestVersion
+				}
+				items[0].Signature = db.FileSignatures(items[0].ID)
+
+				output, err := json.Marshal(items)
+				if err != nil {
+					return nil
+				}
+				return output
+			} else if len(items) > 0 {
+				output, err := json.Marshal(items)
+				if err != nil {
+					return nil
+				}
+				return output
+			}
+		}
+		list := SearchInShared(name, ownerObtainedFromToken, token, repo, version)
+		if len(name) > 0 {
+			itemLatestVersion = latestVersion(list, repo, name, version)
+			if itemLatestVersion.ID != "" {
+				items[0] = itemLatestVersion
+				items[0].Signature = db.FileSignatures(items[0].ID)
+				output, err := json.Marshal(items)
+				if err != nil {
+					return nil
+				}
+				return output
+			}
+		}
+		for _, k := range list {
+			item := FormatItem(db.Info(k), repo, name)
+			items = append(items, item)
+		}
+		if len(items) == 1 && len(list) > 0 {
+			if version == "" && repo == "template" && itemLatestVersion.ID != "" {
+				items[0] = itemLatestVersion
+			}
+			items[0].Signature = db.FileSignatures(items[0].ID)
+		}
+		if len(items) > 0 && len(list) > 0 {
+			output, err := json.Marshal(items)
+			if err != nil {
+				return nil
+			}
+			return output
+		}
+	}
 	if len(subname) != 0 {
 		name = subname
 	}
@@ -155,8 +227,11 @@ func Info(repo string, r *http.Request) []byte {
 	if len(id) > 0 {
 		list = append(list[:0], id)
 	} else if verified == "true" {
-		items = append(items, getVerified(list, name, repo))
-		items[0].Signature = db.FileSignatures(items[0].ID)
+		itemLatestVersion = getVerified(list, name, repo, version)
+		if itemLatestVersion.ID != "" {
+			items = append(items, getVerified(list, name, repo, version))
+			items[0].Signature = db.FileSignatures(items[0].ID)
+		}
 		output, err := json.Marshal(items)
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
@@ -222,7 +297,7 @@ func in(str string, list []string) bool {
 	return false
 }
 
-func getVerified(list []string, name, repo string) ListItem {
+func getVerified(list []string, name, repo string, versionTemplate string) ListItem {
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
 	for _, k := range list {
@@ -230,10 +305,13 @@ func getVerified(list []string, name, repo string) ListItem {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if in(owner, []string{"subutai", "jenkins", "docker"}) &&
-						itemVersion.GTE(latestVersion) {
-						latestVersion = itemVersion
-						itemLatestVersion = FormatItem(db.Info(k), repo, name)
+					if in(owner, []string{"subutai", "jenkins", "docker"}) {
+						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
+							latestVersion = itemVersion
+							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+						} else if versionTemplate == itemVersion.String() {
+							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+						}
 					}
 				}
 			}
@@ -299,4 +377,37 @@ func onlyOneParameterProvided(parameter string, r *http.Request) bool {
 		}
 	}
 	return len(parameters) > 0
+}
+
+func latestVersion(list []string, repo, name, version string) ListItem {
+	var items []ListItem
+	var itemLatestVersion ListItem
+	latestVersion, _ := semver.Make("")
+	for _, k := range list {
+		item := FormatItem(db.Info(k), repo, name)
+		if name == item.Name {
+			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
+				items = []ListItem{item}
+				itemVersion, _ := semver.Make(item.Version)
+				if itemVersion.GTE(latestVersion) {
+					latestVersion = itemVersion
+					itemLatestVersion = item
+				}
+			}
+		} else if len(version) == 0 || item.Version == version {
+			items = append(items, item)
+		}
+	}
+	return itemLatestVersion
+}
+
+func SearchInShared(name, owner, token, repo, version string) []string {
+	listByName := db.Search(name)
+	var list []string
+	for _, k := range listByName {
+		if !db.Public(k) && db.CheckShare(k, db.CheckToken(token)) {
+			list = append(list, k)
+		}
+	}
+	return list
 }

@@ -1,0 +1,9 @@
+Key-Type: RSA
+Subkey-Type: RSA
+Key-Length: 2048
+Subkey-Length: 2048
+Expire-Date: 0
+Name-Real: subutai
+Name-Email: subutai@subut.ai
+Name-Comment: teste gpg key
+%commit

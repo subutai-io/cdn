@@ -430,7 +430,23 @@ func UserFile(owner, file string) (list []string) {
 	})
 	return list
 }
-
+// All artifacts of user by repo
+func All(owner string,repo string) (list []string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
+			if files := b.Bucket([]byte("files")); files != nil {
+				files.ForEach(func(k, v []byte) error {
+					if CheckRepo(owner, repo, string(k)) > 0 {
+						list = append(list, string(k))
+					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return list
+}
 // GetScope shows users with whom shared a certain owner of the file
 func GetScope(hash, owner string) (scope []string) {
 	scope = []string{}
