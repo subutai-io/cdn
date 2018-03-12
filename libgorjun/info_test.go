@@ -336,3 +336,9 @@ func TestListHardTest(t *testing.T) {
 		t.Errorf("Failed to delete templates: %v", err)
 	}
 }
+
+//Search should work in this order
+//Search should applied in this order
+func TestListPriority(t *testing.T) {
+
+}

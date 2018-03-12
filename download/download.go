@@ -236,7 +236,6 @@ func Info(repo string, r *http.Request) []byte {
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
 		}
-		//return nil
 	}
 
 	pstr := strings.Split(page, ",")
