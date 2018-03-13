@@ -153,9 +153,7 @@ func Info(repo string, r *http.Request) []byte {
 		if len(listByOwner) > 0 {
 			list = intersect(list, listByOwner)
 		}
-		if len(listShared) > 0 {
-			list = intersect(list, listShared)
-		}
+		list = append(list, listShared...)
 	}
 	if onlyOneParameterProvided("name", r) {
 		verified = "true"
