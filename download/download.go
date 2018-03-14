@@ -137,6 +137,7 @@ func Info(repo string, r *http.Request) []byte {
 	subname := r.URL.Query().Get("subname")
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
+	version = processVersion(version)
 	if len(subname) != 0 {
 		name = subname
 	}
@@ -213,6 +214,12 @@ func Info(repo string, r *http.Request) []byte {
 		return nil
 	}
 	return output
+}
+func processVersion(version string) string {
+	if version == "latest" {
+		return ""
+	}
+	return version
 }
 
 func in(str string, list []string) bool {
