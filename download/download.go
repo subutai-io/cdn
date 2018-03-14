@@ -146,15 +146,6 @@ func Info(repo string, r *http.Request) []byte {
 		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 		list = intersect(list, listByTag)
 	}
-	if len(token) > 0 {
-		o := db.CheckToken(token)
-		listByOwner := db.All(o, repo)
-		listShared := SearchInShared(list, token)
-		if len(listByOwner) > 0 {
-			list = intersect(list, listByOwner)
-		}
-		list = append(list, listShared...)
-	}
 	if onlyOneParameterProvided("name", r) {
 		verified = "true"
 	}
@@ -313,14 +304,4 @@ func onlyOneParameterProvided(parameter string, r *http.Request) bool {
 		}
 	}
 	return len(parameters) > 0
-}
-
-func SearchInShared(listByName []string, token string) []string {
-	var list []string
-	for _, k := range listByName {
-		if !db.Public(k) && db.CheckShare(k, db.CheckToken(token)) {
-			list = append(list, k)
-		}
-	}
-	return list
 }
