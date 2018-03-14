@@ -16,6 +16,9 @@ func TestList(t *testing.T) {
 	k := SecondNewGorjunServer()
 	k.Register(k.Username)
 
+	v := VerifiedUser()
+	v.Register(v.Username)
+
 	repos := [2]string{"template", "raw"}
 
 	for i := 0; i < len(repos); i++ {
@@ -68,12 +71,7 @@ func TestList(t *testing.T) {
 		owner = flist[0].Owner[0]
 		assert.Equal(t, owner, k.Username)
 
-		err = g.Deletes(artifactType, "")
-		if err != nil {
-			t.Errorf("Failed to delete templates: %v", err)
-		}
-
-		err = k.Deletes(artifactType, "")
+		err = v.Deletes(artifactType, "")
 		if err != nil {
 			t.Errorf("Failed to delete templates: %v", err)
 		}
@@ -89,6 +87,9 @@ func TestPrivateTemplates(t *testing.T) {
 
 	k := SecondNewGorjunServer()
 	k.Register(k.Username)
+
+	v := VerifiedUser()
+	v.Register(g.Username)
 
 	repos := [2]string{"template", "raw"}
 
@@ -117,12 +118,7 @@ func TestPrivateTemplates(t *testing.T) {
 		owner = flist[0].Owner[0]
 		assert.Equal(t, owner, k.Username)
 
-		err = g.Deletes(artifactType, "?token="+g.Token)
-		if err != nil {
-			t.Errorf("Failed to delete templates: %v", err)
-		}
-
-		err = k.Deletes(artifactType, "?token="+k.Token)
+		err = v.Deletes(artifactType, "?token="+g.Token)
 		if err != nil {
 			t.Errorf("Failed to delete templates: %v", err)
 		}
@@ -219,10 +215,6 @@ func TestListByName(t *testing.T) {
 	version = flist[0].Version
 	assert.Equal(t, owner, v.Username)
 	assert.Equal(t, version, "0.1.11")
-	err = g.Deletes(artifactType, "?token="+g.Token)
-	if err != nil {
-		t.Errorf("Failed to delete templates: %v", err)
-	}
 	err = v.Deletes(artifactType, "?token="+v.Token)
 	if err != nil {
 		t.Errorf("Failed to delete templates: %v", err)
@@ -271,10 +263,6 @@ func TestListByVersion(t *testing.T) {
 	assert.Equal(t, owner, v.Username)
 	assert.Equal(t, version, "0.1.6")
 
-	err = g.Deletes(artifactType, "?token="+g.Token)
-	if err != nil {
-		t.Errorf("Failed to delete templates: %v", err)
-	}
 	err = v.Deletes(artifactType, "?token="+v.Token)
 	if err != nil {
 		t.Errorf("Failed to delete templates: %v", err)
@@ -302,6 +290,9 @@ func TestListHardTest(t *testing.T) {
 	g := SecondNewGorjunServer()
 	g.Register(g.Username)
 
+	v := VerifiedUser()
+	v.Register(v.Username)
+
 	artifactType := "template"
 
 	err := g.Uploads(artifactType, "false")
@@ -317,11 +308,6 @@ func TestListHardTest(t *testing.T) {
 	fmt.Println("Token for user " + g.Username + " = " + g.Token)
 	fmt.Println("Token for user " + k.Username + " = " + k.Token)
 
-	err = g.Deletes(artifactType, "?token="+g.Token)
-	if err != nil {
-		t.Errorf("Failed to delete templates: %v", err)
-	}
-
 	flist, err := g.List(artifactType, "?name=nginx")
 	if err != nil {
 		t.Errorf("Failed to retrieve user files: %v", err)
@@ -331,14 +317,26 @@ func TestListHardTest(t *testing.T) {
 	assert.Equal(t, owner, k.Username)
 	assert.Equal(t, version, "0.1.11")
 
-	err = k.Deletes(artifactType, "?token="+k.Token)
+	err = k.Deletes(artifactType, "?token="+v.Token)
 	if err != nil {
 		t.Errorf("Failed to delete templates: %v", err)
 	}
 }
 
 //Search should work in this order
-//Search should applied in this order
 func TestListPriority(t *testing.T) {
+	v := VerifiedUser()
+	v.Register(v.Username)
+
+	g := NewGorjunServer()
+	g.Register(g.Username)
+
+	artifactType := "template"
+	err := g.Uploads(artifactType, "false")
+	if err != nil {
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
+	}
+	fmt.Println("Token for user " + g.Username + " = " + g.Token)
+	fmt.Println("Token for user " + v.Username + " = " + v.Token)
 
 }
