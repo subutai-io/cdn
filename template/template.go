@@ -20,6 +20,7 @@ import (
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
 	"net/url"
+	"os/exec"
 )
 
 func readTempl(hash string) (configfile string, err error) {
@@ -180,6 +181,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 // }
 
 func Info(w http.ResponseWriter, r *http.Request) {
+	ModifyConfig()
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect method"))
@@ -262,4 +264,53 @@ func delTag(values map[string][]string) (int, error) {
 		}
 	}
 	return http.StatusBadRequest, fmt.Errorf("Bad request")
+}
+
+func ModifyConfig() {
+	list := db.Search("")
+	for _, k := range list {
+		if db.CheckRepo("", "template", k) == 0 {
+			continue
+		}
+		item := download.FormatItem(db.Info(k), "template", "")
+		//cmd := exec.Command("bash", "-c", "mkdir myfolder " + item.Hash.Md5)
+		//cmd.Dir = config.Storage.Path
+		//err := cmd.Run()
+		//if err != nil {
+		//	log.Fatal(err)
+		//	log.Info("Can't run dpkg-scanpackages")
+		//}
+		cmd := exec.Command("bash", "-c", "tar -C "+config.Storage.Path+"/myfolder"+" -xvzf "+item.Hash.Md5)
+
+		cmd.Dir = config.Storage.Path
+		err := cmd.Run()
+		if err != nil {
+			log.Fatal(err)
+			log.Info("Can't run dpkg-scanpackages")
+		}
+		prepareMetaData(item)
+		appendFile()
+		break
+	}
+}
+
+func appendFile() {
+	file, err := os.OpenFile(config.Storage.Path+"/myfolder/"+"config", os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatal("failed opening file: %s", err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString("subutai.template = \ntemplate")
+	if err != nil {
+		log.Fatal("failed writing to file: %s", err)
+	}
+}
+
+func prepareMetaData(item download.ListItem) {
+	s := "subutai.template = " + item.Name + "\n" +
+		"subutai.template.owner = " + item.Owner[0] + "\n" +
+		"subutai.parent.owner"
+	list := db.Search(ite)
+
 }
