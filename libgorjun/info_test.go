@@ -327,11 +327,12 @@ func TestListHardTest(t *testing.T) {
 func TestListPriority(t *testing.T) {
 	v := VerifiedUser()
 	v.Register(v.Username)
-
+	v.AuthenticateUser()
 	g := NewGorjunServer()
 	g.Register(g.Username)
 
 	artifactType := "template"
+	v.Upload("data/debian-stretch-subutai-template_0.2.3_amd64.tar.gz", "template", "false")
 	err := g.Uploads(artifactType, "false")
 	if err != nil {
 		t.Errorf("Failed to uploads %s: %v", err, artifactType)

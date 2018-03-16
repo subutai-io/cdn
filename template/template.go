@@ -48,6 +48,31 @@ func readTempl(hash string) (configfile string, err error) {
 	return configfile, nil
 }
 
+func readTemplate(dir string) (configfile string, err error) {
+	var file bytes.Buffer
+	f, err := os.Open(dir)
+	log.Check(log.WarnLevel, "Opening file "+dir, err)
+	defer f.Close()
+
+	gzf, err := gzip.NewReader(f)
+	if err != nil {
+		return "", err
+	}
+
+	tr := tar.NewReader(gzf)
+
+	for hdr, err := tr.Next(); err != io.EOF; hdr, err = tr.Next() {
+		if hdr.Name == "config" {
+			if _, err := io.Copy(&file, tr); err != nil {
+				return "", err
+			}
+			break
+		}
+	}
+	configfile = file.String()
+	return configfile, nil
+}
+
 func getConf(hash string, configfile string) (t *download.ListItem) {
 	my_uuid, _ := uuid.NewV4()
 	t = &download.ListItem{ID: my_uuid.String()}
@@ -78,6 +103,36 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 	return
 }
 
+func getConfig(hash string, configfile string) (t *download.ListItem) {
+	for _, v := range strings.Split(configfile, "\n") {
+		if line := strings.Split(v, "="); len(line) > 1 {
+			line[0] = strings.TrimSpace(line[0])
+			line[1] = strings.TrimSpace(line[1])
+
+			switch line[0] {
+			case "lxc.arch":
+				t.Architecture = line[1]
+			case "lxc.utsname":
+				t.Name = line[1]
+			case "subutai.parent":
+				t.Parent = line[1]
+			case "subutai.parent.owner":
+				t.ParentOwner = line[1]
+			case "subutai.parent.version":
+				t.ParentVersion = line[1]
+			case "subutai.template.version":
+				t.Version = line[1]
+			case "subutai.template.size":
+				t.Prefsize = line[1]
+			case "subutai.template.description":
+				t.Description = line[1]
+			case "subutai.tags":
+				t.Tags = []string{line[1]}
+			}
+		}
+	}
+	return
+}
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		md5, sha256, owner := upload.Handler(w, r)
@@ -273,44 +328,100 @@ func ModifyConfig() {
 			continue
 		}
 		item := download.FormatItem(db.Info(k), "template", "")
-		//cmd := exec.Command("bash", "-c", "mkdir myfolder " + item.Hash.Md5)
-		//cmd.Dir = config.Storage.Path
-		//err := cmd.Run()
-		//if err != nil {
-		//	log.Fatal(err)
-		//	log.Info("Can't run dpkg-scanpackages")
-		//}
+		if !exists(config.Storage.Path + "myfolder") {
+			cmd := exec.Command("bash", "-c", "mkdir myfolder "+item.Hash.Md5)
+			cmd.Dir = config.Storage.Path
+			cmd.Run()
+		}
 		cmd := exec.Command("bash", "-c", "tar -C "+config.Storage.Path+"/myfolder"+" -xvzf "+item.Hash.Md5)
+		configfile, err := readTemplate(config.Storage.Path + "/myfolder/" + item.Hash.Md5)
 
 		cmd.Dir = config.Storage.Path
-		err := cmd.Run()
+		err = cmd.Run()
 		if err != nil {
 			log.Fatal(err)
-			log.Info("Can't run dpkg-scanpackages")
+			log.Info("Can't run tar command")
 		}
-		prepareMetaData(item)
-		appendFile()
-		break
+		appendFile(prepareMetaData(item))
+
+		cmd = exec.Command("bash", "-c",
+			"cd "+config.Storage.Path+"/myfolder;"+
+				"tar -rvf "+item.Hash.Md5+" *")
+		//cmd.Dir = config.Storage.Path
+		err = cmd.Run()
+		if err != nil {
+			log.Fatal(err)
+			log.Info("Can't run tar command")
+		}
+		md5sum := upload.Hash(config.Storage.Path + item.Hash.Md5)
+		cmd = exec.Command("bash", "-c",
+			"mv "+item.Hash.Md5+" ..;"+
+				"rm -rf *;"+
+				"cd ..; mv "+item.Hash.Md5+" "+md5sum)
+		cmd.Dir = config.Storage.Path
+		err = cmd.Run()
+		if err != nil {
+			log.Fatal(err)
+			log.Info("Can't run tar command")
+		}
+
+		updateMetaDB(item.ID, item.Owner[0], item.ParentOwner, item.ParentVersion, item.Hash.Md5, item.Filename)
 	}
 }
 
-func appendFile() {
+func appendFile(metadata string) {
 	file, err := os.OpenFile(config.Storage.Path+"/myfolder/"+"config", os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		log.Fatal("failed opening file: %s", err)
 	}
 	defer file.Close()
 
-	_, err = file.WriteString("subutai.template = \ntemplate")
+	_, err = file.WriteString(metadata)
 	if err != nil {
 		log.Fatal("failed writing to file: %s", err)
 	}
 }
 
-func prepareMetaData(item download.ListItem) {
-	s := "subutai.template = " + item.Name + "\n" +
+func prepareMetaData(item download.ListItem) string {
+	templateParent := item.Parent
+	list := db.Search(templateParent)
+	latestVerified := download.GetVerified(list, templateParent, "template", "")
+	metadata := "subutai.template = " + item.Name + "\n" +
 		"subutai.template.owner = " + item.Owner[0] + "\n" +
-		"subutai.parent.owner"
-	list := db.Search(ite)
+		"subutai.parent.owner = " + latestVerified.Name + "\n" +
+		"subutai.parent.version = " + latestVerified.Version + "\n"
+	return metadata
+}
 
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func updateMetaDB(id, owner, parentowner, parentversion, hash, filename string) {
+	md5sum := upload.Hash(config.Storage.Path + hash)
+	sha256sum := upload.Hash(config.Storage.Path+hash, "sha256")
+	if len(md5sum) == 0 || len(sha256sum) == 0 {
+		log.Warn("Failed to calculate hash for " + hash)
+		return
+	}
+	t := getConf(hash, configfile)
+	filename := t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
+	db.Write(owner, t.ID, filename, map[string]string{
+		"type":        "template",
+		"arch":        t.Architecture,
+		"md5":         md5,
+		"sha256":      sha256,
+		"tags":        strings.Join(t.Tags, ","),
+		"parent":      t.Parent,
+		"version":     t.Version,
+		"prefsize":    t.Prefsize,
+		"Description": t.Description,
+	})
 }
