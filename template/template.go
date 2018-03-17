@@ -15,12 +15,15 @@ import (
 
 	"fmt"
 
+	"bufio"
+	"code.cloudfoundry.org/archiver/extractor"
+	"github.com/jhoonb/archivex"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
+	"io/ioutil"
 	"net/url"
-	"os/exec"
 )
 
 func readTempl(hash string) (configfile string, err error) {
@@ -53,22 +56,7 @@ func readTemplate(dir string) (configfile string, err error) {
 	f, err := os.Open(dir)
 	log.Check(log.WarnLevel, "Opening file "+dir, err)
 	defer f.Close()
-
-	gzf, err := gzip.NewReader(f)
-	if err != nil {
-		return "", err
-	}
-
-	tr := tar.NewReader(gzf)
-
-	for hdr, err := tr.Next(); err != io.EOF; hdr, err = tr.Next() {
-		if hdr.Name == "config" {
-			if _, err := io.Copy(&file, tr); err != nil {
-				return "", err
-			}
-			break
-		}
-	}
+	io.Copy(&file, f)
 	configfile = file.String()
 	return configfile, nil
 }
@@ -89,6 +77,10 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 				t.Name = line[1]
 			case "subutai.parent":
 				t.Parent = line[1]
+			case "subutai.parent.owner":
+				t.ParentOwner = line[1]
+			case "subutai.parent.version":
+				t.ParentVersion = line[1]
 			case "subutai.template.version":
 				t.Version = line[1]
 			case "subutai.template.size":
@@ -103,7 +95,8 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 	return
 }
 
-func getConfig(hash string, configfile string) (t *download.ListItem) {
+func getConfig(hash string, configfile, id string) (t *download.ListItem) {
+	t = &download.ListItem{ID: id}
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.TrimSpace(line[0])
@@ -154,15 +147,17 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		t := getConf(md5, configfile)
 		filename := t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
 		db.Write(owner, t.ID, filename, map[string]string{
-			"type":        "template",
-			"arch":        t.Architecture,
-			"md5":         md5,
-			"sha256":      sha256,
-			"tags":        strings.Join(t.Tags, ","),
-			"parent":      t.Parent,
-			"version":     t.Version,
-			"prefsize":    t.Prefsize,
-			"Description": t.Description,
+			"type":           "template",
+			"arch":           t.Architecture,
+			"md5":            md5,
+			"sha256":         sha256,
+			"tags":           strings.Join(t.Tags, ","),
+			"parent":         t.Parent,
+			"parent-version": t.ParentVersion,
+			"parent-owner":   t.ParentOwner,
+			"version":        t.Version,
+			"prefsize":       t.Prefsize,
+			"Description":    t.Description,
 		})
 		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
 			log.Info("Sharing " + t.ID + " with " + owner)
@@ -236,7 +231,6 @@ func Download(w http.ResponseWriter, r *http.Request) {
 // }
 
 func Info(w http.ResponseWriter, r *http.Request) {
-	ModifyConfig()
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect method"))
@@ -321,107 +315,126 @@ func delTag(values map[string][]string) (int, error) {
 	return http.StatusBadRequest, fmt.Errorf("Bad request")
 }
 
-func ModifyConfig() {
+func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 	list := db.Search("")
 	for _, k := range list {
 		if db.CheckRepo("", "template", k) == 0 {
 			continue
 		}
+
 		item := download.FormatItem(db.Info(k), "template", "")
-		if !exists(config.Storage.Path + "myfolder") {
-			cmd := exec.Command("bash", "-c", "mkdir myfolder "+item.Hash.Md5)
-			cmd.Dir = config.Storage.Path
-			cmd.Run()
-		}
-		cmd := exec.Command("bash", "-c", "tar -C "+config.Storage.Path+"/myfolder"+" -xvzf "+item.Hash.Md5)
-		configfile, err := readTemplate(config.Storage.Path + "/myfolder/" + item.Hash.Md5)
+		md5 := item.Hash.Md5
+		configPath := "/tmp/foo/config"
 
-		cmd.Dir = config.Storage.Path
-		err = cmd.Run()
-		if err != nil {
-			log.Fatal(err)
-			log.Info("Can't run tar command")
-		}
-		appendFile(prepareMetaData(item))
+		decompress(config.Storage.Path+md5, "/tmp/foo")
+		appendConfig(configPath, item)
+		compress("/tmp/foo", "/tmp/foo.tar.gz")
 
-		cmd = exec.Command("bash", "-c",
-			"cd "+config.Storage.Path+"/myfolder;"+
-				"tar -rvf "+item.Hash.Md5+" *")
-		//cmd.Dir = config.Storage.Path
-		err = cmd.Run()
-		if err != nil {
-			log.Fatal(err)
-			log.Info("Can't run tar command")
-		}
-		md5sum := upload.Hash(config.Storage.Path + item.Hash.Md5)
-		cmd = exec.Command("bash", "-c",
-			"mv "+item.Hash.Md5+" ..;"+
-				"rm -rf *;"+
-				"cd ..; mv "+item.Hash.Md5+" "+md5sum)
-		cmd.Dir = config.Storage.Path
-		err = cmd.Run()
-		if err != nil {
-			log.Fatal(err)
-			log.Info("Can't run tar command")
-		}
-
-		updateMetaDB(item.ID, item.Owner[0], item.ParentOwner, item.ParentVersion, item.Hash.Md5, item.Filename)
+		updateMetaDB(item.ID, item.Owner[0], item.Hash.Md5, item.Filename, configPath)
+		os.RemoveAll("/tmp/foo")
+		os.RemoveAll(config.Storage.Path + md5)
 	}
 }
 
-func appendFile(metadata string) {
-	file, err := os.OpenFile(config.Storage.Path+"/myfolder/"+"config", os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatal("failed opening file: %s", err)
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(metadata)
-	if err != nil {
-		log.Fatal("failed writing to file: %s", err)
-	}
-}
-
-func prepareMetaData(item download.ListItem) string {
+func appendConfig(confPath string, item download.ListItem) {
 	templateParent := item.Parent
 	list := db.Search(templateParent)
 	latestVerified := download.GetVerified(list, templateParent, "template", "")
-	metadata := "subutai.template = " + item.Name + "\n" +
-		"subutai.template.owner = " + item.Owner[0] + "\n" +
-		"subutai.parent.owner = " + latestVerified.Name + "\n" +
-		"subutai.parent.version = " + latestVerified.Version + "\n"
-	return metadata
+	SetContainerConf(confPath, [][]string{
+		{"subutai.template", item.Name},
+		{"subutai.template.owner", item.Owner[0]},
+		{"subutai.parent", latestVerified.Name},
+		{"subutai.parent.owner", latestVerified.Owner[0]},
+		{"subutai.parent.version", latestVerified.Version},
+	})
 }
 
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true
-	}
-	if os.IsNotExist(err) {
-		return false
-	}
-	return true
-}
-
-func updateMetaDB(id, owner, parentowner, parentversion, hash, filename string) {
-	md5sum := upload.Hash(config.Storage.Path + hash)
-	sha256sum := upload.Hash(config.Storage.Path+hash, "sha256")
+func updateMetaDB(id, owner, hash, filename, configPath string) {
+	md5sum := upload.Hash("/tmp/foo.tar.gz")
+	sha256sum := upload.Hash("/tmp/foo.tar.gz", "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + hash)
 		return
 	}
-	t := getConf(hash, configfile)
-	filename := t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
-	db.Write(owner, t.ID, filename, map[string]string{
-		"type":        "template",
-		"arch":        t.Architecture,
-		"md5":         md5,
-		"sha256":      sha256,
-		"tags":        strings.Join(t.Tags, ","),
-		"parent":      t.Parent,
-		"version":     t.Version,
-		"prefsize":    t.Prefsize,
-		"Description": t.Description,
+	configfile, _ := readTemplate(configPath)
+	t := getConfig(hash, configfile, id)
+	filename = t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
+	t.Signature = db.FileSignatures(id)
+	fmt.Println(t.ParentVersion)
+	fmt.Println(t.ParentOwner)
+	db.Edit(owner, id, filename, map[string]string{
+		"type":           "template",
+		"arch":           t.Architecture,
+		"md5":            md5sum,
+		"sha256":         sha256sum,
+		"tags":           strings.Join(t.Tags, ","),
+		"parent":         t.Parent,
+		"parent-owner":   t.ParentOwner,
+		"parent-version": t.ParentVersion,
+		"version":        t.Version,
+		"prefsize":       t.Prefsize,
+		"Description":    t.Description,
+		"signature":      t.Signature[owner],
 	})
+
+	err := os.Rename("/tmp/foo.tar.gz", config.Storage.Path+md5sum)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+func decompress(file string, folder string) {
+	tgz := extractor.NewTgz()
+	err := tgz.Extract(file, folder)
+	if err != nil {
+		println(err)
+	}
+}
+
+func compress(folder, file string) {
+	archive := new(archivex.TarFile)
+	err := archive.Create(file)
+	if err != nil {
+		println(err)
+	}
+	err = archive.AddAll(folder, false)
+	if err != nil {
+		println(err)
+	}
+	archive.Close()
+}
+
+func SetContainerConf(confPath string, conf [][]string) error {
+
+	newconf := ""
+
+	file, err := os.Open(confPath)
+	if log.Check(log.DebugLevel, "Opening container config "+confPath, err) {
+		return err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(bufio.NewReader(file))
+	for scanner.Scan() {
+		newline := scanner.Text() + "\n"
+		for i := 0; i < len(conf); i++ {
+			line := strings.Split(scanner.Text(), "=")
+			if len(line) > 1 && strings.Trim(line[0], " ") == conf[i][0] {
+				if newline = ""; len(conf[i][1]) > 0 {
+					newline = conf[i][0] + " = " + conf[i][1] + "\n"
+				}
+				conf = append(conf[:i], conf[i+1:]...)
+				break
+			}
+		}
+		newconf = newconf + newline
+	}
+
+	for i := range conf {
+		if conf[i][1] != "" {
+			newconf = newconf + conf[i][0] + " = " + conf[i][1] + "\n"
+		}
+	}
+	return ioutil.WriteFile(confPath, []byte(newconf), 0644)
 }

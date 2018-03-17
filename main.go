@@ -87,6 +87,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/template/tag", template.Tag)
 	http.HandleFunc("/kurjun/rest/template/info", template.Info)
 	http.HandleFunc("/kurjun/rest/template/list", template.Info)
+	http.HandleFunc("/kurjun/rest/template/update", template.ModifyConfig)
 	http.HandleFunc("/kurjun/rest/template/delete", template.Delete)
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)
 	http.HandleFunc("/kurjun/rest/template/download", template.Download)
