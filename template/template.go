@@ -17,6 +17,7 @@ import (
 
 	"bufio"
 	"code.cloudfoundry.org/archiver/extractor"
+	"errors"
 	"github.com/jhoonb/archivex"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
@@ -340,20 +341,52 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 		md5 := item.Hash.Md5
 		configPath := config.Storage.Path + "/tmp/foo/config"
 
-		decompress(config.Storage.Path+md5, config.Storage.Path+"/tmp/foo")
-		appendConfig(configPath, item)
-		compress(config.Storage.Path+"/tmp/foo", config.Storage.Path+"/tmp/foo.tar.gz")
-
-		updateMetaDB(item.ID, item.Owner[0], item.Hash.Md5, item.Filename, configPath)
-		os.RemoveAll(config.Storage.Path + "/tmp/foo")
+		err := decompress(config.Storage.Path+md5, config.Storage.Path+"/tmp/foo")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Can't decompress this template " + config.Storage.Path + md5))
+			return
+		}
+		err = appendConfig(configPath, item)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Can't find parent of template"))
+			return
+		}
+		err = compress(config.Storage.Path+"/tmp/foo", config.Storage.Path+"/tmp/foo.tar.gz")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Can't compress this template " + config.Storage.Path + md5))
+			return
+		}
+		err = updateMetaDB(item.ID, item.Owner[0], item.Hash.Md5, item.Filename, configPath)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Can't update metadate of template " + config.Storage.Path + md5))
+			return
+		}
+		err = os.RemoveAll(config.Storage.Path + "/tmp/foo")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Can't remove this  " + config.Storage.Path + "/tmp/foo" + "directory"))
+			return
+		}
 		os.RemoveAll(config.Storage.Path + md5)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Can't remove this  " + config.Storage.Path + md5 + "directory"))
+			return
+		}
 	}
 }
 
-func appendConfig(confPath string, item download.ListItem) {
+func appendConfig(confPath string, item download.ListItem) error {
 	templateParent := item.Parent
 	list := db.Search(templateParent)
 	latestVerified := download.GetVerified(list, templateParent, "template", "")
+	if latestVerified.ID == "" {
+		return errors.New("Can't find parent of template")
+	}
 	SetContainerConf(confPath, [][]string{
 		{"subutai.template", item.Name},
 		{"subutai.template.owner", item.Owner[0]},
@@ -361,14 +394,15 @@ func appendConfig(confPath string, item download.ListItem) {
 		{"subutai.parent.owner", latestVerified.Owner[0]},
 		{"subutai.parent.version", latestVerified.Version},
 	})
+	return nil
 }
 
-func updateMetaDB(id, owner, hash, filename, configPath string) {
+func updateMetaDB(id, owner, hash, filename, configPath string) error {
 	md5sum := upload.Hash(config.Storage.Path + "/tmp/foo.tar.gz")
 	sha256sum := upload.Hash(config.Storage.Path+"/tmp/foo.tar.gz", "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + hash)
-		return
+		return errors.New("Failed to calculate")
 	}
 	configfile, _ := readTemplate(configPath)
 	t := getConfig(hash, configfile, id)
@@ -395,29 +429,29 @@ func updateMetaDB(id, owner, hash, filename, configPath string) {
 
 	if err != nil {
 		fmt.Println(err)
-		return
+		return errors.New("Can't rename tar file")
 	}
+	return nil
 }
 
-func decompress(file string, folder string) {
+func decompress(file string, folder string) error {
 	tgz := extractor.NewTgz()
 	err := tgz.Extract(file, folder)
 	if err != nil {
-		println(err)
+		return err
 	}
+	return nil
 }
 
-func compress(folder, file string) {
+func compress(folder, file string) error {
 	archive := new(archivex.TarFile)
 	err := archive.Create(file)
-	if err != nil {
-		println(err)
-	}
 	err = archive.AddAll(folder, false)
 	if err != nil {
-		println(err)
+		return err
 	}
 	archive.Close()
+	return nil
 }
 
 func SetContainerConf(confPath string, conf [][]string) error {
