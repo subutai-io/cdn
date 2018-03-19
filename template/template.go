@@ -338,14 +338,14 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 
 		item := download.FormatItem(db.Info(k), "template", "")
 		md5 := item.Hash.Md5
-		configPath := "/tmp/foo/config"
+		configPath := config.Storage.Path + "/tmp/foo/config"
 
-		decompress(config.Storage.Path+md5, "/tmp/foo")
+		decompress(config.Storage.Path+md5, config.Storage.Path+"/tmp/foo")
 		appendConfig(configPath, item)
-		compress("/tmp/foo", "/tmp/foo.tar.gz")
+		compress(config.Storage.Path+"/tmp/foo", config.Storage.Path+"/tmp/foo.tar.gz")
 
 		updateMetaDB(item.ID, item.Owner[0], item.Hash.Md5, item.Filename, configPath)
-		os.RemoveAll("/tmp/foo")
+		os.RemoveAll(config.Storage.Path + "/tmp/foo")
 		os.RemoveAll(config.Storage.Path + md5)
 	}
 }
@@ -364,8 +364,8 @@ func appendConfig(confPath string, item download.ListItem) {
 }
 
 func updateMetaDB(id, owner, hash, filename, configPath string) {
-	md5sum := upload.Hash("/tmp/foo.tar.gz")
-	sha256sum := upload.Hash("/tmp/foo.tar.gz", "sha256")
+	md5sum := upload.Hash(config.Storage.Path + "/tmp/foo.tar.gz")
+	sha256sum := upload.Hash(config.Storage.Path+"/tmp/foo.tar.gz", "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + hash)
 		return
@@ -391,7 +391,7 @@ func updateMetaDB(id, owner, hash, filename, configPath string) {
 		"signature":      t.Signature[owner],
 	})
 
-	err := os.Rename("/tmp/foo.tar.gz", config.Storage.Path+md5sum)
+	err := os.Rename(config.Storage.Path+"/tmp/foo.tar.gz", config.Storage.Path+md5sum)
 
 	if err != nil {
 		fmt.Println(err)
