@@ -1,8 +1,14 @@
 language: go
 
+os:
+ - linux
+matrix:
+ include:
+   - os: linux
+     dist: xenial
 sudo: enabled
 go:
-  - '1.9'
+  - '1.9.4'
 script:
   - go get
   - make
