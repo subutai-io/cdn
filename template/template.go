@@ -316,6 +316,20 @@ func delTag(values map[string][]string) (int, error) {
 }
 
 func ModifyConfig(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	owner := strings.ToLower(db.CheckToken(token))
+	if len(token) == 0 || len(owner) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Not authorized"))
+		log.Warn(r.RemoteAddr + " - rejecting unauthorized owner request")
+		return
+	}
+	if owner != "subutai" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Only allowed users can update template config"))
+		log.Warn(r.RemoteAddr + " - rejecting update request")
+		return
+	}
 	list := db.Search("")
 	for _, k := range list {
 		if db.CheckRepo("", "template", k) == 0 {
