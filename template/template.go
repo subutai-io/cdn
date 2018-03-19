@@ -390,13 +390,16 @@ func appendConfig(confPath string, item download.ListItem) error {
 	if latestVerified.ID == "" {
 		return errors.New("Can't find parent of template")
 	}
-	SetContainerConf(confPath, [][]string{
+	err := SetContainerConf(confPath, [][]string{
 		{"subutai.template", item.Name},
 		{"subutai.template.owner", item.Owner[0]},
 		{"subutai.parent", latestVerified.Name},
 		{"subutai.parent.owner", latestVerified.Owner[0]},
 		{"subutai.parent.version", latestVerified.Version},
 	})
+	if err != nil {
+		return errors.New("Can't set configs")
+	}
 	return nil
 }
 
