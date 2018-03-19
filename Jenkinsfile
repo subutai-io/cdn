@@ -59,27 +59,27 @@ try {
 		if (env.BRANCH_NAME == 'sysnet') {
 		sh """
 			set +x
-			scp -P 8022 gorjun root@${cdnHost}:/tmp
-			ssh root@${cdnHost} -p8022 <<- EOF
+			scp -P 8022 gorjun ubuntu@${cdnHost}:/tmp
+			ssh ubuntu@${cdnHost} -p8022 <<- EOF
 			set -e
-			/bin/mv /tmp/gorjun /var/snap/subutai-sysnet/common/lxc/gorjun/opt/gorjun/bin/
-			subutai attach gorjun "systemctl restart gorjun.service"
+			sudo mv /tmp/gorjun /var/snap/subutai-sysnet/common/lxc/gorjun/opt/gorjun/bin/
+			sudo subutai attach gorjun "systemctl restart gorjun.service"
 		EOF"""
 		// check remote gorjun version
 	
 		} else {
 		sh """
 			set +x
-			scp -P 8022 gorjun root@${cdnHost}:/tmp
-			ssh root@${cdnHost} -p8022 <<- EOF
+			scp -P 8022 gorjun ubuntu@${cdnHost}:/tmp
+			ssh ubuntu@${cdnHost} -p8022 <<- EOF
 			set -e
-			/bin/mv /tmp/gorjun /var/snap/subutai-dev/common/lxc/gorjun/opt/gorjun/bin/
+			sudo mv /tmp/gorjun /var/snap/subutai-dev/common/lxc/gorjun/opt/gorjun/bin/
 			sudo subutai attach gorjun systemctl restart gorjun
 		EOF"""
 		
 		// check remote gorjun version
 		sh """
-			[ "${version}" == "\$(ssh root@${cdnHost} -p8022 sudo subutai attach gorjun curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
+			[ "${version}" == "\$(ssh ubuntu@${cdnHost} -p8022 sudo subutai attach gorjun curl -s -q http://127.0.0.1:8080/kurjun/rest/about)" ]
 		"""
 		}
 		

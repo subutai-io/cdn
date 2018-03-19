@@ -123,6 +123,80 @@ func Write(owner, key, value string, options ...map[string]string) {
 	log.Check(log.WarnLevel, "Writing data to db", err)
 }
 
+// Edit record about file in DB
+func Edit(owner, key, value string, options ...map[string]string) {
+	if len(owner) == 0 {
+		owner = "subutai"
+	}
+	err := db.Update(func(tx *bolt.Tx) error {
+		// Associating files with user
+		b, _ := tx.Bucket(users).CreateBucketIfNotExists([]byte(owner))
+		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
+			if v := b.Get([]byte(key)); v == nil {
+				// log.Warn("Associating: " + owner + " with " + value + " (" + key + ")")
+				b.Put([]byte(key), []byte(value))
+			}
+		}
+
+		// Editing record about file
+		if len(value) > 0 {
+			b.Put([]byte("name"), []byte(value))
+		}
+		// Editing owners, shares and tags to files
+		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
+			if c := b.Bucket([]byte("owner")); len(owner) > 0 {
+				c.Put([]byte(owner), []byte("w"))
+
+			}
+			for i := range options {
+				for k, v := range options[i] {
+					switch k {
+					case "type":
+						c := b.Bucket([]byte("type"))
+						if c := c.Bucket([]byte(v)); len(owner) > 0 {
+							c.Put([]byte(owner), []byte("w"))
+						}
+					case "md5", "sha256":
+						if c := b.Bucket([]byte("hash")); len(k) > 0 {
+							c.Put([]byte(k), []byte(v))
+							// Getting file size
+							if f, err := os.Open(config.Storage.Path + v); err == nil {
+								fi, _ := f.Stat()
+								f.Close()
+								b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
+							}
+						}
+					case "tags":
+						if c := b.Bucket([]byte("tags")); len(v) > 0 {
+							for _, v := range strings.Split(v, ",") {
+								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
+								t, _ := tx.Bucket(tags).CreateBucketIfNotExists(tag)
+								c.Put(tag, []byte("w"))
+								t.Put([]byte(key), []byte("w"))
+							}
+						}
+					case "signature":
+						if c := b.Bucket([]byte("owner")); len(v) > 0 {
+							c.Put([]byte(owner), []byte(v))
+						}
+					default:
+						{
+							b.Put([]byte(k), []byte(v))
+						}
+					}
+				}
+			}
+
+			if b = b.Bucket([]byte("scope")); b != nil {
+				if b = b.Bucket([]byte(owner)); b != nil {
+				}
+			}
+		}
+		return nil
+	})
+	log.Check(log.WarnLevel, "Editing data in db", err)
+}
+
 // Delete removes record about file from DB
 func Delete(owner, repo, key string) (total int) {
 	db.Update(func(tx *bolt.Tx) error {
@@ -430,8 +504,9 @@ func UserFile(owner, file string) (list []string) {
 	})
 	return list
 }
+
 // All artifacts of user by repo
-func All(owner string,repo string) (list []string) {
+func All(owner string, repo string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
@@ -447,6 +522,7 @@ func All(owner string,repo string) (list []string) {
 	})
 	return list
 }
+
 // GetScope shows users with whom shared a certain owner of the file
 func GetScope(hash, owner string) (scope []string) {
 	scope = []string{}
