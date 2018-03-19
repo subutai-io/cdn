@@ -331,12 +331,12 @@ func TestListPriority(t *testing.T) {
 	g := NewGorjunServer()
 	g.Register(g.Username)
 
-	//artifactType := "template"
-	//v.Upload("data/debian-stretch-subutai-template_0.2.3_amd64.tar.gz", "template", "false")
-	//err := g.Uploads(artifactType, "false")
-	//if err != nil {
-	//	t.Errorf("Failed to uploads %s: %v", err, artifactType)
-	//}
+	artifactType := "template"
+	v.Upload("data/debian-stretch-subutai-template_0.2.3_amd64.tar.gz", "template", "false")
+	err := g.Uploads(artifactType, "false")
+	if err != nil {
+		t.Errorf("Failed to uploads %s: %v", err, artifactType)
+	}
 	fmt.Println("Token for user " + g.Username + " = " + g.Token)
 	fmt.Println("Token for user " + v.Username + " = " + v.Token)
 
