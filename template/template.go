@@ -350,7 +350,9 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 		err = appendConfig(configPath, item)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Can't find parent of this template , ID = " + item.ID))
+			w.Write([]byte("Can't find parent of this template , ID = " + item.ID + "\n" +
+				"Name =" + item.Name + "\n" +
+				"Parent =" + item.Parent + "\n"))
 			return
 		}
 		err = compress(config.Storage.Path+"/tmp/foo", config.Storage.Path+"/tmp/foo.tar.gz")
