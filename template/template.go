@@ -318,6 +318,7 @@ func delTag(values map[string][]string) (int, error) {
 
 func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
+	name := r.URL.Query().Get("name")
 	owner := strings.ToLower(db.CheckToken(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -331,7 +332,7 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 		log.Warn(r.RemoteAddr + " - rejecting update request")
 		return
 	}
-	list := db.Search("")
+	list := db.Search(name)
 	for _, k := range list {
 		if db.CheckRepo("", "template", k) == 0 {
 			continue
