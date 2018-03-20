@@ -137,6 +137,7 @@ func Info(repo string, r *http.Request) []byte {
 	subname := r.URL.Query().Get("subname")
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
+	version = processVersion(version)
 	if len(subname) != 0 {
 		name = subname
 	}
@@ -155,13 +156,15 @@ func Info(repo string, r *http.Request) []byte {
 	if len(id) > 0 {
 		list = append(list[:0], id)
 	} else if verified == "true" {
-		items = append(items, getVerified(list, name, repo))
-		items[0].Signature = db.FileSignatures(items[0].ID)
+		itemLatestVersion = getVerified(list, name, repo, version)
+		if itemLatestVersion.ID != "" {
+			items = append(items, getVerified(list, name, repo, version))
+			items[0].Signature = db.FileSignatures(items[0].ID)
+		}
 		output, err := json.Marshal(items)
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
 		}
-		//return nil
 	}
 
 	pstr := strings.Split(page, ",")
@@ -212,6 +215,12 @@ func Info(repo string, r *http.Request) []byte {
 	}
 	return output
 }
+func processVersion(version string) string {
+	if version == "latest" {
+		return ""
+	}
+	return version
+}
 
 func in(str string, list []string) bool {
 	for _, s := range list {
@@ -222,7 +231,7 @@ func in(str string, list []string) bool {
 	return false
 }
 
-func getVerified(list []string, name, repo string) ListItem {
+func getVerified(list []string, name, repo string, versionTemplate string) ListItem {
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
 	for _, k := range list {
@@ -230,10 +239,13 @@ func getVerified(list []string, name, repo string) ListItem {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if in(owner, []string{"subutai", "jenkins", "docker"}) &&
-						itemVersion.GTE(latestVersion) {
-						latestVersion = itemVersion
-						itemLatestVersion = FormatItem(db.Info(k), repo, name)
+					if in(owner, []string{"subutai", "jenkins", "docker"}) {
+						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
+							latestVersion = itemVersion
+							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+						} else if versionTemplate == itemVersion.String() {
+							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+						}
 					}
 				}
 			}
