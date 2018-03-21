@@ -21,21 +21,23 @@ import (
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
 type ListItem struct {
-	ID           string            `json:"id"`
-	Hash         hashsums          `json:"hash"`
-	Size         int               `json:"size"`
-	Date         time.Time         `json:"upload-date-formatted"`
-	Timestamp    string            `json:"upload-date-timestamp,omitempty"`
-	Name         string            `json:"name,omitempty"`
-	Tags         []string          `json:"tags,omitempty"`
-	Owner        []string          `json:"owner,omitempty"`
-	Parent       string            `json:"parent,omitempty"`
-	Version      string            `json:"version,omitempty"`
-	Filename     string            `json:"filename,omitempty"`
-	Prefsize     string            `json:"prefsize,omitempty"`
-	Signature    map[string]string `json:"signature,omitempty"`
-	Description  string            `json:"description,omitempty"`
-	Architecture string            `json:"architecture,omitempty"`
+	ID            string            `json:"id"`
+	Hash          hashsums          `json:"hash"`
+	Size          int               `json:"size"`
+	Name          string            `json:"name,omitempty"`
+	Tags          []string          `json:"tags,omitempty"`
+	Owner         []string          `json:"owner,omitempty"`
+	Parent        string            `json:"parent,omitempty"`
+	ParentVersion string            `json:"parent-version,omitempty"`
+	ParentOwner   string            `json:"parent-owner,omitempty"`
+	Version       string            `json:"version,omitempty"`
+	Filename      string            `json:"filename,omitempty"`
+	Prefsize      string            `json:"prefsize,omitempty"`
+	Signature     map[string]string `json:"signature,omitempty"`
+	Description   string            `json:"description,omitempty"`
+	Architecture  string            `json:"architecture,omitempty"`
+	Date          time.Time         `json:"upload-date-formatted"`
+	Timestamp     string            `json:"upload-date-timestamp,omitempty"`
 }
 
 type hashsums struct {
@@ -137,6 +139,7 @@ func Info(repo string, r *http.Request) []byte {
 	subname := r.URL.Query().Get("subname")
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
+	version = processVersion(version)
 	if len(subname) != 0 {
 		name = subname
 	}
@@ -155,13 +158,15 @@ func Info(repo string, r *http.Request) []byte {
 	if len(id) > 0 {
 		list = append(list[:0], id)
 	} else if verified == "true" {
-		items = append(items, getVerified(list, name, repo))
-		items[0].Signature = db.FileSignatures(items[0].ID)
+		itemLatestVersion = GetVerified(list, name, repo, version)
+		if itemLatestVersion.ID != "" {
+			items = append(items, GetVerified(list, name, repo, version))
+			items[0].Signature = db.FileSignatures(items[0].ID)
+		}
 		output, err := json.Marshal(items)
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
 		}
-		//return nil
 	}
 
 	pstr := strings.Split(page, ",")
@@ -212,6 +217,12 @@ func Info(repo string, r *http.Request) []byte {
 	}
 	return output
 }
+func processVersion(version string) string {
+	if version == "latest" {
+		return ""
+	}
+	return version
+}
 
 func in(str string, list []string) bool {
 	for _, s := range list {
@@ -222,7 +233,7 @@ func in(str string, list []string) bool {
 	return false
 }
 
-func getVerified(list []string, name, repo string) ListItem {
+func GetVerified(list []string, name, repo string, versionTemplate string) ListItem {
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
 	for _, k := range list {
@@ -230,10 +241,13 @@ func getVerified(list []string, name, repo string) ListItem {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if in(owner, []string{"subutai", "jenkins", "docker"}) &&
-						itemVersion.GTE(latestVersion) {
-						latestVersion = itemVersion
-						itemLatestVersion = FormatItem(db.Info(k), repo, name)
+					if in(owner, []string{"subutai", "jenkins", "docker"}) {
+						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
+							latestVersion = itemVersion
+							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+						} else if versionTemplate == itemVersion.String() {
+							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+						}
 					}
 				}
 			}
@@ -250,19 +264,21 @@ func FormatItem(info map[string]string, repo, name string) ListItem {
 	date, _ := time.Parse(time.RFC3339Nano, info["date"])
 	timestamp := strconv.FormatInt(date.Unix(), 10)
 	item := ListItem{
-		ID:           info["id"],
-		Date:         date,
-		Hash:         hashsums{Md5: info["md5"], Sha256: info["sha256"]},
-		Name:         strings.Split(info["name"], "-subutai-template")[0],
-		Tags:         db.FileField(info["id"], "tags"),
-		Owner:        db.FileField(info["id"], "owner"),
-		Version:      info["version"],
-		Filename:     info["name"],
-		Parent:       info["parent"],
-		Prefsize:     info["prefsize"],
-		Architecture: strings.ToUpper(info["arch"]),
-		Description:  info["Description"],
-		Timestamp:    timestamp,
+		ID:            info["id"],
+		Date:          date,
+		Hash:          hashsums{Md5: info["md5"], Sha256: info["sha256"]},
+		Name:          strings.Split(info["name"], "-subutai-template")[0],
+		Tags:          db.FileField(info["id"], "tags"),
+		Owner:         db.FileField(info["id"], "owner"),
+		Version:       info["version"],
+		Filename:      info["name"],
+		Parent:        info["parent"],
+		ParentVersion: info["parent-version"],
+		ParentOwner:   info["parent-owner"],
+		Prefsize:      info["prefsize"],
+		Architecture:  strings.ToUpper(info["arch"]),
+		Description:   info["Description"],
+		Timestamp:     timestamp,
 	}
 	item.Size, _ = strconv.Atoi(info["size"])
 

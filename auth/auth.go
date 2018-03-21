@@ -164,3 +164,16 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 	log.Info("File " + hash + " has been signed by " + owner)
 	return
 }
+
+func Owner(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	owner := strings.ToLower(db.CheckToken(token))
+	if len(token) == 0 || len(owner) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Not authorized"))
+		log.Warn(r.RemoteAddr + " - rejecting unauthorized owner request")
+		return
+	}
+	w.Write([]byte(owner))
+	return
+}
