@@ -414,8 +414,6 @@ func updateMetaDB(id, owner, hash, filename, configPath string) error {
 	t := getConfig(hash, configfile, id)
 	filename = t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
 	t.Signature = db.FileSignatures(id)
-	fmt.Println(t.ParentVersion)
-	fmt.Println(t.ParentOwner)
 	db.Edit(owner, id, filename, map[string]string{
 		"type":           "template",
 		"arch":           t.Architecture,
@@ -434,7 +432,6 @@ func updateMetaDB(id, owner, hash, filename, configPath string) error {
 	err := os.Rename(config.Storage.Path+"/tmp/foo.tar.gz", config.Storage.Path+md5sum)
 
 	if err != nil {
-		fmt.Println(err)
 		return errors.New("Can't rename tar file")
 	}
 	return nil
