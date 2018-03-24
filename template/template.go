@@ -25,6 +25,8 @@ import (
 	"github.com/subutai-io/gorjun/upload"
 	"io/ioutil"
 	"net/url"
+	"reflect"
+	"regexp"
 )
 
 func readTempl(hash string) (configfile string, err error) {
@@ -134,10 +136,20 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		configfile, err := readTempl(md5)
-		if err != nil || len(configfile) == 0 {
-			log.Warn("Unable to read template config")
-			w.WriteHeader(http.StatusNotAcceptable)
-			w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
+		t := getConf(md5, configfile)
+		valid, message := isValidTemplate(t, owner)
+
+		if err != nil || len(configfile) == 0 || !valid {
+			if err != nil || len(configfile) == 0 {
+				log.Warn("Unable to read template config")
+				w.WriteHeader(http.StatusNotAcceptable)
+				w.Write([]byte("Unable to read configuration file. Is it a template archive?"))
+			}
+			if !valid {
+				log.Warn(message)
+				w.WriteHeader(http.StatusNotAcceptable)
+				w.Write([]byte(message))
+			}
 			if db.Delete(owner, "template", md5) < 1 {
 				f, _ := os.Stat(config.Storage.Path + md5)
 				db.QuotaUsageSet(owner, -int(f.Size()))
@@ -145,7 +157,6 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		t := getConf(md5, configfile)
 		filename := t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
 		db.Write(owner, t.ID, filename, map[string]string{
 			"type":           "template",
@@ -173,7 +184,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 				if ID == t.ID {
 					continue
 				}
-				item := download.FormatItem(db.Info(ID), "template", filename)
+				item := download.FormatItem(db.Info(ID), "template")
 				if db.Delete(owner, "template", item.ID) < 1 {
 					f, _ := os.Stat(config.Storage.Path + item.Hash.Md5)
 					db.QuotaUsageSet(owner, -int(f.Size()))
@@ -338,7 +349,7 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		item := download.FormatItem(db.Info(k), "template", "")
+		item := download.FormatItem(db.Info(k), "template")
 		md5 := item.Hash.Md5
 		configPath := config.Storage.Path + "/tmp/foo/config"
 
@@ -488,4 +499,85 @@ func SetContainerConf(confPath string, conf [][]string) error {
 		}
 	}
 	return ioutil.WriteFile(confPath, []byte(newconf), 0644)
+}
+
+func isValidTemplate(templateData *download.ListItem, owner string) (bool, string) {
+	var parentExist bool
+	valid, message := allFieldsPresent(templateData)
+	if !valid {
+		return valid, message
+	}
+	parentExist, message = isParentExist(templateData)
+	if !valid {
+		return parentExist, message
+	}
+	valid, message = isOwnerCorrect(templateData, owner)
+	if !valid {
+		return valid, message
+	}
+	valid, message = loop(templateData, parentExist)
+	if !valid {
+		return valid, message
+	}
+	valid, message = isFormatCorrect(templateData)
+	if !valid {
+		return valid, message
+	}
+	return true, ""
+
+}
+
+func allFieldsPresent(templateData *download.ListItem) (bool, string) {
+	s := reflect.ValueOf(templateData).Elem()
+	typeOfT := s.Type()
+	requiredFields := []string{"Parent", "ParentOwner", "ParentVersion", "Version", "Name", "Owner"}
+	for i := 0; i < s.NumField(); i++ {
+		f := s.Field(i)
+		fieldName := typeOfT.Field(i).Name
+		fieldValue := f.Interface()
+
+		if download.In(fieldName, requiredFields) && (fieldValue == "" || len(templateData.Owner) == 0) {
+			if len(templateData.Owner) == 0 {
+				fieldName = "Owner"
+			}
+			message := fieldName + " field required"
+			return false, message
+		}
+	}
+	return true, ""
+}
+
+func isParentExist(templateData *download.ListItem) (bool, string) {
+	list := db.Search(templateData.Parent)
+	for _, id := range list {
+		item := download.FormatItem(db.Info(id), "template")
+		if item.Parent == templateData.Parent && item.ParentOwner == templateData.ParentOwner &&
+			item.ParentVersion == templateData.ParentVersion {
+			return true, ""
+		}
+	}
+	return false, "Parent not found"
+}
+
+func isOwnerCorrect(templateData *download.ListItem, owner string) (bool, string) {
+	if owner != templateData.Owner[0] {
+		return false, "Owner in config file is different"
+	}
+	return true, ""
+}
+
+func loop(templateData *download.ListItem, parentExist bool) (bool, string) {
+	if parentExist || templateData.Parent == templateData.Name {
+		return true, ""
+	}
+	return false, "loop detected"
+}
+
+func isFormatCorrect(templateData *download.ListItem) (bool, string) {
+	name, _ := regexp.MatchString("^[a-zA-Z0-9._-]+$", templateData.Name)
+	version, _ := regexp.MatchString("^[a-zA-Z0-9._-]+$", templateData.Version)
+	if (name && version) == true {
+		return true, ""
+	}
+	return false, "Name or version format is wrong"
 }
