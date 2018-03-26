@@ -88,6 +88,8 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 				t.Version = line[1]
 			case "subutai.template.size":
 				t.Prefsize = line[1]
+			case "subutai.template.owner":
+				t.Owner = append(t.Owner, line[1])
 			case "subutai.template.description":
 				t.Description = line[1]
 			case "subutai.tags":
@@ -508,7 +510,7 @@ func isValidTemplate(templateData *download.ListItem, owner string) (bool, strin
 		return valid, message
 	}
 	parentExist, message = isParentExist(templateData)
-	if !valid {
+	if !parentExist {
 		return parentExist, message
 	}
 	valid, message = isOwnerCorrect(templateData, owner)
@@ -536,10 +538,8 @@ func allFieldsPresent(templateData *download.ListItem) (bool, string) {
 		fieldName := typeOfT.Field(i).Name
 		fieldValue := f.Interface()
 
-		if download.In(fieldName, requiredFields) && (fieldValue == "" || len(templateData.Owner) == 0) {
-			if len(templateData.Owner) == 0 {
-				fieldName = "Owner"
-			}
+		if (download.In(fieldName, requiredFields) && fieldValue == "") ||
+			(fieldName == "Owner" && len(templateData.Owner) == 0) {
 			message := fieldName + " field required"
 			return false, message
 		}
@@ -551,8 +551,8 @@ func isParentExist(templateData *download.ListItem) (bool, string) {
 	list := db.Search(templateData.Parent)
 	for _, id := range list {
 		item := download.FormatItem(db.Info(id), "template")
-		if item.Parent == templateData.Parent && item.ParentOwner == templateData.ParentOwner &&
-			item.ParentVersion == templateData.ParentVersion {
+		if item.Name == templateData.Parent && item.Owner[0] == templateData.ParentOwner &&
+			item.Version == templateData.ParentVersion {
 			return true, ""
 		}
 	}
