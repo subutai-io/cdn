@@ -153,7 +153,7 @@ func renameOldDebFiles() {
 		if db.CheckRepo("", "apt", k) == 0 {
 			continue
 		}
-		item := download.FormatItem(db.Info(k), "apt", "")
+		item := download.FormatItem(db.Info(k), "apt")
 		os.Rename(config.Storage.Path+item.Hash.Md5, config.Storage.Path+item.Name)
 	}
 }
