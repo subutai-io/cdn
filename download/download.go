@@ -167,6 +167,7 @@ func Info(repo string, r *http.Request) []byte {
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
 		}
+		return nil
 	}
 
 	pstr := strings.Split(page, ",")
@@ -186,7 +187,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 
-		item := FormatItem(db.Info(k), repo, name)
+		item := FormatItem(db.Info(k), repo)
 		if len(subname) == 0 && name == item.Name {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
 				items = []ListItem{item}
@@ -224,7 +225,7 @@ func processVersion(version string) string {
 	return version
 }
 
-func in(str string, list []string) bool {
+func In(str string, list []string) bool {
 	for _, s := range list {
 		if s == str {
 			return true
@@ -241,12 +242,12 @@ func GetVerified(list []string, name, repo string, versionTemplate string) ListI
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if in(owner, []string{"subutai", "jenkins", "docker"}) {
+					if In(owner, []string{"subutai", "jenkins", "docker"}) {
 						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
 							latestVersion = itemVersion
-							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+							itemLatestVersion = FormatItem(db.Info(k), repo)
 						} else if versionTemplate == itemVersion.String() {
-							itemLatestVersion = FormatItem(db.Info(k), repo, name)
+							itemLatestVersion = FormatItem(db.Info(k), repo)
 						}
 					}
 				}
@@ -256,7 +257,7 @@ func GetVerified(list []string, name, repo string, versionTemplate string) ListI
 	return itemLatestVersion
 }
 
-func FormatItem(info map[string]string, repo, name string) ListItem {
+func FormatItem(info map[string]string, repo string) ListItem {
 	if len(info["prefsize"]) == 0 && repo == "template" {
 		info["prefsize"] = "tiny"
 	}
