@@ -84,7 +84,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		if len(md5) == 0 || len(sha256) == 0 {
 			return
 		}
-		control, err := readDeb(md5)
+		control, err := readDeb(header.Filename)
 		if err != nil {
 			log.Warn(err.Error())
 			w.WriteHeader(http.StatusUnsupportedMediaType)
@@ -96,17 +96,15 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		meta := getControl(control)
 		meta["Filename"] = header.Filename
-		meta["Size"] = strconv.Itoa(getSize(config.Storage.Path + md5))
-		meta["SHA512"] = upload.Hash(config.Storage.Path+md5, "sha512")
-		meta["SHA256"] = upload.Hash(config.Storage.Path+md5, "sha256")
-		meta["SHA1"] = upload.Hash(config.Storage.Path+md5, "sha1")
+		meta["Size"] = strconv.Itoa(getSize(config.Storage.Path + header.Filename))
+		meta["SHA512"] = upload.Hash(config.Storage.Path+header.Filename, "sha512")
+		meta["SHA256"] = upload.Hash(config.Storage.Path+header.Filename, "sha256")
+		meta["SHA1"] = upload.Hash(config.Storage.Path+header.Filename, "sha1")
 		meta["MD5sum"] = md5
 		meta["type"] = "apt"
 		db.Write(owner, md5, header.Filename, meta)
 		w.Write([]byte(md5))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
-		os.Rename(config.Storage.Path+md5, config.Storage.Path+header.Filename)
-		renameOldDebFiles()
 	}
 }
 
