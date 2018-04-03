@@ -13,6 +13,7 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/subutai-io/gorjun/apt"
 	"github.com/subutai-io/gorjun/auth"
+	"github.com/subutai-io/gorjun/auto"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/raw"
@@ -37,7 +38,7 @@ func main() {
 	// defer torrent.Close()
 	// go torrent.SeedLocal()
 	go RunTask()
-
+	go auto.CleanGarbage()
 	if len(config.CDN.Node) > 0 {
 		target := url.URL{Scheme: "https", Host: config.CDN.Node}
 		proxy := httputil.NewSingleHostReverseProxy(&target)
