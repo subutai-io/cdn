@@ -21,10 +21,9 @@ done
 
 for type in template; do
 	echo $type
-	curl -s -k https://${ENV}cdn.subut.ai:8338/kurjun/rest/$type/info | jq '.[] | .id' | tr -d '"'|
-	while IFS= read -r ID 
+	curl -s -k https://${ENV}cdn.subutai.io:8338/kurjun/rest/$type/info | jq '.[] | .id' | tr -d '"'|
+	while IFS= read -r ID
 	do
-	        ID=f2d2839e-3aee-4f05-a275-30dff8188e50
      		echo "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token="
      		curl -vk "https://$addr:8338/kurjun/rest/$type/download?id=$ID&token=" -o /dev/null
 	done

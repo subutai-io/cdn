@@ -204,12 +204,7 @@ func Delete(owner, repo, key string) (total int) {
 
 		owned := CheckRepo(owner, "", key)
 		md5, _ := Hash(key)
-		if key == md5 {
-			total = CheckRepo("", "", key)
-		} else {
-			total = CheckRepo("", "", md5)
-		}
-
+		total = CheckRepo("", "", key)
 		// Deleting user association with file
 		if b := tx.Bucket(bucket).Bucket([]byte(key)); b != nil {
 			if d := b.Bucket([]byte("type")); d != nil {
@@ -257,7 +252,7 @@ func Delete(owner, repo, key string) (total int) {
 		}
 		return nil
 	})
-	return total - 1
+	return total
 }
 
 // Read returns name by ID
@@ -521,6 +516,24 @@ func All(owner string, repo string) (list []string) {
 		return nil
 	})
 	return list
+}
+
+//Count all artifact that md5 equal to hash
+func CountMd5(hash string) (md5 int) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(bucket); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if b := b.Bucket(k).Bucket([]byte("hash")); b != nil {
+					if string(b.Get([]byte("md5"))) == hash {
+						md5++
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+	return md5
 }
 
 // GetScope shows users with whom shared a certain owner of the file
