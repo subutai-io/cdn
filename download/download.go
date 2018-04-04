@@ -287,6 +287,7 @@ func FormatItem(info map[string]string, repo string) ListItem {
 		item.Version = info["Version"]
 		item.Architecture = info["Architecture"]
 		item.Size, _ = strconv.Atoi(info["Size"])
+		item.Hash.Sha256 = info["SHA256"]
 	}
 	if len(item.Hash.Md5) == 0 {
 		item.Hash.Md5 = item.ID
