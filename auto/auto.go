@@ -19,6 +19,9 @@ func CleanGarbage() {
 		} else {
 			whiteList = append(whiteList, info["md5"])
 		}
+		if info["md5"] == "" {
+			whiteList = append(whiteList, info["id"])
+		}
 	}
 
 	files, err := ioutil.ReadDir(config.Storage.Path)
