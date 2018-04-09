@@ -16,6 +16,7 @@ import (
 	"github.com/subutai-io/gorjun/upload"
 
 	"github.com/mkrautz/goar"
+	"github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 	"os/exec"
 )
@@ -100,10 +101,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["SHA512"] = upload.Hash(config.Storage.Path+header.Filename, "sha512")
 		meta["SHA256"] = upload.Hash(config.Storage.Path+header.Filename, "sha256")
 		meta["SHA1"] = upload.Hash(config.Storage.Path+header.Filename, "sha1")
-		meta["MD5sum"] = md5
+		meta["md5"] = md5
 		meta["type"] = "apt"
-		db.Write(owner, md5, header.Filename, meta)
-		w.Write([]byte(md5))
+		my_uuid, _ := uuid.NewV4()
+		ID := my_uuid.String()
+		db.Write(owner, ID, header.Filename, meta)
+		w.Write([]byte(ID))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}
 }
