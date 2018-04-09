@@ -510,9 +510,6 @@ func isValidTemplate(templateData *download.ListItem, owner string) (bool, strin
 		return valid, message
 	}
 	parentExist, message = isParentExist(templateData)
-	if !parentExist {
-		return parentExist, message
-	}
 	valid, message = isOwnerCorrect(templateData, owner)
 	if !valid {
 		return valid, message

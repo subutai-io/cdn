@@ -36,6 +36,15 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		log.Warn(r.RemoteAddr + " - rejecting unauthorized upload request")
 		return
 	}
+
+	repo := strings.Split(r.URL.EscapedPath(), "/")
+	if len(repo) < 4 {
+		log.Warn(r.URL.EscapedPath() + " - bad deletion request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Bad request"))
+		return
+	}
+
 	r.ParseMultipartForm(32 << 20)
 
 	file, header, err := r.FormFile("file")
@@ -87,8 +96,9 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		w.Write([]byte("Failed to calculate hash"))
 		return
 	}
-
-	os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+md5sum)
+	if repo[3] != "apt" {
+		os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+md5sum)
+	}
 	log.Info("File received: " + header.Filename + "(" + md5sum + ")")
 
 	return md5sum, sha256sum, owner
@@ -161,8 +171,8 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		db.QuotaUsageSet(user, -int(f.Size()))
 		log.Info("User " + user + ", quota usage -" + strconv.Itoa(int(f.Size())))
 	}
-
-	if db.Delete(user, repo[3], id) == 0 {
+	db.Delete(user, repo[3], id)
+	if db.CountMd5(md5) == 0 && repo[3] != "apt" {
 		log.Warn("Removing " + id + " from disk")
 		// torrent.Delete(id)
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+md5)) {
@@ -172,7 +182,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 		}
 	}
 
-	if repo[3] == "apt" {
+	if repo[3] == "apt" && db.CountMd5(info["md5"]) == 0 {
 		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+info["Filename"])) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))
