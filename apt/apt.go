@@ -103,9 +103,19 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["SHA1"] = upload.Hash(config.Storage.Path+header.Filename, "sha1")
 		meta["md5"] = md5
 		meta["type"] = "apt"
-		my_uuid, _ := uuid.NewV4()
+		my_uuid, err := uuid.NewV4()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
 		ID := my_uuid.String()
-		db.Write(owner, ID, header.Filename, meta)
+		err = db.Write(owner, ID, header.Filename, meta)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
 		w.Write([]byte(ID))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}

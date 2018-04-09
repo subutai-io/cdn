@@ -43,7 +43,7 @@ func initDB() *bolt.DB {
 }
 
 // Write create record about file in DB
-func Write(owner, key, value string, options ...map[string]string) {
+func Write(owner, key, value string, options ...map[string]string) error {
 	if len(owner) == 0 {
 		owner = "subutai"
 	}
@@ -121,6 +121,7 @@ func Write(owner, key, value string, options ...map[string]string) {
 		return nil
 	})
 	log.Check(log.WarnLevel, "Writing data to db", err)
+	return err
 }
 
 // Edit record about file in DB
