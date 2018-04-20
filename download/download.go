@@ -242,7 +242,7 @@ func GetVerified(list []string, name, repo string, versionTemplate string) ListI
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if In(owner, []string{"subutai", "jenkins", "docker"}) {
+					if In(owner, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}) {
 						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
 							latestVersion = itemVersion
 							itemLatestVersion = FormatItem(db.Info(k), repo)
