@@ -70,8 +70,8 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 	t.Hash.Md5 = hash
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
-			line[0] = strings.TrimSpace(line[0])
-			line[1] = strings.TrimSpace(line[1])
+			line[0] = strings.ToLower(strings.TrimSpace(line[0]))
+			line[1] = strings.ToLower(strings.TrimSpace(line[1]))
 
 			switch line[0] {
 			case "lxc.arch":
