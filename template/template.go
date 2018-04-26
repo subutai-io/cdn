@@ -548,6 +548,10 @@ func isParentExist(templateData *download.ListItem) (bool, string) {
 	list := db.Search(templateData.Parent)
 	for _, id := range list {
 		item := download.FormatItem(db.Info(id), "template")
+		if len(item.Owner) == 0 {
+			log.Info("Missing template owner")
+			continue
+		}
 		if item.Name == templateData.Parent && item.Owner[0] == templateData.ParentOwner &&
 			item.Version == templateData.ParentVersion {
 			return true, ""
