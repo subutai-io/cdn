@@ -1,6 +1,7 @@
 package raw
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -84,5 +85,12 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 	}
-	w.Write(info)
+
+	output, err := json.Marshal([]download.ListItem{})
+	if err != nil || string(output) == "null" {
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
+
 }
