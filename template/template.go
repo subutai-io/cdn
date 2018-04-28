@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
+	"encoding/json"
 	"github.com/satori/go.uuid"
 
 	"github.com/subutai-io/agent/log"
@@ -253,8 +253,12 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	if info := download.Info("template", r); len(info) > 2 {
 		w.Write(info)
 	} else {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
+		output, err := json.Marshal([]download.ListItem{})
+		if err != nil || string(output) == "null" {
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(output)
 	}
 }
 
