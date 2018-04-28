@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -155,7 +156,12 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write(info)
 		return
 	}
-	w.Write([]byte("Not found"))
+	output, err := json.Marshal([]download.ListItem{})
+	if err != nil || string(output) == "null" {
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
 }
 
 func renameOldDebFiles() {
