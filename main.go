@@ -102,6 +102,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/auth/register", auth.Register)
 	http.HandleFunc("/kurjun/rest/auth/validate", auth.Validate)
 
+	http.HandleFunc("/kurjun/rest/healthcheck", healthcheck)
 	http.HandleFunc("/kurjun/rest/share", upload.Share)
 	http.HandleFunc("/kurjun/rest/quota", upload.Quota)
 	http.HandleFunc("/kurjun/rest/about", about)
@@ -145,6 +146,9 @@ func singleJoiningSlash(a, b string) string {
 	return a + b
 }
 
+func healthcheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
 func runMain() {
 	// start the stop channel
 	stop = make(chan bool)
