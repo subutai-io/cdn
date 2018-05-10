@@ -10,7 +10,7 @@ sudo: enabled
 go:
   - '1.9.4'
 script:
-#  #- go get
+  - go get
 #  #- make
 #  - sudo apt-get install systemd
 #  - sudo cp -f /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gorjun.service /etc/systemd/system/gorjun.service
