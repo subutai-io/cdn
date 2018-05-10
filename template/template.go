@@ -568,9 +568,12 @@ func isOwnerCorrect(templateData *download.ListItem, owner string) (bool, string
 }
 
 func loop(templateData *download.ListItem, parentExist bool) (bool, string) {
+	log.Debug(fmt.Sprintf("Checking for loop (templateData.Parent: %v, templateData.Name: %v, parentExist: %v)", templateData.Parent, templateData.Name, parentExist))
 	if parentExist || templateData.Parent == templateData.Name {
+		log.Debug(fmt.Sprintf("Everything is OK)"))
 		return true, ""
 	}
+	log.Debug("parentExist || templateData.Parent == templateData.Name returns false. Loop detected")
 	return false, "loop detected"
 }
 

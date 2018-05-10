@@ -323,23 +323,22 @@ func TestListHardTest(t *testing.T) {
 	}
 }
 
-//Search should work in this order
+// Search should work in this order
 func TestListPriority(t *testing.T) {
 	v := VerifiedUser()
 	v.Register(v.Username)
 	v.AuthenticateUser()
+	fmt.Printf("Token for user %+v = %+v\n", v.Username, v.Token)
 	g := NewGorjunServer()
 	g.Register(g.Username)
-
-	//artifactType := "template"
-	v.Upload("data/ceph-subutai-template_4.0.0_amd64.tar.gz", "template", "false")
-	v.Upload("data/master-subutai-template_4.0.0_amd64.tar.gz", "template", "false")
-
-	//err := g.Uploads(artifactType, "false")
-	//if err != nil {
-	//	t.Errorf("Failed to uploads %s: %v", err, artifactType)
-	//}
-	fmt.Println("Token for user " + g.Username + " = " + g.Token)
-	fmt.Println("Token for user " + v.Username + " = " + v.Token)
-
+	g.AuthenticateUser()
+	fmt.Printf("Token for user %+v = %+v\n", g.Username, g.Token)
+	str, err := g.Upload("data/debian-stretch-subutai-template_0.4.1_amd64-akenzhaliev.tar.gz", "template", "false")
+	if err != nil {
+		fmt.Printf("Could not upload debian-stretch-subutai-template_0.4.1_amd64-akenzhaliev.tar.gz: %+v, %+v\n", str, err)
+	}
+	str, err = g.Upload("data/mysql-subutai-template_0.4.1_amd64-akenzhaliev.tar.gz", "template", "false")
+	if err != nil {
+		fmt.Printf("Could not upload mysql-subutai-template_0.4.1_amd64-akenzhaliev.tar.gz: %+v, %+v\n", str, err)
+	}
 }

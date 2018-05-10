@@ -288,6 +288,7 @@ func Hash(key string) (md5, sha256 string) {
 }
 
 func Info(id string) map[string]string {
+	log.Debug(fmt.Sprintf("Gathering Info by id %+v", id))
 	list := make(map[string]string)
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(id)); b != nil {
@@ -305,6 +306,7 @@ func Info(id string) map[string]string {
 	if len(list) != 0 {
 		list["id"] = id
 	}
+	log.Debug(fmt.Sprintf("Gathered Info by id %+v. list: %+v", id, list))
 	return list
 }
 
@@ -313,19 +315,23 @@ func Close() {
 }
 
 func Search(query string) (list []string) {
+	log.Debug(fmt.Sprintf("Starting db.Search(%+v)", query))
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(search)
 		b.ForEach(func(k, v []byte) error {
+			log.Debug(fmt.Sprintf("tx.Bucket(%+v).ForEach(key: %+v, value: %+v)", string(search), string(k), string(v)))
 			if strings.Contains(strings.ToLower(string(k)), strings.ToLower(query)) {
 				// for k, _ := c.Seek([]byte(query)); len(k) > 0 && bytes.HasPrefix(k, []byte(query)); k, _ = c.Next() {
 				//Shitty search index contains lots of outdated and invalid records and we must return all of them. Need to fix it.
 				b.Bucket(k).ForEach(func(kk, vv []byte) error {
+					log.Debug(fmt.Sprintf("b.Bucket(%+v).ForEach(key: %+v, value: %+v)", string(k), string(kk), string(vv)))
 					for _, l := range list {
 						if l == string(vv) {
 							return nil
 						}
 					}
 					list = append(list, string(vv))
+					log.Debug(fmt.Sprintf("%+v not found in list. list after appending: %+v", string(vv), list))
 					return nil
 				})
 				// _, kk := b.Bucket(k).Cursor().First()
@@ -406,20 +412,24 @@ func SaveToken(name, token string) {
 
 func CheckToken(token string) (name string) {
 	token = fmt.Sprintf("%x", sha256.Sum256([]byte(token)))
-
+	log.Debug(fmt.Sprintf("Checking token %+v...", token))
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(tokens).Bucket([]byte(token)); b != nil {
 			date := new(time.Time)
 			date.UnmarshalText(b.Get([]byte("date")))
 			if date.Add(time.Hour * 24).Before(time.Now()) {
+				log.Debug(fmt.Sprintf("Token %+v is too old", token))
 				return nil
 			}
 			if value := b.Get([]byte("name")); value != nil {
 				name = string(value)
 			}
+		} else {
+			log.Debug(fmt.Sprintf("Token %+v is not found", token))
 		}
 		return nil
 	})
+	log.Debug(fmt.Sprintf("Checking token %+v finished. Token corresponds to name %+v", token, name))
 	return name
 }
 
@@ -461,8 +471,9 @@ func FileField(hash, field string) (list []string) {
 	return list
 }
 
-// FileSignatures returns map with file owners and theirs signatures
+// FileSignatures returns map with file owners and their signatures
 func FileSignatures(hash string) (list map[string]string) {
+	log.Debug(fmt.Sprintf("Gathering owners and their signatures by hash %+v", hash))
 	list = map[string]string{}
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(bucket).Bucket([]byte(hash)); b != nil {
@@ -477,6 +488,7 @@ func FileSignatures(hash string) (list map[string]string) {
 		}
 		return nil
 	})
+	log.Debug(fmt.Sprintf("Owners and their signatures: %+v", list))
 	return list
 }
 
@@ -502,12 +514,15 @@ func UserFile(owner, file string) (list []string) {
 }
 
 // All artifacts of user by repo
-func All(owner string, repo string) (list []string) {
+func AllUserFilesByRepo(owner string, repo string) (list []string) {
+	log.Debug(fmt.Sprintf("Gathering all %v's files from repo %v...", owner, repo))
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
-					if CheckRepo(owner, repo, string(k)) > 0 {
+					log.Debug(fmt.Sprintf("File of %v -- (key: %v, value: %v)", owner, string(k), string(v)))
+					if filesNumber := CheckRepo(owner, repo, string(k)); filesNumber > 0 {
+						log.Debug(fmt.Sprintf("Found %v files of %v with key %v in repo %v", filesNumber, owner, string(k), repo))
 						list = append(list, string(k))
 					}
 					return nil
@@ -516,6 +531,7 @@ func All(owner string, repo string) (list []string) {
 		}
 		return nil
 	})
+	log.Debug(fmt.Sprintf("list of all %v's files from repo %v: %v", list))
 	return list
 }
 
@@ -844,14 +860,17 @@ func RemoveTags(key, list string) error {
 // Tag returns a list of artifacts that contains requested tags.
 // If no records found list will be empty.
 func Tag(query string) (list []string, err error) {
+	log.Debug(fmt.Sprintf("Starting db.Tag(%+v)", query))
 	err = db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(tags).Bucket([]byte(strings.ToLower(query))); b != nil {
 			return b.ForEach(func(k, v []byte) error {
 				list = append(list, string(k))
+				log.Debug(fmt.Sprintf("tx.Bucket(%+v).ForEach(key: %+v, value: %+v) -- contains tag %+v", string(tags), string(k), string(v), query))
 				return nil
 			})
 		}
 		return fmt.Errorf("Tag not found")
 	})
+	log.Debug(fmt.Sprintf("list: %+v", list))
 	return list, err
 }
