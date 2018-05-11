@@ -26,18 +26,20 @@ type GorjunServer struct {
 }
 
 func NewGorjunServer() GorjunServer {
-	return GorjunServer{"tester", "tester@gmail.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
-		"", "", "pantano"}
+	return GorjunServer{"akenzhaliev", "akenzhaliev@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+	"", "", ""}
 }
+
 func SecondNewGorjunServer() GorjunServer {
 	return GorjunServer{"emilbeksulaymanov", "emilbeksulaymanov@gmail.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
-		"", "", ""}
+	"", "", ""}
 }
 
 func VerifiedUser() GorjunServer {
-	return GorjunServer{"subutai", "subutai@subut.ai", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
-		"", "", ""}
+	return GorjunServer{"subutai", "subutai@subutai.io", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+	"", "", ""}
 }
+
 // GorjunFile is a file located on Gorjun bucket server
 type GorjunFile struct {
 	ID           string            `json:"id"`
@@ -56,8 +58,11 @@ type GorjunFile struct {
 	Description  string            `json:"description,omitempty"`
 	Architecture string            `json:"architecture,omitempty"`
 }
+
 type Keys struct {
+
 }
+
 type hashsums struct {
 	Md5    string `json:"md5,omitempty"`
 	Sha256 string `json:"sha256,omitempty"`
@@ -140,9 +145,7 @@ func (g *GorjunServer) Upload(filename string, artifactType string, private stri
 	if _, err = fw.Write([]byte(private)); err != nil {
 		return "", fmt.Errorf("Failed to write token: %v", err)
 	}
-
 	w.Close()
-
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/kurjun/rest/"+artifactType+"/upload", g.Hostname), &b)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create HTTP request: %v", err)

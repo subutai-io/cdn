@@ -143,21 +143,34 @@ func Info(repo string, r *http.Request) []byte {
 	if len(subname) != 0 {
 		name = subname
 	}
-	list := db.Search(name)
-	if len(tag) > 0 {
-		listByTag, err := db.Tag(tag)
-		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
-		list = intersect(list, listByTag)
+	list := make([]string, 0)
+	if id != "" {
+		log.Debug(fmt.Sprintf("id was provided"))
+		list = append(list, id)
+	} else {
+		if name == "" {
+			log.Info(fmt.Sprintf("Both id and name were not provided. Gathering all info"))
+		}
+		list = db.Search(name)
+		if owner != "" {
+			list = intersect(list, db.AllUserFilesByRepo(owner, repo))
+		} else if token != "" {
+			owner = db.CheckToken(token)
+			if owner != "" {
+				list = intersect(list, db.AllUserFilesByRepo(owner, repo))
+			} else {
+				verified = "true"
+			}
+		} else {
+			verified = "true"
+		}
+		if tag != "" {
+			listByTag, err := db.Tag(tag)
+			log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
+			list = intersect(list, listByTag)
+		}
 	}
-	if onlyOneParameterProvided("name", r) {
-		verified = "true"
-	}
-	if len(name) > 0 && token == "" && owner == "" {
-		verified = "true"
-	}
-	if len(id) > 0 {
-		list = append(list[:0], id)
-	} else if verified == "true" {
+	if verified == "true" {
 		itemLatestVersion = GetVerified(list, name, repo, version)
 		if itemLatestVersion.ID != "" {
 			items = append(items, GetVerified(list, name, repo, version))
@@ -169,7 +182,6 @@ func Info(repo string, r *http.Request) []byte {
 		}
 		return nil
 	}
-
 	pstr := strings.Split(page, ",")
 	p[0], _ = strconv.Atoi(pstr[0])
 	if len(pstr) == 2 {
@@ -182,11 +194,9 @@ func Info(repo string, r *http.Request) []byte {
 			db.CheckRepo("", repo, k) == 0 {
 			continue
 		}
-
 		if p[0]--; p[0] > 0 {
 			continue
 		}
-
 		item := FormatItem(db.Info(k), repo)
 		if len(subname) == 0 && name == item.Name {
 			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
@@ -201,16 +211,19 @@ func Info(repo string, r *http.Request) []byte {
 		} else if !fullname && (len(version) == 0 || item.Version == version) {
 			items = append(items, item)
 		}
-
 		if len(items) >= p[1] {
 			break
 		}
 	}
 	if len(items) == 1 {
 		if version == "" && repo == "template" && itemLatestVersion.ID != "" {
+			log.Debug(fmt.Sprintf("version == \"\" && repo == \"template\" && itemLatestVersion.ID != \"\" returns true.\nitemLatestVersion.ID = %+v", itemLatestVersion))
 			items[0] = itemLatestVersion
+		} else {
+			items[0].Signature = db.FileSignatures(items[0].ID)
 		}
-		items[0].Signature = db.FileSignatures(items[0].ID)
+	} else {
+		// What?
 	}
 	output, err := json.Marshal(items)
 	if err != nil || string(output) == "null" {
@@ -218,6 +231,7 @@ func Info(repo string, r *http.Request) []byte {
 	}
 	return output
 }
+
 func processVersion(version string) string {
 	if version == "latest" {
 		return ""
@@ -234,7 +248,7 @@ func In(str string, list []string) bool {
 	return false
 }
 
-func GetVerified(list []string, name, repo string, versionTemplate string) ListItem {
+func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
 	for _, k := range list {
