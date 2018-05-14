@@ -15,10 +15,11 @@ import (
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
 
+	"os/exec"
+
 	"github.com/mkrautz/goar"
 	"github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
-	"os/exec"
 )
 
 func readDeb(hash string) (control bytes.Buffer, err error) {
@@ -103,6 +104,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["SHA1"] = upload.Hash(config.Storage.Path+header.Filename, "sha1")
 		meta["md5"] = md5
 		meta["type"] = "apt"
+		tags := r.FormValue("tag")
+		meta["tag"] = tags
 		my_uuid, err := uuid.NewV4()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
