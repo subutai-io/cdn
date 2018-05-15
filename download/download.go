@@ -12,11 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"net/url"
+
 	"github.com/blang/semver"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
 	"github.com/subutai-io/gorjun/db"
-	"net/url"
 )
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
@@ -283,7 +284,7 @@ func FormatItem(info map[string]string, repo string) ListItem {
 		Date:          date,
 		Hash:          hashsums{Md5: info["md5"], Sha256: info["sha256"]},
 		Name:          strings.Split(info["name"], "-subutai-template")[0],
-		Tags:          db.FileField(info["id"], "tags"),
+		Tags:          db.FileField(info["id"], "tag"),
 		Owner:         db.FileField(info["id"], "owner"),
 		Version:       info["version"],
 		Filename:      info["name"],

@@ -7,10 +7,11 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 
+	"net/url"
+
 	"github.com/subutai-io/gorjun/db"
 	"github.com/subutai-io/gorjun/download"
 	"github.com/subutai-io/gorjun/upload"
-	"net/url"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +29,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		if len(r.MultipartForm.Value["version"]) != 0 {
 			info["version"] = r.MultipartForm.Value["version"][0]
 		}
+		tags := r.FormValue("tag")
+		if tags == "" {
+			log.Info("Can't find tag in request")
+		}
+		info["tag"] = tags
 		_, header, _ := r.FormFile("file")
 		my_uuid, _ := uuid.NewV4()
 		id := my_uuid.String()
