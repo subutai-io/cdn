@@ -50,11 +50,53 @@ type hashsums struct {
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	name := r.URL.Query().Get("name")
-	if len(id) == 0 && len(name) == 0 {
-		io.WriteString(w, "Please specify id or name")
+	tag := r.URL.Query().Get("tag")
+
+	log.Info("Len name: ", len(name))
+
+	tagSplit := strings.Split(tag, ",")
+	if len(id) == 0 && len(name) == 0 && len(tag) == 0 {
+		io.WriteString(w, "Please specify id,name or tag")
 		return
 	} else if len(name) != 0 {
-		id = db.LastHash(name, repo)
+		if len(tag) != 0 {
+			if len(tagSplit) > 1 {
+				t := strings.Split(tag, ",")
+				for _, tt := range t {
+					listbyTag := db.SearchFileByTag(tt, repo)
+					for _, l := range listbyTag {
+						if db.Read(string(l)) == name {
+							id = string(l)
+							log.Info("Tag with name. Id: ", id)
+						}
+					}
+				}
+			} else if len(tag) != 0 {
+				listbyTag := db.SearchFileByTag(tag, repo)
+				if len(listbyTag) != 0 {
+					for _, l := range listbyTag {
+						if db.Read(string(l)) == name {
+							id = string(l)
+							log.Info("id: ", id)
+						}
+					}
+				}
+			}
+		} else {
+			id = db.LastHash(name, repo)
+		}
+	}
+
+	//if both name and id is not provided or empty, it will search id by tag and return the first file in list
+	if len(name) == 0 && len(id) == 0 {
+		if len(tag) != 0 {
+			listbyTag := db.SearchFileByTag(tag, repo)
+			if len(listbyTag) == 0 {
+				w.Write([]byte("No file with such tags"))
+				return
+			}
+			id = listbyTag[0]
+		}
 	}
 
 	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.CheckToken(r.URL.Query().Get("token"))) {
@@ -167,7 +209,7 @@ func Info(repo string, r *http.Request) []byte {
 		}
 		if tag != "" {
 			listByTag, err := db.Tag(tag)
-			log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
+			log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 			list = intersect(list, listByTag)
 		}
 	}
