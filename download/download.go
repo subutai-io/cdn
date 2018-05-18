@@ -339,7 +339,7 @@ func FormatItem(info map[string]string, repo string) ListItem {
 		Date:          date,
 		Hash:          hashsums{Md5: info["md5"], Sha256: info["sha256"]},
 		Name:          strings.Split(info["name"], "-subutai-template")[0],
-		Tags:          db.FileField(info["id"], "tags"),
+		Tags:          db.FileField(info["id"], "tag"),
 		Owner:         db.FileField(info["id"], "owner"),
 		Version:       info["version"],
 		Filename:      info["name"],
