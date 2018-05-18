@@ -2,6 +2,7 @@
 // Client allows to seed and download files.
 package torrent
 
+/*
 import (
 	"bufio"
 	"bytes"
@@ -167,3 +168,4 @@ func IsDownloaded(hash string) bool {
 	}
 	return false
 }
+*/

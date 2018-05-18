@@ -16,10 +16,9 @@ import (
 	"os/exec"
 )
 
-func (g *GorjunServer) RegisterUser(username string, publicKey string) (string, error) {
+func (g *GorjunUser) RegisterUser(username string, publicKey string) (string, error) {
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
-
 	fw, err := w.CreateFormField("name")
 	if err != nil {
 		return "", fmt.Errorf("Failed to create name form: %v", err)
@@ -33,9 +32,7 @@ func (g *GorjunServer) RegisterUser(username string, publicKey string) (string, 
 	if _, err = fw.Write([]byte(publicKey)); err != nil {
 		return "", fmt.Errorf("Failed to write token: %v", err)
 	}
-
 	w.Close()
-
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/kurjun/rest/auth/register", g.Hostname), &b)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create HTTP request: %v", err)
@@ -56,7 +53,7 @@ func (g *GorjunServer) RegisterUser(username string, publicKey string) (string, 
 	return string(response), nil
 }
 
-func (g *GorjunServer) Register(username string)  {
+func (g *GorjunUser) Register(username string)  {
 	output, _ := exec.Command("bash", "-c", "gpg --armor --export " + username).Output()
 	g.RegisterUser(g.Username, string(output))
 }
@@ -65,7 +62,7 @@ func (g *GorjunServer) Register(username string)  {
 // and sending it back to server to get user token
 // If passphrase is not empty, PGP will try to decrypt the private key before signing the code
 // if gpgdir is empty, the default ($HOME/.gnupg) will be used
-func (g *GorjunServer) AuthenticateUser() error {
+func (g *GorjunUser) AuthenticateUser() error {
 	err := g.GetAuthTokenCode()
 	if err != nil {
 		return err
@@ -83,7 +80,7 @@ func (g *GorjunServer) AuthenticateUser() error {
 
 // GetAuthTokenCode is a first step of authentication - it requests a special code from the server.
 // This code needs to be PGP-signed later
-func (g *GorjunServer) GetAuthTokenCode() error {
+func (g *GorjunUser) GetAuthTokenCode() error {
 	fmt.Println("Getting auth id for user " + g.Username)
 	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/auth/token?user=%s", g.Hostname, g.Username))
 	if err != nil {
@@ -100,7 +97,7 @@ func (g *GorjunServer) GetAuthTokenCode() error {
 
 // GetActiveToken will send signed message to server and return active token
 // that will be used for authneticated requests
-func (g *GorjunServer) GetActiveToken(signed string) error {
+func (g *GorjunUser) GetActiveToken(signed string) error {
 	signed = "-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA256\n\n" + g.TokenCode + "\n" + signed + "\n"
 	form := url.Values{
 		"message": {signed},
@@ -125,7 +122,7 @@ func (g *GorjunServer) GetActiveToken(signed string) error {
 	return nil
 }
 
-func (g *GorjunServer) GetKeyByEmail(keyring openpgp.EntityList, email string) *openpgp.Entity {
+func (g *GorjunUser) GetKeyByEmail(keyring openpgp.EntityList, email string) *openpgp.Entity {
 	for _, entity := range keyring {
 		for _, ident := range entity.Identities {
 			if ident.UserId.Email == email {
@@ -137,7 +134,7 @@ func (g *GorjunServer) GetKeyByEmail(keyring openpgp.EntityList, email string) *
 }
 
 // SignToken will sign with GnuPG provided token and return signed version
-func (g *GorjunServer) SignToken(token string) (string, error) {
+func (g *GorjunUser) SignToken(token string) (string, error) {
 	if g.GPGDirectory == "" {
 		return "", fmt.Errorf("GPG Directory was not specified")
 	}
@@ -188,28 +185,24 @@ func (g *GorjunServer) SignToken(token string) (string, error) {
 	return outBuf.String(), nil
 }
 
-func (g *GorjunServer) decodePrivateKey() (*packet.PrivateKey, error) {
+func (g *GorjunUser) decodePrivateKey() (*packet.PrivateKey, error) {
 	in, err := os.Open(g.GPGDirectory + "/secring.gpg")
 	if err != nil {
 		in.Close()
 		return nil, err
 	}
-
 	block, err := armor.Decode(in)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to decode GPG Armor: %s", err)
 	}
-
 	if block.Type != openpgp.PrivateKeyType {
 		return nil, fmt.Errorf("Invalid private key file")
 	}
-
 	reader := packet.NewReader(block.Body)
 	pkt, err := reader.Next()
 	if err != nil {
 		return nil, fmt.Errorf("Error reading private key")
 	}
-
 	key, success := pkt.(*packet.PrivateKey)
 	if !success {
 		return nil, fmt.Errorf("Error parsing private key")
