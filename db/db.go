@@ -1054,7 +1054,7 @@ func Write(owner, key, value string, options ...map[string]string) error {
 // CheckRepoOfHash return the type of file by its hash
 func CheckRepoOfHash(hash string) (repo string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket).Bucket([]byte(hash)).Bucket([]byte("type")); b != nil {
+		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)).Bucket([]byte("type")); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				repo = string(k)
 				return nil
@@ -1068,7 +1068,7 @@ func CheckRepoOfHash(hash string) (repo string) {
 // SearchFileByTag performs search file by the specified tag. Return the list of files with such tag.
 func SearchFileByTag(tag string, repo string) (listofIds []string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket); b != nil {
+		if b := tx.Bucket(MyBucket); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				r := CheckRepoOfHash(string(k))
 				t := string(b.Bucket(k).Get([]byte("tag")))

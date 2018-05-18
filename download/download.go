@@ -62,7 +62,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 				for _, tt := range t {
 					listbyTag := db.SearchFileByTag(tt, repo)
 					for _, l := range listbyTag {
-						if db.Read(string(l)) == name {
+						if db.NameByHash(string(l)) == name {
 							id = string(l)
 							log.Info("Tag with name. Id: ", id)
 						}
@@ -72,7 +72,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 				listbyTag := db.SearchFileByTag(tag, repo)
 				if len(listbyTag) != 0 {
 					for _, l := range listbyTag {
-						if db.Read(string(l)) == name {
+						if db.NameByHash(string(l)) == name {
 							id = string(l)
 							log.Info("id: ", id)
 						}

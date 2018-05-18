@@ -135,8 +135,8 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		if len(tag) != 0 {
 			listbyTag := db.SearchFileByTag(tag, "apt")
 			for _, l := range listbyTag {
-				if db.Public(l) {
-					apt := db.Read(l)
+				if db.IsPublic(l) {
+					apt := db.NameByHash(l)
 					if apt == file {
 						file = apt
 					}
@@ -147,8 +147,8 @@ func Download(w http.ResponseWriter, r *http.Request) {
 		if len(tag) != 0 {
 			listbyTag := db.SearchFileByTag(tag, "apt")
 			for _, l := range listbyTag {
-				if db.Public(l) {
-					apt := db.Read(l)
+				if db.IsPublic(l) {
+					apt := db.NameByHash(l)
 					file = apt
 				}
 			}
