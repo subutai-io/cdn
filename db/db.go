@@ -74,9 +74,10 @@ func CheckAuthID(token string) (name string) {
 // if particular file exists and owner is correct. Returns number of found matches.
 // If owner is empty then CheckRepo counts total number of matches regardless of owner
 func CheckRepo(owner string, repo []string, hash string) (val int) {
-	log.Debug(fmt.Sprintf("CheckRepo (repo: \"%+v\", owner: \"%+v\", file: \"%+v\" (name: %+v))", repo, owner, hash, NameByHash(hash)))
+	log.Debug(fmt.Sprintf("CheckRepo (repo: \"%+v (len: %+v)\", owner: \"%+v\", file: \"%+v\" (name: %+v))", repo, len(repo), owner, hash, NameByHash(hash)))
 	if len(repo) == 0 {
 		repo = []string{"apt", "template", "raw"}
+		log.Debug(fmt.Sprintf("Provided empty repo. New repo: %+v", repo))
 	}
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
@@ -86,9 +87,12 @@ func CheckRepo(owner string, repo []string, hash string) (val int) {
 			}
 			if c := b.Bucket([]byte("type")); c != nil {
 				for _, v := range repo {
+					log.Debug(fmt.Sprintf("Checking file %+v (name: %+v) in repo %+v", hash, NameByHash(hash), v))
 					if d := c.Bucket([]byte(v)); d != nil {
 						log.Debug(fmt.Sprintf("File %+v (name: %+v, owner: %+v) found in repo %+v", hash, NameByHash(hash), owner, v))
 						val++
+					} else {
+						log.Debug(fmt.Sprintf("File %+v (name: %+v) is not in repo %+v", hash, NameByHash(hash), v))
 					}
 				}
 			}
@@ -188,9 +192,9 @@ func DebugDatabase() {
 func Delete(owner, repo, key string) (total int) {
 	db.Update(func(tx *bolt.Tx) error {
 		var filename []byte
-		owned := CheckRepo(owner, []string{""}, key)
+		owned := CheckRepo(owner, []string{}, key)
 		md5, _ := Hash(key)
-		total = CheckRepo("", []string{""}, key)
+		total = CheckRepo("", []string{}, key)
 		// Deleting user association with file
 		if b := tx.Bucket(MyBucket).Bucket([]byte(key)); b != nil {
 			if d := b.Bucket([]byte("type")); d != nil {
