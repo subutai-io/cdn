@@ -131,6 +131,7 @@ func getConfig(hash string, configfile, id string) (t *download.ListItem) {
 	}
 	return
 }
+
 func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		md5, sha256, owner := upload.Handler(w, r)
@@ -140,7 +141,6 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		configfile, err := readTempl(md5)
 		t := getConf(md5, configfile)
 		valid, message := isValidTemplate(t, owner)
-
 		if err != nil || len(configfile) == 0 || !valid {
 			if err != nil || len(configfile) == 0 {
 				log.Warn("Unable to read template config")
@@ -175,12 +175,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		})
 		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
 			log.Info("Sharing " + t.ID + " with " + owner)
-			db.ShareWith(t.ID, owner, owner)
+			db.MakePrivate(t.ID, owner)
+		} else {
+			db.MakePublic(t.ID, owner)
 		}
-
 		w.Write([]byte(t.ID))
 		log.Info(t.Name + " saved to template repo by " + owner)
-
 		if IDs := db.UserFile(owner, filename); len(IDs) > 0 {
 			for _, ID := range IDs {
 				if ID == t.ID {
@@ -189,9 +189,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 				item := download.FormatItem(db.Info(ID), "template")
 				if db.Delete(owner, "template", item.ID) < 1 {
 					f, _ := os.Stat(config.Storage.Path + item.Hash.Md5)
-					db.QuotaUsageSet(owner, -int(f.Size()))
-					if item.Hash.Md5 != t.Hash.Md5 {
-						os.Remove(config.Storage.Path + item.Hash.Md5)
+					if f != nil { // TODO : Understand what's the matter here
+						log.Debug(fmt.Sprintf("Printing f: %+v", f))
+						db.QuotaUsageSet(owner, -int(f.Size()))
+						if item.Hash.Md5 != t.Hash.Md5 {
+							os.Remove(config.Storage.Path + item.Hash.Md5)
+						}
 					}
 				}
 			}
@@ -223,7 +226,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 
 // func Torrent(w http.ResponseWriter, r *http.Request) {
 // 	id := r.URL.Query().Get("id")
-// 	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.CheckToken(r.URL.Query().Get("token"))) {
+// 	if len(db.Read(id)) > 0 && !db.Public(id) && !db.CheckShare(id, db.TokenOwner()(r.URL.Query().Get("token"))) {
 // 		w.WriteHeader(http.StatusNotFound)
 // 		w.Write([]byte("Not found"))
 // 		return
@@ -251,6 +254,20 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if info := download.Info("template", r); len(info) > 2 {
+		w.Write(info)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not found"))
+	}
+}
+
+func List(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		return
+	}
+	if info := download.List("template", r); len(info) > 2 {
 		w.Write(info)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
@@ -303,10 +320,10 @@ func Tag(w http.ResponseWriter, r *http.Request) {
 
 func addTag(values map[string][]string) (int, error) {
 	if len(values["token"]) > 0 {
-		if user := db.CheckToken(values["token"][0]); len(values["token"][0]) == 0 || len(user) == 0 {
+		if user := db.TokenOwner(values["token"][0]); len(values["token"][0]) == 0 || len(user) == 0 {
 			return http.StatusUnauthorized, fmt.Errorf("Failed to authorize using provided token")
 		} else if len(values["id"]) > 0 && len(values["tags"]) > 0 {
-			if db.CheckRepo(user, "template", values["id"][0]) > 0 {
+			if db.CheckRepo(user, []string{"template"}, values["id"][0]) > 0 {
 				db.Write(user, values["id"][0], "", map[string]string{"tags": values["tags"][0]})
 				return http.StatusOK, nil
 			}
@@ -317,10 +334,10 @@ func addTag(values map[string][]string) (int, error) {
 
 func delTag(values map[string][]string) (int, error) {
 	if len(values["token"]) > 0 {
-		if user := db.CheckToken(values["token"][0]); len(values["token"][0]) == 0 || len(user) == 0 {
+		if user := db.TokenOwner(values["token"][0]); len(values["token"][0]) == 0 || len(user) == 0 {
 			return http.StatusUnauthorized, fmt.Errorf("Failed to authorize using provided token")
 		} else if len(values["id"]) > 0 && len(values["tags"]) > 0 {
-			if db.CheckRepo(user, "template", values["id"][0]) > 0 {
+			if db.CheckRepo(user, []string{"template"}, values["id"][0]) > 0 {
 				db.RemoveTags(values["id"][0], values["tags"][0])
 				return http.StatusOK, nil
 			}
@@ -332,7 +349,7 @@ func delTag(values map[string][]string) (int, error) {
 func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	name := r.URL.Query().Get("name")
-	owner := strings.ToLower(db.CheckToken(token))
+	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))
@@ -345,9 +362,9 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 		log.Warn(r.RemoteAddr + " - rejecting update request")
 		return
 	}
-	list := db.Search(name)
+	list := db.SearchName(name)
 	for _, k := range list {
-		if db.CheckRepo("", "template", k) == 0 {
+		if db.CheckRepo("", []string{"template"}, k) == 0 {
 			continue
 		}
 
@@ -398,7 +415,7 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 
 func appendConfig(confPath string, item download.ListItem) error {
 	templateParent := item.Parent
-	list := db.Search(templateParent)
+	list := db.SearchName(templateParent)
 	latestVerified := download.GetVerified(list, templateParent, "template", "")
 	if latestVerified.ID == "" {
 		return errors.New("Can't find parent of template")
@@ -418,7 +435,7 @@ func appendConfig(confPath string, item download.ListItem) error {
 
 func updateMetaDB(id, owner, hash, filename, configPath string) error {
 	md5sum := upload.Hash(config.Storage.Path + "/tmp/foo.tar.gz")
-	sha256sum := upload.Hash(config.Storage.Path+"/tmp/foo.tar.gz", "sha256")
+	sha256sum := upload.Hash(config.Storage.Path + "/tmp/foo.tar.gz", "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + hash)
 		return errors.New("Failed to calculate")
@@ -545,13 +562,14 @@ func allFieldsPresent(templateData *download.ListItem) (bool, string) {
 }
 
 func isParentExist(templateData *download.ListItem) (bool, string) {
-	list := db.Search(templateData.Parent)
+	list := db.SearchName(templateData.Parent)
 	for _, id := range list {
 		item := download.FormatItem(db.Info(id), "template")
 		if len(item.Owner) == 0 {
 			log.Info("Missing template owner")
 			continue
 		}
+		log.Info(fmt.Sprintf("Parent Candidate for\n------- %+v\n------- %+v", templateData, item))
 		if item.Name == templateData.Parent && item.Owner[0] == templateData.ParentOwner &&
 			item.Version == templateData.ParentVersion {
 			return true, ""
@@ -573,7 +591,7 @@ func loop(templateData *download.ListItem, parentExist bool) (bool, string) {
 		log.Debug(fmt.Sprintf("Everything is OK)"))
 		return true, ""
 	}
-	log.Debug("parentExist || templateData.Parent == templateData.Name returns false. Loop detected")
+	log.Debug(fmt.Sprintf("parentExist (%+v) || templateData.Parent == templateData.Name (%+v) returns false. Loop detected", parentExist, templateData.Parent == templateData.Name))
 	return false, "loop detected"
 }
 

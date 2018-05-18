@@ -186,10 +186,18 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Not found"))
 }
 
+func List(w http.ResponseWriter, r *http.Request) {
+	if info := download.List("apt", r); len(info) != 0 {
+		w.Write(info)
+		return
+	}
+	w.Write([]byte("Not found"))
+}
+
 func renameOldDebFiles() {
-	list := db.Search("")
+	list := db.SearchName("")
 	for _, k := range list {
-		if db.CheckRepo("", "apt", k) == 0 {
+		if db.CheckRepo("", []string{"apt"}, k) == 0 {
 			continue
 		}
 		item := download.FormatItem(db.Info(k), "apt")
@@ -224,7 +232,7 @@ func GenerateReleaseFile() {
 
 func Generate(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("token")
-	owner := strings.ToLower(db.CheckToken(token))
+	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))

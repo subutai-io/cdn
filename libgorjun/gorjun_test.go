@@ -14,7 +14,7 @@ import (
 )
 
 func TestListUserFiles(t *testing.T) {
-	g := NewGorjunServer()
+	g := FirstGorjunUser()
 	err := g.AuthenticateUser()
 	if err != nil {
 		t.Errorf("Authnetication failure: %v", err)
@@ -35,14 +35,33 @@ func TestListUserFiles(t *testing.T) {
 	if len(flist) <= 0 {
 		t.Errorf("Resulting array is empty")
 	}
-	err = g.Deletes("raw", "")
+	err = g.Delete("raw", "")
 	if err != nil {
 		t.Errorf("Failed to delete raw files: %v", err)
 	}
 }
 
+// Upload files
+func (g *GorjunUser) TestUpload(artifacttype, private string) (error){
+	err := g.AuthenticateUser()
+	if err != nil {
+		fmt.Errorf("Authnetication failure: %v", err)
+	}
+	templateVersions := []string{"0.3.9", "0.4.0", "0.4.1"}
+	rand.Seed(time.Now().UnixNano())
+	for _, version := range templateVersions {
+		id, err := g.Upload("data/mysql-subutai-template_"+version+"_amd64.tar.gz", artifacttype, private)
+		if err != nil {
+			fmt.Errorf("Failed to upload: %v", err)
+		}
+		fmt.Printf("%s uploaded successfully, id : %s\n",artifacttype, id)
+		time.Sleep(100 * time.Millisecond)
+	}
+	return err
+}
+
 func TestRemoveTemplate(t *testing.T) {
-	g := NewGorjunServer()
+	g := FirstGorjunUser()
 	err := g.AuthenticateUser()
 	if err != nil {
 		t.Errorf("Authnetication failure: %v", err)
@@ -59,10 +78,10 @@ func TestRemoveTemplate(t *testing.T) {
 	fmt.Printf("Template removed successfully, id : %s\n", id)
 }
 
-//TestGorjunServer_CheckTemplatesSignatureExist will check signatures of
+//TestGorjunUser_CheckTemplatesSignatureExist will check signatures of
 //templates, all templates should have more than zero signatures
-func TestGorjunServer_CheckTemplatesSignatureExist(t *testing.T) {
-	g := NewGorjunServer()
+func TestGorjunUser_CheckTemplatesSignatureExist(t *testing.T) {
+	g := FirstGorjunUser()
 	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/template/list", g.Hostname))
 	data, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -93,11 +112,11 @@ func Shuffle(a []string) {
 	}
 }
 
-//TestGorjunServer_GetLatestTemplateByVersion will upload templates
+//TestGorjunUser_GetLatestTemplateByVersion will upload templates
 //with different version in random order, info rest should return latest by version
 //if several version exits it should return by date
-func TestGorjunServer_GetLatestTemplateByVersion(t *testing.T) {
-	g := NewGorjunServer()
+func TestGorjunUser_GetLatestTemplateByVersion(t *testing.T) {
+	g := FirstGorjunUser()
 	err := g.AuthenticateUser()
 	if err != nil {
 		t.Errorf("Authnetication failure: %v", err)
@@ -135,13 +154,13 @@ func TestGorjunServer_GetLatestTemplateByVersion(t *testing.T) {
 	var template []GorjunFile
 	err = json.Unmarshal(data, &template)
 	assert.Equal(t, "0.1.11", template[0].Version)
-	g.Deletes("template", "")
+	g.Delete("template", "")
 }
 
-//TestGorjunServer_GetLatestRaw will upload raw
+//TestGorjunUser_GetLatestRaw will upload raw
 //files , info rest should return  by date
-func TestGorjunServer_GetLatestRaw(t *testing.T) {
-	g := NewGorjunServer()
+func TestGorjunUser_GetLatestRaw(t *testing.T) {
+	g := FirstGorjunUser()
 	err := g.AuthenticateUser()
 	if err != nil {
 		t.Errorf("Authnetication failure: %v", err)
@@ -182,13 +201,13 @@ func TestGorjunServer_GetLatestRaw(t *testing.T) {
 	fmt.Println(timestamp)
 	fmt.Println(dates[rawNumber-1])
 	assert.Equal(t, timestamp, dates[rawNumber-1])
-	g.Deletes("raw", "")
+	g.Delete("raw", "")
 }
 
-//TestGorjunServer_SameTemplateUpload will upload
+//TestGorjunUser_SameTemplateUpload will upload
 //same template twice, old template should deleted
-func TestGorjunServer_SameTemplateUpload(t *testing.T) {
-	g := NewGorjunServer()
+func TestGorjunUser_SameTemplateUpload(t *testing.T) {
+	g := FirstGorjunUser()
 	templateVersions := []string{"0.1.6", "0.1.7", "0.1.9", "0.1.10", "0.1.11"}
 	for _, version := range templateVersions {
 		resp, _ := http.Get(fmt.Sprintf("http://%s/kurjun/rest/template/info?name=%s&version=%s", g.Hostname, "nginx", version))
@@ -197,7 +216,7 @@ func TestGorjunServer_SameTemplateUpload(t *testing.T) {
 			return
 		}
 	}
-	TestGorjunServer_GetLatestTemplateByVersion(t)
+	TestGorjunUser_GetLatestTemplateByVersion(t)
 	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/template/list", g.Hostname))
 	data, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()

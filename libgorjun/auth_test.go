@@ -26,16 +26,16 @@ func RandomString(strlen int) string {
 	return string(result)
 }
 
-func TestGorjunServer_AuthenticateUser(t *testing.T) {
-	g := NewGorjunServer()
+func TestGorjunUser_AuthenticateUser(t *testing.T) {
+	g := FirstGorjunUser()
 	_, err := g.RegisterUser("tester", "publickey")
 	if err != nil {
 		t.Errorf("Failed to register user: %v", err)
 	}
 }
 
-func TestGorjunServer_RegisterUserWithMultipleKeys(t *testing.T) {
-	g := NewGorjunServer()
+func TestGorjunUser_RegisterUserWithMultipleKeys(t *testing.T) {
+	g := FirstGorjunUser()
 	randomUserName := RandomString(10)
 	for i := 1; i <= 100; i++ {
 		randomKey := RandomString(100)
@@ -61,8 +61,8 @@ func TestGorjunServer_RegisterUserWithMultipleKeys(t *testing.T) {
 	}
 }
 
-func TestGorjunServer_GetKeysByOwner(t *testing.T) {
-	g := NewGorjunServer()
+func TestGorjunUser_GetKeysByOwner(t *testing.T) {
+	g := FirstGorjunUser()
 	artifactTypes := [3]string{"template", "raw", "apt"}
 	for i := 0; i < len(artifactTypes); i++ {
 		resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/"+artifactTypes[i]+"/list", g.Hostname))
@@ -87,7 +87,7 @@ func TestGorjunServer_GetKeysByOwner(t *testing.T) {
 
 }
 func TestGetAuthTokenCode(t *testing.T) {
-	g := NewGorjunServer()
+	g := FirstGorjunUser()
 	err := g.GetAuthTokenCode()
 	if err != nil {
 		t.Errorf("Failed to retrieve token: %v", err)
@@ -98,7 +98,7 @@ func TestGetAuthTokenCode(t *testing.T) {
 }
 
 func TestGetActiveToken(t *testing.T) {
-	g := NewGorjunServer()
+	g := FirstGorjunUser()
 	err := g.GetAuthTokenCode()
 	if err != nil {
 		t.Errorf("Failed to retrieve token: %v", err)
