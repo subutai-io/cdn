@@ -591,7 +591,6 @@ func QuotaLeft(user string) int {
 		}
 		return nil
 	})
-	return 1000000000000000000
 	if quota == -1 {
 		return -1
 	} else if quota <= stored {
@@ -1000,7 +999,11 @@ func Write(owner, key, value string, options ...map[string]string) error {
 		// Adding owners, shares and tags to files
 		if b := tx.Bucket(MyBucket).Bucket([]byte(key)); b != nil {
 			if c, err := b.CreateBucket([]byte("owner")); err == nil {
+				log.Info(fmt.Sprintf("Bucket owner created successfully"))
 				c.Put([]byte(owner), []byte("w"))
+			}
+			if _, err := b.CreateBucket([]byte("scope")); err == nil {
+				log.Info(fmt.Sprintf("Bucket scope created successfully"))
 			}
 			for i := range options {
 				for k, v := range options[i] {
@@ -1039,10 +1042,6 @@ func Write(owner, key, value string, options ...map[string]string) error {
 							b.Put([]byte(k), []byte(v))
 						}
 					}
-				}
-			}
-			if b, _ = b.CreateBucketIfNotExists([]byte("scope")); b != nil {
-				if b, _ = b.CreateBucketIfNotExists([]byte(owner)); b != nil {
 				}
 			}
 		}
