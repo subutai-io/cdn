@@ -70,6 +70,7 @@ func CheckAuthID(token string) (name string) {
 	return
 }
 
+/*
 // CheckRepo walks through specified repo (or all repos, if none is specified) and checks
 // if particular file exists and owner is correct. Returns number of found matches.
 // If owner is empty then CheckRepo counts total number of matches regardless of owner
@@ -101,6 +102,63 @@ func CheckRepo(owner string, repo []string, hash string) (val int) {
 	})
 	log.Debug(fmt.Sprintf("Found %+v matches", val))
 	return
+}
+*/
+
+// CheckRepo walks through specified repo (or all repos, if none is specified) and checks
+// if particular file exists and owner is correct. Returns number of found matches
+func CheckRepo(owner string, repo []string, hash string) (val int) {
+	log.Debug(fmt.Sprintf("CheckRepo (repo: \"%+v (len: %+v)\", owner: \"%+v\", file: \"%+v\" (name: %+v))", repo, len(repo), owner, hash, NameByHash(hash)))
+	reps := repo
+	if len(repo) == 0 {
+		reps = []string{"apt", "template", "raw"}
+	}
+	db.View(func(tx *bolt.Tx) error {
+		if len(owner) > 0 && !CheckShare(hash, owner) {
+			log.Debug(fmt.Sprintf("File %+v (name: %+v) doesn't belong to and is not shared with %+v", hash, NameByHash(hash), owner))
+			return nil
+		}
+		if b := tx.Bucket(MyBucket); b != nil && strings.Contains(hash, "-") {
+			b.ForEach(func(k, v []byte) error {
+				if b := b.Bucket(k).Bucket([]byte("hash")); b != nil {
+					log.Debug(fmt.Sprintf("Checking 1st"))
+					if string(b.Get([]byte("md5"))) == hash {
+						log.Debug(fmt.Sprintf("----------------- 1st ----------------"))
+						val++
+					}
+				}
+				return nil
+			})
+		}
+		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
+			if c := b.Bucket([]byte("type")); c != nil {
+				for _, v := range reps {
+					if d := c.Bucket([]byte(v)); d != nil {
+						log.Debug(fmt.Sprintf("Checking 2nd & 3rd"))
+						if k, _ := d.Cursor().First(); len(owner) == 0 && k != nil {
+							log.Debug(fmt.Sprintf("----------------- 2nd ----------------"))
+							val += d.Stats().KeyN
+						} else if d.Get([]byte(owner)) != nil || d.Get([]byte(strings.ToLower(owner))) != nil {
+							log.Debug(fmt.Sprintf("----------------- 3rd ----------------"))
+							val++
+						}
+					}
+				}
+			} else if len(repo) == 0 || (len(repo) != 0 && repo[0] == string(b.Get([]byte("type")))) {
+				log.Debug(fmt.Sprintf("Checking 4th & 5th"))
+				if len(owner) == 0 {
+					log.Debug(fmt.Sprintf("----------------- 4th ----------------"))
+					val = b.Bucket([]byte("owner")).Stats().KeyN
+				} else if b.Bucket([]byte("owner")).Get([]byte(owner)) != nil || b.Bucket([]byte("owner")).Get([]byte(strings.ToLower(owner))) != nil {
+					log.Debug(fmt.Sprintf("----------------- 5th ----------------"))
+					val++
+				}
+			}
+		}
+		return nil
+	})
+	log.Debug(fmt.Sprintf("Found %+v occurences of (owner: %+v, repo: %+v, hash: %+v)", val, owner, repo, hash))
+	return val
 }
 
 // CheckShare returns true if user has access to file, otherwise - false

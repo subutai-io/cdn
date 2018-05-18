@@ -204,7 +204,7 @@ func Info(repo string, r *http.Request) []byte {
 		list = intersect(list, listByTag)
 	}
 	if verified == "true" {
-		log.Debug(fmt.Sprintf("Searching among verified users"))
+		log.Debug(fmt.Sprintf("Filtering files to verified users. List: %+v", list))
 		itemLatestVersion = GetVerified(list, name, repo, version)
 		if itemLatestVersion.ID != "" {
 			items = append(items, itemLatestVersion)
@@ -235,7 +235,8 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if name == item.Name && (len(version) == 0 || item.Version == version) {
+		if (name == "" || (name != "" && (name == item.Name /* || (repo == "template" && strings.HasPrefix(item.Name, name+"-subutai-template") )*/))) &&
+			(version == "" || (version != "" && item.Version == version)) {
 			items = []ListItem{item}
 			itemVersion, _ := semver.Make(item.Version)
 			if itemVersion.GTE(latestVersion) {
@@ -309,7 +310,8 @@ func List(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if (name == "" || (name != "" && name == item.Name)) &&
+		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
+		if (name == "" || (name != "" && (name == item.Name /*|| (repo == "template" && strings.HasPrefix(item.Name, name) )*/))) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = append(items, item)
 		}
@@ -317,6 +319,7 @@ func List(repo string, r *http.Request) []byte {
 			break
 		}
 	}
+	log.Debug(fmt.Sprintf("*** Final list of items: %+v", items))
 	output, err := json.Marshal(items)
 	if err != nil || string(output) == "null" {
 		return nil
@@ -344,21 +347,24 @@ func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 	log.Debug(fmt.Sprintf("Getting file \"%+v\" from verified users", name))
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
-	//	log.Debug(fmt.Sprintf("Iterating through list:\n["))
-	//	for _, k := range list {
-	//		log.Debug(fmt.Sprintf("------------- %v", db.NameByHash(k)))
-	//	}
-	//	log.Debug(fmt.Sprintf("\n]"))
+	log.Debug(fmt.Sprintf("Iterating through list:\n["))
+	for _, k := range list {
+		log.Debug(fmt.Sprintf("------------- %+v (name: %+v)", k, db.NameByHash(k)))
+	}
+	log.Debug(fmt.Sprintf("\n]"))
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", []string{repo}, k) > 0 {
+			log.Debug(fmt.Sprintf("info[\"name\"] %+v == %+v name (%+v)", info["name"], name, info["name"] == name))
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
 					if In(owner, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}) {
 						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
+							log.Debug(fmt.Sprintf("First if %+v", k))
 							latestVersion = itemVersion
 							itemLatestVersion = FormatItem(db.Info(k), repo)
 						} else if versionTemplate == itemVersion.String() {
+							log.Debug(fmt.Sprintf("Second if %+v", k))
 							itemLatestVersion = FormatItem(db.Info(k), repo)
 						}
 					}
