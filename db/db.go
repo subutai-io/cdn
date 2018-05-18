@@ -369,16 +369,16 @@ func GetFileScope(hash, owner string) (scope []string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
-				if b.Get(publicScope) != nil {
-					scope = []string{"public-scope"}
-				} else if b.Get(privateScope) != nil {
-					b.ForEach(func(k, v []byte) error {
-						scope = append(scope, string(k))
-						return nil
-					})
-				} else {
+				if b.Get(publicScope) == nil && b.Get(privateScope) == nil {
 					RebuildShare(hash, owner)
 					scope = GetFileScope(hash, owner)
+				} else {
+					b.ForEach(func(k, v []byte) error {
+						if string(k) != string(publicScope) && string(k) != string(privateScope) {
+							scope = append(scope, string(k))
+						}
+						return nil
+					})
 				}
 			}
 		}
