@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/blang/semver"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
@@ -62,7 +63,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 				for _, tt := range t {
 					listbyTag := db.SearchFileByTag(tt, repo)
 					for _, l := range listbyTag {
-						if db.Read(string(l)) == name {
+						if db.NameByHash(string(l)) == name {
 							id = string(l)
 							log.Info("Tag with name. Id: ", id)
 						}
@@ -72,7 +73,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 				listbyTag := db.SearchFileByTag(tag, repo)
 				if len(listbyTag) != 0 {
 					for _, l := range listbyTag {
-						if db.Read(string(l)) == name {
+						if db.NameByHash(string(l)) == name {
 							id = string(l)
 							log.Info("id: ", id)
 						}
@@ -172,7 +173,7 @@ func Info(repo string, r *http.Request) []byte {
 	version = processVersion(version)
 	list := make([]string, 0)
 	if id != "" {
-//		log.Debug(fmt.Sprintf("id was provided"))
+		//		log.Debug(fmt.Sprintf("id was provided"))
 		list = append(list, id)
 	} else {
 		if name == "" {
@@ -200,7 +201,7 @@ func Info(repo string, r *http.Request) []byte {
 	if tag != "" {
 		log.Debug(fmt.Sprintf("Filtering with tag %+v", tag))
 		listByTag, err := db.Tag(tag)
-		log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
+		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 		list = intersect(list, listByTag)
 	}
 	if verified == "true" {
@@ -225,8 +226,8 @@ func Info(repo string, r *http.Request) []byte {
 	latestVersion, _ := semver.Make("")
 	log.Debug(fmt.Sprintf("list to be checked: %+v", list))
 	for _, k := range list {
-		if  (!db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token))) ||
-			( db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0) ||
+		if (!db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token))) ||
+			(db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0) ||
 			db.CheckRepo("", []string{repo}, k) == 0 {
 			log.Debug(fmt.Sprintf("File %+v (name: %+v, owner: %+v, token: %+v) is ignored: %+v || %+v || %+v", k, db.NameByHash(k), owner, db.TokenOwner(token), !db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token)), db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0, db.CheckRepo("", []string{repo}, k) == 0))
 			continue
@@ -291,7 +292,7 @@ func List(repo string, r *http.Request) []byte {
 	list = unique(list)
 	if tag != "" {
 		listByTag, err := db.Tag(tag)
-		log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
+		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 		list = intersect(list, listByTag)
 	}
 	pstr := strings.Split(page, ",")
@@ -344,11 +345,11 @@ func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 	log.Debug(fmt.Sprintf("Getting file \"%+v\" from verified users", name))
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
-//	log.Debug(fmt.Sprintf("Iterating through list:\n["))
-//	for _, k := range list {
-//		log.Debug(fmt.Sprintf("------------- %v", db.NameByHash(k)))
-//	}
-//	log.Debug(fmt.Sprintf("\n]"))
+	//	log.Debug(fmt.Sprintf("Iterating through list:\n["))
+	//	for _, k := range list {
+	//		log.Debug(fmt.Sprintf("------------- %v", db.NameByHash(k)))
+	//	}
+	//	log.Debug(fmt.Sprintf("\n]"))
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", []string{repo}, k) > 0 {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
