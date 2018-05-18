@@ -9,20 +9,21 @@ import (
 	"strings"
 	"time"
 
+	"bytes"
+
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
-	"bytes"
 )
 
 var (
-	MyBucket = []byte("MyBucket")
+	MyBucket    = []byte("MyBucket")
 	SearchIndex = []byte("SearchIndex")
-	Users  = []byte("Users")
-	Tokens = []byte("Tokens")
-	AuthID = []byte("AuthID")
-	Tags   = []byte("Tags")
-	db     = InitDB()
+	Users       = []byte("Users")
+	Tokens      = []byte("Tokens")
+	AuthID      = []byte("AuthID")
+	Tags        = []byte("Tags")
+	db          = InitDB()
 )
 
 var (
@@ -107,7 +108,7 @@ func CheckShare(hash, user string) (shared bool) {
 				if c.Get(publicScope) != nil {
 					shared = true
 				} else if c.Get(privateScope) != nil {
-//					log.Debug(fmt.Sprintf("Iterating through tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", string(MyBucket), hash, "scope"))
+					//					log.Debug(fmt.Sprintf("Iterating through tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", string(MyBucket), hash, "scope"))
 					if c.Get([]byte(user)) != nil || b.Bucket([]byte("owner")).Get([]byte(user)) != nil {
 						shared = true
 					}
@@ -241,19 +242,19 @@ func Edit(owner, key, value string, options ...map[string]string) {
 		owner = "subutai"
 	}
 	err := db.Update(func(tx *bolt.Tx) error {
-//		Associating files with user
+		//		Associating files with user
 		b, _ := tx.Bucket(Users).CreateBucketIfNotExists([]byte(owner))
 		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
 			if v := b.Get([]byte(key)); v == nil {
-//				log.Info("Associating: " + owner + " with " + value + " (" + key + ")")
+				//				log.Info("Associating: " + owner + " with " + value + " (" + key + ")")
 				b.Put([]byte(key), []byte(value))
 			}
 		}
-//		Editing record about file
+		//		Editing record about file
 		if len(value) > 0 {
 			b.Put([]byte("name"), []byte(value))
 		}
-//		Editing owners, shares and tags to files
+		//		Editing owners, shares and tags to files
 		if b := tx.Bucket(MyBucket).Bucket([]byte(key)); b != nil {
 			if c := b.Bucket([]byte("owner")); len(owner) > 0 {
 				if c.Get([]byte(owner)) == nil {
@@ -668,11 +669,11 @@ func RebuildShare(hash, owner string) {
 	db.Update(func(tx *bolt.Tx) error {
 		log.Debug(fmt.Sprintf("Starting RebuildShare"))
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
-/*			name := ""
-			if value := b.Get([]byte("name")); value != nil {
-				name = string(value)
-			}
-*/			if c := b.Bucket([]byte("scope")); c != nil {
+			/*			name := ""
+						if value := b.Get([]byte("name")); value != nil {
+							name = string(value)
+						}
+			*/if c := b.Bucket([]byte("scope")); c != nil {
 				keyList := [][]byte{}
 				valueList := [][]byte{}
 				bucketList := [][]byte{}
@@ -729,7 +730,7 @@ func RebuildShare(hash, owner string) {
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
-		if !log.Check(log.WarnLevel, "Registering user " + strings.ToLower(string(name)), err) {
+		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
 			b.Put([]byte("key"), key)
 			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
 				b.Put(key, nil)
@@ -771,9 +772,9 @@ func RemoveTags(key, list string) error {
 				for _, v := range strings.Split(list, ",") {
 					tag := []byte(strings.ToLower(strings.TrimSpace(v)))
 					if s := tx.Bucket(Tags).Bucket(tag); s != nil {
-						log.Check(log.DebugLevel, "Removing tag " + string(tag) + " from index MyBucket", s.Delete(tag))
+						log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from index MyBucket", s.Delete(tag))
 					}
-					log.Check(log.DebugLevel, "Removing tag " + string(tag) + " from file information", t.Delete([]byte(key)))
+					log.Check(log.DebugLevel, "Removing tag "+string(tag)+" from file information", t.Delete([]byte(key)))
 				}
 			}
 		}
@@ -815,17 +816,17 @@ func SearchName(query string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(SearchIndex)
 		b.ForEach(func(k, v []byte) error {
-//			log.Debug(fmt.Sprintf("tx.Bucket(%+v).ForEach(key: %+v, value: %+v)", string(SearchIndex), string(k), string(v)))
+			//			log.Debug(fmt.Sprintf("tx.Bucket(%+v).ForEach(key: %+v, value: %+v)", string(SearchIndex), string(k), string(v)))
 			if strings.Contains(strings.ToLower(string(k)), strings.ToLower(query)) {
 				b.Bucket(k).ForEach(func(kk, vv []byte) error {
-//					log.Debug(fmt.Sprintf("b.Bucket(%+v).ForEach(key: %+v, value: %+v)", string(k), string(kk), string(vv)))
+					//					log.Debug(fmt.Sprintf("b.Bucket(%+v).ForEach(key: %+v, value: %+v)", string(k), string(kk), string(vv)))
 					for _, l := range list {
 						if l == string(vv) {
 							return nil
 						}
 					}
 					list = append(list, string(vv))
-//					log.Debug(fmt.Sprintf("%+v not found in list. list after appending: %+v", string(vv), list))
+					//					log.Debug(fmt.Sprintf("%+v not found in list. list after appending: %+v", string(vv), list))
 					return nil
 				})
 			}
@@ -839,7 +840,6 @@ func SearchName(query string) (list []string) {
 	}
 	return
 }
-
 
 // Tag returns a list of artifacts that contains requested tags.
 // If no records found list will be empty.
@@ -1055,7 +1055,7 @@ func Write(owner, key, value string, options ...map[string]string) error {
 // CheckRepoOfHash return the type of file by its hash
 func CheckRepoOfHash(hash string) (repo string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket).Bucket([]byte(hash)).Bucket([]byte("type")); b != nil {
+		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)).Bucket([]byte("type")); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				repo = string(k)
 				return nil
@@ -1069,7 +1069,7 @@ func CheckRepoOfHash(hash string) (repo string) {
 // SearchFileByTag performs search file by the specified tag. Return the list of files with such tag.
 func SearchFileByTag(tag string, repo string) (listofIds []string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(bucket); b != nil {
+		if b := tx.Bucket(MyBucket); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				r := CheckRepoOfHash(string(k))
 				t := string(b.Bucket(k).Get([]byte("tag")))
