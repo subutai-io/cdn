@@ -71,7 +71,7 @@ func main() {
 
 	http.HandleFunc("/kurjun/rest/apt/", apt.Download)
 	http.HandleFunc("/kurjun/rest/apt/info", apt.Info)
-	http.HandleFunc("/kurjun/rest/apt/list", apt.Info)
+	http.HandleFunc("/kurjun/rest/apt/list", apt.List)
 	http.HandleFunc("/kurjun/rest/apt/delete", apt.Delete)
 	http.HandleFunc("/kurjun/rest/apt/upload", apt.Upload)
 	http.HandleFunc("/kurjun/rest/apt/download", apt.Download)
@@ -79,7 +79,7 @@ func main() {
 
 	http.HandleFunc("/kurjun/rest/raw/", raw.Download)
 	http.HandleFunc("/kurjun/rest/raw/info", raw.Info)
-	http.HandleFunc("/kurjun/rest/raw/list", raw.Info)
+	http.HandleFunc("/kurjun/rest/raw/list", raw.List)
 	http.HandleFunc("/kurjun/rest/raw/delete", raw.Delete)
 	http.HandleFunc("/kurjun/rest/raw/upload", raw.Upload)
 	http.HandleFunc("/kurjun/rest/raw/download", raw.Download)
@@ -87,12 +87,13 @@ func main() {
 	http.HandleFunc("/kurjun/rest/template/", template.Download)
 	http.HandleFunc("/kurjun/rest/template/tag", template.Tag)
 	http.HandleFunc("/kurjun/rest/template/info", template.Info)
-	http.HandleFunc("/kurjun/rest/template/list", template.Info)
+	http.HandleFunc("/kurjun/rest/template/list", template.List)
 	http.HandleFunc("/kurjun/rest/template/update", template.ModifyConfig)
 	http.HandleFunc("/kurjun/rest/template/delete", template.Delete)
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)
 	http.HandleFunc("/kurjun/rest/template/download", template.Download)
-	// http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
+
+//	http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
 
 	http.HandleFunc("/kurjun/rest/auth/key", auth.Key)
 	http.HandleFunc("/kurjun/rest/auth/keys", auth.Keys)
@@ -149,6 +150,7 @@ func singleJoiningSlash(a, b string) string {
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
+
 func runMain() {
 	// start the stop channel
 	stop = make(chan bool)

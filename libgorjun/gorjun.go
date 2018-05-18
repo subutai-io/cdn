@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// GorjunServer is a representation for Gorjun bucket
-type GorjunServer struct {
+// GorjunUser is a representation for Gorjun bucket
+type GorjunUser struct {
 	Username     string // Username of gorjun user
 	Email        string // Email used to identify user in GPG
 	Hostname     string // Hostname of the Gorjun server
@@ -25,18 +25,18 @@ type GorjunServer struct {
 	Passphrase   string // Passphrase used to decrypt private key
 }
 
-func NewGorjunServer() GorjunServer {
-	return GorjunServer{"akenzhaliev", "akenzhaliev@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+func FirstGorjunUser() GorjunUser {
+	return GorjunUser{"akenzhaliev", "akenzhaliev@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
 	"", "", ""}
 }
 
-func SecondNewGorjunServer() GorjunServer {
-	return GorjunServer{"emilbeksulaymanov", "emilbeksulaymanov@gmail.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+func SecondGorjunUser() GorjunUser {
+	return GorjunUser{"abaytulakova", "abaytulakova@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
 	"", "", ""}
 }
 
-func VerifiedUser() GorjunServer {
-	return GorjunServer{"subutai", "subutai@subutai.io", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+func VerifiedGorjunUser() GorjunUser {
+	return GorjunUser{"subutai", "subutai@subutai.io", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
 	"", "", ""}
 }
 
@@ -69,7 +69,7 @@ type hashsums struct {
 }
 
 // ListUserFiles returns a list of files that belongs to user
-func (g *GorjunServer) ListUserFiles() ([]GorjunFile, error) {
+func (g *GorjunUser) ListUserFiles() ([]GorjunFile, error) {
 	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/raw/info?owner=%s", g.Hostname, g.Username))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve file list from %s: %v", g.Hostname, err)
@@ -96,8 +96,9 @@ func (g *GorjunServer) ListUserFiles() ([]GorjunFile, error) {
 }
 
 // GetFileByName will return information about a file with specified name
-func (g *GorjunServer) GetFileByName(filename string, artifactType string) ([]GorjunFile, error) {
-	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&owner=%s", g.Hostname, artifactType, filename, g.Username))
+func (g *GorjunUser) GetFileByName(filename string, artifactType string) ([]GorjunFile, error) {
+	fmt.Println(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&token=%s", g.Hostname, artifactType, filename, g.Token))
+	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&token=%s", g.Hostname, artifactType, filename, g.Token))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve file information from %s: %v", g.Hostname, err)
 	}
@@ -115,7 +116,7 @@ func (g *GorjunServer) GetFileByName(filename string, artifactType string) ([]Go
 }
 
 // UploadFile will upload file and return it's ID after successful upload
-func (g *GorjunServer) Upload(filename string, artifactType string, private string) (string, error) {
+func (g *GorjunUser) Upload(filename string, artifactType string, private string) (string, error) {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		return "", fmt.Errorf("%s not found", filename)
 	}
@@ -140,13 +141,13 @@ func (g *GorjunServer) Upload(filename string, artifactType string, private stri
 		return "", fmt.Errorf("Failed to write token: %v", err)
 	}
 	if fw, err = w.CreateFormField("private"); err != nil {
-		return "", fmt.Errorf("Failed to create token form field: %v", err)
+		return "", fmt.Errorf("Failed to create private form field: %v", err)
 	}
 	if _, err = fw.Write([]byte(private)); err != nil {
-		return "", fmt.Errorf("Failed to write token: %v", err)
+		return "", fmt.Errorf("Failed to write private: %v", err)
 	}
 	w.Close()
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/kurjun/rest/"+artifactType+"/upload", g.Hostname), &b)
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/kurjun/rest/%s/upload", g.Hostname, artifactType), &b)
 	if err != nil {
 		return "", fmt.Errorf("Failed to create HTTP request: %v", err)
 	}
@@ -167,35 +168,33 @@ func (g *GorjunServer) Upload(filename string, artifactType string, private stri
 	return string(response), nil
 }
 
-// RemoveFile will delete file on gorjun with specified name. If multiple files with the same
+// RemoveFile will delete file from gorjun with specified name. If multiple files with the same
 // name exists belong to the same user only the last one (most recent) will be removed
-func (g *GorjunServer) RemoveFile(filename string, artifactType string) error {
+func (g *GorjunUser) RemoveFile(filename string, artifactType string) error {
 	file, err := g.GetFileByName(filename, artifactType)
 	if err != nil {
 		return fmt.Errorf("Failed to get file: %v", err)
 	}
-	fmt.Printf("\nId of artifact with type %s is %s going to deleted", artifactType, file[0].ID)
+	fmt.Printf("\nID %+v of artifact with type %+v is going to deleted", file[0].ID, artifactType)
 	return g.RemoveFileByID(file[0].ID, "raw")
 }
 
 // RemoveFileByID will remove file with specified ID
-func (g *GorjunServer) RemoveFileByID(ID string, artifactType string) error {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("http://%s/kurjun/rest/%s/delete?id=%s&token=%s",
-		g.Hostname, artifactType, ID, g.Token), nil)
-
+func (g *GorjunUser) RemoveFileByID(id string, artifactType string) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("http://%s/kurjun/rest/%s/delete?id=%s&token=%s", g.Hostname, artifactType, id, g.Token), nil)
 	if err != nil {
-		return fmt.Errorf("Failed to remove file [%s]: %s", ID, err)
+		return fmt.Errorf("Failed to remove file [%+v] (1): %+v", id, err)
 	}
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Failed to remove file: %s", err)
+		return fmt.Errorf("Failed to remove file [%+v] (2): %+v", id, err)
 	}
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("Can't remove file - HTTP request returned %s code", res.Status)
+		return fmt.Errorf("Can't remove file: HTTP request returned %+v code", res.Status)
 	}
-	fmt.Printf("\nId of artifact with type %s is %s deleted\n", artifactType, ID)
-	fmt.Printf("\n%s\n", req.URL)
+	fmt.Printf("\nArtifact with ID %+v is deleted from %+v repo\n", id, artifactType)
+	fmt.Printf("\n%+v\n", req.URL)
 	fmt.Printf("\nResponse from gorjun = ")
 	io.Copy(os.Stdout, res.Body)
 	fmt.Println()
@@ -203,11 +202,11 @@ func (g *GorjunServer) RemoveFileByID(ID string, artifactType string) error {
 }
 
 // DownloadFile will download file with specified name into the specified output directory
-func (g *GorjunServer) DownloadFile(filename, outputDirectory string) error {
+func (g *GorjunUser) DownloadFile(filename, outputDirectory string) error {
 	return nil
 }
 
 // DownloadFileByID will download file with specified ID into the specified output directory
-func (g *GorjunServer) DownloadFileByID(ID, outputDirectory string) error {
+func (g *GorjunUser) DownloadFileByID(ID, outputDirectory string) error {
 	return nil
 }

@@ -10,7 +10,7 @@ import (
 
 func CleanGarbage() {
 	whiteList := []string{"Packages", "Release", "Release.gpg", "Packages.gz"}
-	list := db.Search("")
+	list := db.SearchName("")
 
 	for _, k := range list {
 		info := db.Info(k)
