@@ -22,12 +22,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		if strings.Split(r.RemoteAddr, ":")[0] == "127.0.0.1" && len(r.MultipartForm.Value["name"]) > 0 && len(r.MultipartForm.Value["key"]) > 0 {
 			name := r.MultipartForm.Value["name"][0]
 			key := r.MultipartForm.Value["key"][0]
-
 			w.Write([]byte("Name: " + name + "\n"))
 			w.Write([]byte("PGP key: " + key + "\n"))
-
 			db.RegisterUser([]byte(name), []byte(key))
-			log.Info("User " + name + " registired with this key " + key)
+			log.Info("User " + name + " registered with this key " + key)
 			return
 		} else if len(r.MultipartForm.Value["key"]) > 0 {
 			key := pgp.Verify("Hub", r.MultipartForm.Value["key"][0])
@@ -93,7 +91,7 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Empty token"))
 		return
 	}
-	if len(db.CheckToken(token)) == 0 {
+	if len(db.TokenOwner(token)) == 0 {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte("Forbidden"))
 		return
@@ -131,13 +129,13 @@ func Key(w http.ResponseWriter, r *http.Request) {
 
 func Sign(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(32 << 20)
-	if len(r.MultipartForm.Value["token"]) == 0 || len(db.CheckToken(r.MultipartForm.Value["token"][0])) == 0 {
+	if len(r.MultipartForm.Value["token"]) == 0 || len(db.TokenOwner(r.MultipartForm.Value["token"][0])) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))
 		log.Warn(r.RemoteAddr + " - rejecting unauthorized sign request")
 		return
 	}
-	owner := db.CheckToken(r.MultipartForm.Value["token"][0])
+	owner := db.TokenOwner(r.MultipartForm.Value["token"][0])
 	if len(r.MultipartForm.Value["signature"]) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Empty signature"))
@@ -152,7 +150,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		log.Warn("Failed to verify signature with user key")
 		return
 	}
-	if db.CheckRepo(owner, "", hash) == 0 {
+	if db.CheckRepo(owner, []string{""}, hash) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("File and signature have different owner"))
 		log.Warn("File and signature have different owner")
@@ -167,7 +165,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 
 func Owner(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
-	owner := strings.ToLower(db.CheckToken(token))
+	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))

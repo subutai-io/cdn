@@ -1,9 +1,0 @@
-Key-Type: RSA
-Subkey-Type: RSA
-Key-Length: 2048
-Subkey-Length: 2048
-Expire-Date: 0
-Name-Real: emilbeksulaymanov
-Name-Email: emilbeksulaymanov@gmail.com
-Name-Comment: teste gpg key
-%commit
