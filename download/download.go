@@ -159,7 +159,6 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	log.Debug(fmt.Sprintf("Received info request.\n\nrepo: %+v\n\nr: %+v\n\n", repo, r))
 	var items []ListItem
-	var fullname bool
 	var itemLatestVersion ListItem
 	p := []int{0, 1000}
 	id := r.URL.Query().Get("id")
@@ -236,18 +235,13 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if name == item.Name {
-			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
-				fullname = true
-				items = []ListItem{item}
-				itemVersion, _ := semver.Make(item.Version)
-				if itemVersion.GTE(latestVersion) {
-					latestVersion = itemVersion
-					itemLatestVersion = item
-				}
+		if name == item.Name && (len(version) == 0 || item.Version == version) {
+			items = []ListItem{item}
+			itemVersion, _ := semver.Make(item.Version)
+			if itemVersion.GTE(latestVersion) {
+				latestVersion = itemVersion
+				itemLatestVersion = item
 			}
-		} else if !fullname && (len(version) == 0 || item.Version == version) {
-			items = append(items, item)
 		}
 		if len(items) >= p[1] {
 			break
@@ -276,11 +270,13 @@ func List(repo string, r *http.Request) []byte {
 	var items []ListItem
 	p := []int{0, 1000}
 	tag := r.URL.Query().Get("tag")
+	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
 	owner := r.URL.Query().Get("owner")
 	token := r.URL.Query().Get("token")
+	version := r.URL.Query().Get("version")
 	list := make([]string, 0)
-	list = db.SearchName("")
+	list = db.SearchName(name)
 	if owner != "" {
 		log.Debug(fmt.Sprintf("Owner not empty: %+v. Gathering his public files"), owner)
 		list = db.OwnerFilesByRepo(owner, repo)
@@ -313,7 +309,10 @@ func List(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		items = append(items, item)
+		if (name == "" || (name != "" && name == item.Name)) &&
+			(version == "" || (version != "" && item.Version == version)) {
+			items = append(items, item)
+		}
 		if len(items) >= p[1] {
 			break
 		}
