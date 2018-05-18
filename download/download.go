@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/blang/semver"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/gorjun/config"
@@ -47,11 +48,53 @@ type hashsums struct {
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	name := r.URL.Query().Get("name")
-	if len(id) == 0 && len(name) == 0 {
-		io.WriteString(w, "Please specify id or name")
+	tag := r.URL.Query().Get("tag")
+
+	log.Info("Len name: ", len(name))
+
+	tagSplit := strings.Split(tag, ",")
+	if len(id) == 0 && len(name) == 0 && len(tag) == 0 {
+		io.WriteString(w, "Please specify id,name or tag")
 		return
 	} else if len(name) != 0 {
-		id = db.LastHash(name, repo)
+		if len(tag) != 0 {
+			if len(tagSplit) > 1 {
+				t := strings.Split(tag, ",")
+				for _, tt := range t {
+					listbyTag := db.SearchFileByTag(tt, repo)
+					for _, l := range listbyTag {
+						if db.NameByHash(string(l)) == name {
+							id = string(l)
+							log.Info("Tag with name. Id: ", id)
+						}
+					}
+				}
+			} else if len(tag) != 0 {
+				listbyTag := db.SearchFileByTag(tag, repo)
+				if len(listbyTag) != 0 {
+					for _, l := range listbyTag {
+						if db.NameByHash(string(l)) == name {
+							id = string(l)
+							log.Info("id: ", id)
+						}
+					}
+				}
+			}
+		} else {
+			id = db.LastHash(name, repo)
+		}
+	}
+
+	//if both name and id is not provided or empty, it will search id by tag and return the first file in list
+	if len(name) == 0 && len(id) == 0 {
+		if len(tag) != 0 {
+			listbyTag := db.SearchFileByTag(tag, repo)
+			if len(listbyTag) == 0 {
+				w.Write([]byte("No file with such tags"))
+				return
+			}
+			id = listbyTag[0]
+		}
 	}
 	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(r.URL.Query().Get("token"))) {
 		w.WriteHeader(http.StatusNotFound)
@@ -116,7 +159,6 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 func Info(repo string, r *http.Request) []byte {
 	log.Debug(fmt.Sprintf("Received info request.\n\nrepo: %+v\n\nr: %+v\n\n", repo, r))
 	var items []ListItem
-	var fullname bool
 	var itemLatestVersion ListItem
 	p := []int{0, 1000}
 	id := r.URL.Query().Get("id")
@@ -130,7 +172,7 @@ func Info(repo string, r *http.Request) []byte {
 	version = processVersion(version)
 	list := make([]string, 0)
 	if id != "" {
-//		log.Debug(fmt.Sprintf("id was provided"))
+		//		log.Debug(fmt.Sprintf("id was provided"))
 		list = append(list, id)
 	} else {
 		if name == "" {
@@ -158,7 +200,7 @@ func Info(repo string, r *http.Request) []byte {
 	if tag != "" {
 		log.Debug(fmt.Sprintf("Filtering with tag %+v", tag))
 		listByTag, err := db.Tag(tag)
-		log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
+		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 		list = intersect(list, listByTag)
 	}
 	if verified == "true" {
@@ -183,8 +225,8 @@ func Info(repo string, r *http.Request) []byte {
 	latestVersion, _ := semver.Make("")
 	log.Debug(fmt.Sprintf("list to be checked: %+v", list))
 	for _, k := range list {
-		if  (!db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token))) ||
-			( db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0) ||
+		if (!db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token))) ||
+			(db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0) ||
 			db.CheckRepo("", []string{repo}, k) == 0 {
 			log.Debug(fmt.Sprintf("File %+v (name: %+v, owner: %+v, token: %+v) is ignored: %+v || %+v || %+v", k, db.NameByHash(k), owner, db.TokenOwner(token), !db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token)), db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0, db.CheckRepo("", []string{repo}, k) == 0))
 			continue
@@ -193,18 +235,13 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if name == item.Name {
-			if strings.HasSuffix(item.Version, version) || len(version) == 0 {
-				fullname = true
-				items = []ListItem{item}
-				itemVersion, _ := semver.Make(item.Version)
-				if itemVersion.GTE(latestVersion) {
-					latestVersion = itemVersion
-					itemLatestVersion = item
-				}
+		if name == item.Name && (len(version) == 0 || item.Version == version) {
+			items = []ListItem{item}
+			itemVersion, _ := semver.Make(item.Version)
+			if itemVersion.GTE(latestVersion) {
+				latestVersion = itemVersion
+				itemLatestVersion = item
 			}
-		} else if !fullname && (len(version) == 0 || item.Version == version) {
-			items = append(items, item)
 		}
 		if len(items) >= p[1] {
 			break
@@ -233,11 +270,13 @@ func List(repo string, r *http.Request) []byte {
 	var items []ListItem
 	p := []int{0, 1000}
 	tag := r.URL.Query().Get("tag")
+	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
 	owner := r.URL.Query().Get("owner")
 	token := r.URL.Query().Get("token")
+	version := r.URL.Query().Get("version")
 	list := make([]string, 0)
-	list = db.SearchName("")
+	list = db.SearchName(name)
 	if owner != "" {
 		log.Debug(fmt.Sprintf("Owner not empty: %+v. Gathering his public files"), owner)
 		list = db.OwnerFilesByRepo(owner, repo)
@@ -249,7 +288,7 @@ func List(repo string, r *http.Request) []byte {
 	list = unique(list)
 	if tag != "" {
 		listByTag, err := db.Tag(tag)
-		log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
+		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
 		list = intersect(list, listByTag)
 	}
 	pstr := strings.Split(page, ",")
@@ -270,7 +309,10 @@ func List(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		items = append(items, item)
+		if (name == "" || (name != "" && name == item.Name)) &&
+			(version == "" || (version != "" && item.Version == version)) {
+			items = append(items, item)
+		}
 		if len(items) >= p[1] {
 			break
 		}
@@ -302,11 +344,11 @@ func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 	log.Debug(fmt.Sprintf("Getting file \"%+v\" from verified users", name))
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
-//	log.Debug(fmt.Sprintf("Iterating through list:\n["))
-//	for _, k := range list {
-//		log.Debug(fmt.Sprintf("------------- %v", db.NameByHash(k)))
-//	}
-//	log.Debug(fmt.Sprintf("\n]"))
+	//	log.Debug(fmt.Sprintf("Iterating through list:\n["))
+	//	for _, k := range list {
+	//		log.Debug(fmt.Sprintf("------------- %v", db.NameByHash(k)))
+	//	}
+	//	log.Debug(fmt.Sprintf("\n]"))
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", []string{repo}, k) > 0 {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {

@@ -150,7 +150,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		log.Warn("Failed to verify signature with user key")
 		return
 	}
-	if db.CheckRepo(owner, []string{""}, hash) == 0 {
+	if db.CheckRepo(owner, []string{}, hash) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("File and signature have different owner"))
 		log.Warn("File and signature have different owner")
