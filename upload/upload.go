@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
 )
 
 type share struct {

@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/download"
-	"github.com/subutai-io/gorjun/upload"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/download"
+	"github.com/subutai-io/cdn/upload"
 
 	"os/exec"
 

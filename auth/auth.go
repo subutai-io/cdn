@@ -12,8 +12,8 @@ import (
 
 	"github.com/subutai-io/agent/log"
 
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/pgp"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/pgp"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {

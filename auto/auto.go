@@ -1,8 +1,8 @@
 package auto
 
 import (
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
 	"io/ioutil"
 	"log"
 	"os"

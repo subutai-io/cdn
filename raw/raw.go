@@ -9,9 +9,9 @@ import (
 
 	"net/url"
 
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/download"
-	"github.com/subutai-io/gorjun/upload"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/download"
+	"github.com/subutai-io/cdn/upload"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {

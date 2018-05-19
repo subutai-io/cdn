@@ -28,7 +28,7 @@ try {
 
 		sh """
 			if test ! -d ${goenvDir}; then mkdir -p ${goenvDir}/src/github.com/subutai-io/; fi
-			ln -s ${workspace} ${workspace}/${goenvDir}/src/github.com/subutai-io/gorjun
+			ln -s ${workspace} ${workspace}/${goenvDir}/src/github.com/subutai-io/cdn
 		"""
 
 		stage("Build gorjun")

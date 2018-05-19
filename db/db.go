@@ -13,7 +13,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/gorjun/config"
+	"github.com/subutai-io/cdn/config"
 )
 
 var (
