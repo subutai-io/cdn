@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"strings"
 )
 
 // GorjunUser is a representation for Gorjun bucket
@@ -97,6 +98,9 @@ func (g *GorjunUser) ListUserFiles() ([]GorjunFile, error) {
 
 // GetFileByName will return information about a file with specified name
 func (g *GorjunUser) GetFileByName(filename string, artifactType string) ([]GorjunFile, error) {
+	if artifactType == "template" {
+		filename = strings.Split(filename, "-subutai-template")[0]
+	}
 	fmt.Println(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&token=%s", g.Hostname, artifactType, filename, g.Token))
 	resp, err := http.Get(fmt.Sprintf("http://%s/kurjun/rest/%s/info?name=%s&token=%s", g.Hostname, artifactType, filename, g.Token))
 	if err != nil {

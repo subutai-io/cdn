@@ -179,6 +179,11 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		return
+	}
 	if info := download.Info("apt", r); len(info) != 0 {
 		w.Write(info)
 		return
@@ -187,11 +192,12 @@ func Info(w http.ResponseWriter, r *http.Request) {
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
-	if info := download.List("apt", r); len(info) != 0 {
-		w.Write(info)
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
 		return
 	}
-	w.Write([]byte("Not found"))
+	w.Write(download.List("apt", r))
 }
 
 func renameOldDebFiles() {

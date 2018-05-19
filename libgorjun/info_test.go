@@ -286,7 +286,7 @@ func TestListPriority(t *testing.T) {
 */	f := FirstGorjunUser()
 	f.Register(f.Username)
 	f.AuthenticateUser()
-	str, err := f.Upload(fmt.Sprintf("data/%s/debian-stretch-subutai-template_0.4.1_amd64.tar.gz", f.Username), "template", "true")
+	str, err := f.Upload(fmt.Sprintf("data/akenzhaliev/debian-stretch-subutai-template_0.4.1_amd64.tar.gz"), "template", "true")
 	if err != nil {
 		fmt.Printf("Could not upload debian-stretch-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
 	}

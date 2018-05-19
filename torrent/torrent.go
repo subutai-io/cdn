@@ -3,7 +3,7 @@
 package torrent
 
 /*
-import (
+	import (
 	"bufio"
 	"bytes"
 	"crypto/tls"

@@ -182,16 +182,25 @@ func Info(repo string, r *http.Request) []byte {
 		list = db.SearchName(name)
 		if owner != "" {
 			log.Debug(fmt.Sprintf("If #1"))
+			log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
 			list = intersect(list, db.OwnerFilesByRepo(owner, repo))
-		} else if token != "" && db.TokenOwner(token) != "" {
+		}
+		if token != "" && ((owner == "" && db.TokenOwner(token) != "") || (owner != "" && db.TokenOwner(token) == owner)) {
 			log.Debug(fmt.Sprintf("If #2"))
-			list = intersect(list, db.TokenFilesByRepo(token, repo))
-			if len(list) == 0 {
-				log.Debug(fmt.Sprintf("If #2.1"))
-				list = db.SearchName(name)
-				verified = "true"
+			if owner == "" {
+				log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+				list = intersect(list, db.TokenFilesByRepo(token, repo))
+				if len(list) == 0 {
+					log.Debug(fmt.Sprintf("If #2.1.1"))
+					list = db.SearchName(name)
+					verified = "true"
+				}
+			} else if owner != "" && len(list) == 0 {
+				log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 			}
-		} else {
+		}
+		if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
 			log.Debug(fmt.Sprintf("If #3"))
 			verified = "true"
 		}
@@ -321,8 +330,11 @@ func List(repo string, r *http.Request) []byte {
 	}
 	log.Debug(fmt.Sprintf("*** Final list of items: %+v", items))
 	output, err := json.Marshal(items)
-	if err != nil || string(output) == "null" {
+	if err != nil {
 		return nil
+	}
+	if string(output) == "null" {
+		output = []byte("[]")
 	}
 	return output
 }

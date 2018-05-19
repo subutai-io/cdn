@@ -32,16 +32,13 @@ import (
 func readTempl(hash string) (configfile string, err error) {
 	var file bytes.Buffer
 	f, err := os.Open(config.Storage.Path + hash)
-	log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+hash, err)
+	log.Check(log.WarnLevel, "Opening file " + config.Storage.Path + hash, err)
 	defer f.Close()
-
 	gzf, err := gzip.NewReader(f)
 	if err != nil {
 		return "", err
 	}
-
 	tr := tar.NewReader(gzf)
-
 	for hdr, err := tr.Next(); err != io.EOF; hdr, err = tr.Next() {
 		if hdr.Name == "config" {
 			if _, err := io.Copy(&file, tr); err != nil {
@@ -72,7 +69,6 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.ToLower(strings.TrimSpace(line[0]))
 			line[1] = strings.ToLower(strings.TrimSpace(line[1]))
-
 			switch line[0] {
 			case "lxc.arch":
 				t.Architecture = line[1]
@@ -106,7 +102,6 @@ func getConfig(hash string, configfile, id string) (t *download.ListItem) {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.TrimSpace(line[0])
 			line[1] = strings.TrimSpace(line[1])
-
 			switch line[0] {
 			case "lxc.arch":
 				t.Architecture = line[1]
@@ -257,7 +252,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write(info)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
+		w.Write([]byte("404 Not found"))
 	}
 }
 
@@ -267,12 +262,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method"))
 		return
 	}
-	if info := download.List("template", r); len(info) > 2 {
-		w.Write(info)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
-	}
+	w.Write(download.List("template", r))
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
