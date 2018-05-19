@@ -10,13 +10,13 @@ before_install:
   - sudo systemctl daemon-reload
   - sudo apt install -y rng-tools
   - sudo rngd -r /dev/urandom
-  - sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
+    #- sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
     #  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg.txt
     #- gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_user.txt
     #- gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_verified_user.txt
 script:
   - make
-  - go test -race -coverprofile=coverage.txt -covermode=atomic
+  - go test -coverprofile=coverage.txt -covermode=atomic
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
 after_success:
