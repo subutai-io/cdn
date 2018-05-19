@@ -16,10 +16,39 @@ before_install:
     #- gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_verified_user.txt
 script:
   - make
-  - go test -coverprofile=coverage.txt -covermode=atomic
+  - go test -coverprofile=main.out -covermode=atomic
+  - go test -coverprofile=cdn.out -covermode=atomic github.com/subutai-io/cdn
+  - go test -coverprofile=apt.out -covermode=atomic github.com/subutai-io/cdn/apt
+  - go test -coverprofile=auth.out -covermode=atomic github.com/subutai-io/cdn/auth
+  - go test -coverprofile=auto.out -covermode=atomic github.com/subutai-io/cdn/auto
+  - go test -coverprofile=config.out -covermode=atomic github.com/subutai-io/cdn/config
+  - go test -coverprofile=db.out -covermode=atomic github.com/subutai-io/cdn/db
+  - go test -coverprofile=download.out -covermode=atomic github.com/subutai-io/cdn/download
+  - go test -coverprofile=libgorjun.out -covermode=atomic github.com/subutai-io/cdn/libgorjun
+  - go test -coverprofile=pgp.out -covermode=atomic github.com/subutai-io/cdn/pgp
+  - go test -coverprofile=raw.out -covermode=atomic github.com/subutai-io/cdn/raw
+  - go test -coverprofile=template.out -covermode=atomic github.com/subutai-io/cdn/template
+  - go test -coverprofile=torrent.out -covermode=atomic github.com/subutai-io/cdn/torrent
+  - go test -coverprofile=upload.out -covermode=atomic github.com/subutai-io/cdn/upload
+
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
 after_success:
+  - echo '' > coverage.txt
+  - cat main.out >> coverage.txt
+  - cat cdn.out >> coverage.txt
+  - cat apt.out >> coverage.txt
+  - cat auth.out >> coverage.txt
+  - cat auto.out >> coverage.txt
+  - cat config.out >> coverage.txt
+  - cat db.out >> coverage.txt
+  - cat download.out >> coverage.txt
+  - cat libgorjun.out >> coverage.txt
+  - cat pgp.out >> coverage.txt
+  - cat raw.out >> coverage.txt
+  - cat template.out >> coverage.txt
+  - cat torrent.out >> coverage.txt
+  - cat upload.out >> coverage.txt
   - bash <(curl -s https://codecov.io/bash)
   - sudo systemctl start gorjun.service
   - sudo systemctl status gorjun.service
