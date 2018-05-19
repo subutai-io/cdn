@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/clearsign"
 
-	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/cdn/db"
 )
 
 func Verify(name, message string) string {

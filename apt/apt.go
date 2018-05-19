@@ -10,15 +10,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/download"
-	"github.com/subutai-io/gorjun/upload"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/download"
+	"github.com/subutai-io/cdn/upload"
+
+	"os/exec"
 
 	"github.com/mkrautz/goar"
 	"github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
-	"os/exec"
 )
 
 func readDeb(hash string) (control bytes.Buffer, err error) {
@@ -103,6 +104,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		meta["SHA1"] = upload.Hash(config.Storage.Path+header.Filename, "sha1")
 		meta["md5"] = md5
 		meta["type"] = "apt"
+		tags := r.FormValue("tag")
+		meta["tag"] = tags
 		my_uuid, err := uuid.NewV4()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -116,6 +119,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(err.Error()))
 			return
 		}
+		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
+			log.Info("Sharing " + ID + " with " + owner)
+			db.MakePrivate(ID, owner)
+		} else {
+			db.MakePublic(ID, owner)
+		}
 		w.Write([]byte(ID))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}
@@ -123,8 +132,33 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 func Download(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Query().Get("hash")
-	if len(file) == 0 {
-		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
+	tag := r.URL.Query().Get("tag")
+	if len(file) == 0 && len(tag) == 0 {
+		w.Write([]byte("Both hash and tag is empty"))
+		return
+	}
+	if len(file) != 0 {
+		if len(tag) != 0 {
+			listbyTag := db.SearchFileByTag(tag, "apt")
+			for _, l := range listbyTag {
+				if db.IsPublic(l) {
+					apt := db.NameByHash(l)
+					if apt == file {
+						file = apt
+					}
+				}
+			}
+		}
+	} else { //both name and hash is provided
+		if len(tag) != 0 {
+			listbyTag := db.SearchFileByTag(tag, "apt")
+			for _, l := range listbyTag {
+				if db.IsPublic(l) {
+					apt := db.NameByHash(l)
+					file = apt
+				}
+			}
+		}
 	}
 	size := getSize(config.Storage.Path + "Packages")
 	if file == "Packages" && size == 0 {
@@ -151,6 +185,11 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		return
+	}
 	if info := download.Info("apt", r); len(info) != 0 {
 		w.Write(info)
 		return
@@ -158,10 +197,19 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Not found"))
 }
 
+func List(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		return
+	}
+	w.Write(download.List("apt", r))
+}
+
 func renameOldDebFiles() {
-	list := db.Search("")
+	list := db.SearchName("")
 	for _, k := range list {
-		if db.CheckRepo("", "apt", k) == 0 {
+		if db.CheckRepo("", []string{"apt"}, k) == 0 {
 			continue
 		}
 		item := download.FormatItem(db.Info(k), "apt")
@@ -195,8 +243,8 @@ func GenerateReleaseFile() {
 }
 
 func Generate(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("token")
-	owner := strings.ToLower(db.CheckToken(token))
+	token := strings.ToLower(r.Header.Get("token"))
+	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))

@@ -1,28 +1,46 @@
 language: go
-
-os:
- - linux
-matrix:
- include:
-   - os: linux
-     dist: xenial
-sudo: enabled
-go:
-  - '1.9.4'
+go: 1.9
+os: linux
+dist: xenial
+sudo: required
+before_install:
+  - go get
+  - go get github.com/stretchr/testify/assert
 script:
-#  #- go get
-#  #- make
-#  - sudo apt-get install systemd
-#  - sudo cp -f /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gorjun.service /etc/systemd/system/gorjun.service
-#  - sudo systemctl daemon-reload
-#  - sudo systemctl start gorjun.service
-#  - sudo systemctl status gorjun.service
-#  - sudo apt install -y rng-tools
-#  - sudo rngd -r /dev/urandom
-#  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg.txt
-#  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_user.txt
-#  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_verified_user.txt
-#  - sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
-# # - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
-#  - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
-#  #- go test -v
+  - make
+  - go test -coverprofile=main.out -covermode=atomic
+  - go test -coverprofile=cdn.out -covermode=atomic github.com/subutai-io/cdn
+  - go test -coverprofile=apt.out -covermode=atomic github.com/subutai-io/cdn/apt
+  - go test -coverprofile=auth.out -covermode=atomic github.com/subutai-io/cdn/auth
+  - go test -coverprofile=auto.out -covermode=atomic github.com/subutai-io/cdn/auto
+  - go test -coverprofile=config.out -covermode=atomic github.com/subutai-io/cdn/config
+  - go test -coverprofile=db.out -covermode=atomic github.com/subutai-io/cdn/db
+  - go test -coverprofile=download.out -covermode=atomic github.com/subutai-io/cdn/download
+  - go test -coverprofile=pgp.out -covermode=atomic github.com/subutai-io/cdn/pgp
+  - go test -coverprofile=raw.out -covermode=atomic github.com/subutai-io/cdn/raw
+  - go test -coverprofile=template.out -covermode=atomic github.com/subutai-io/cdn/template
+  - go test -coverprofile=torrent.out -covermode=atomic github.com/subutai-io/cdn/torrent
+  - go test -coverprofile=upload.out -covermode=atomic github.com/subutai-io/cdn/upload
+  - touch main.out cdn.out apt.out auth.out auto.out config.out db.out download.out pgp.out raw.out template.out torrent.out upload.out
+    #- go test -coverprofile=libgorjun.out -covermode=atomic github.com/subutai-io/cdn/libgorjun
+    #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
+    #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
+after_success:
+  - echo '' > coverage.txt
+  - cat main.out >> coverage.txt
+  - cat cdn.out >> coverage.txt
+  - cat apt.out >> coverage.txt
+  - cat auth.out >> coverage.txt
+  - cat auto.out >> coverage.txt
+  - cat config.out >> coverage.txt
+  - cat db.out >> coverage.txt
+  - cat download.out >> coverage.txt
+  - cat libgorjun.out >> coverage.txt
+  - cat pgp.out >> coverage.txt
+  - cat raw.out >> coverage.txt
+  - cat template.out >> coverage.txt
+  - cat torrent.out >> coverage.txt
+  - cat upload.out >> coverage.txt
+  - bash <(curl -s https://codecov.io/bash)
+  - sudo systemctl start gorjun.service
+  - sudo systemctl status gorjun.service

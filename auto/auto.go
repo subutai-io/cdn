@@ -1,8 +1,8 @@
 package auto
 
 import (
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,7 +10,7 @@ import (
 
 func CleanGarbage() {
 	whiteList := []string{"Packages", "Release", "Release.gpg", "Packages.gz"}
-	list := db.Search("")
+	list := db.SearchName("")
 
 	for _, k := range list {
 		info := db.Info(k)
