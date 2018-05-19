@@ -237,7 +237,7 @@ func GenerateReleaseFile() {
 }
 
 func Generate(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("token")
+	token := strings.ToLower(r.Header.Get("token"))
 	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)

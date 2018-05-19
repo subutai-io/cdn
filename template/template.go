@@ -221,7 +221,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 
 // func Torrent(w http.ResponseWriter, r *http.Request) {
 // 	id := r.URL.Query().Get("id")
-// 	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner()(r.URL.Query().Get("token"))) {
+// 	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner()(strings.ToLower(r.URL.Query().Get("token")))) {
 // 		w.WriteHeader(http.StatusNotFound)
 // 		w.Write([]byte("Not found"))
 // 		return
@@ -337,8 +337,8 @@ func delTag(values map[string][]string) (int, error) {
 }
 
 func ModifyConfig(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-	name := r.URL.Query().Get("name")
+	token := strings.ToLower(r.URL.Query().Get("token"))
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
