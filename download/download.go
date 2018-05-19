@@ -172,7 +172,7 @@ func Info(repo string, r *http.Request) []byte {
 	version = processVersion(version)
 	list := make([]string, 0)
 	if id != "" {
-		//		log.Debug(fmt.Sprintf("id was provided"))
+//		log.Debug(fmt.Sprintf("id was provided"))
 		list = append(list, id)
 	} else {
 		if name == "" {
@@ -182,13 +182,13 @@ func Info(repo string, r *http.Request) []byte {
 		list = db.SearchName(name)
 		if owner != "" {
 			log.Debug(fmt.Sprintf("If #1"))
-			log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
+//			log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
 			list = intersect(list, db.OwnerFilesByRepo(owner, repo))
 		}
 		if token != "" && ((owner == "" && db.TokenOwner(token) != "") || (owner != "" && db.TokenOwner(token) == owner)) {
 			log.Debug(fmt.Sprintf("If #2"))
 			if owner == "" {
-				log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+//				log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
 				list = intersect(list, db.TokenFilesByRepo(token, repo))
 				if len(list) == 0 {
 					log.Debug(fmt.Sprintf("If #2.1.1"))
@@ -196,7 +196,7 @@ func Info(repo string, r *http.Request) []byte {
 					verified = "true"
 				}
 			} else if owner != "" && len(list) == 0 {
-				log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+//				log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
 				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 			}
 		}
@@ -244,7 +244,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if (name == "" || (name != "" && (name == item.Name /* || (repo == "template" && strings.HasPrefix(item.Name, name+"-subutai-template") )*/))) &&
+		if (name == item.Name /* || (repo == "template" && strings.HasPrefix(item.Name, name+"-subutai-template") )*/) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = []ListItem{item}
 			itemVersion, _ := semver.Make(item.Version)

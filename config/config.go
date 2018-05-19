@@ -53,7 +53,7 @@ var (
 )
 
 func init() {
-	log.Level(log.DebugLevel)
+	log.Level(log.InfoLevel)
 
 	err := gcfg.ReadStringInto(&config, defaultConfig)
 	log.Check(log.InfoLevel, "Loading default config ", err)

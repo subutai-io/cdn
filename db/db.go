@@ -520,8 +520,8 @@ func OwnerFilesByRepo(owner string, repo string) (list []string) {
 				files.ForEach(func(k, v []byte) error {
 					log.Debug(fmt.Sprintf("(OwnerFilesByRepo): File of %+v -- (key: %v, value: %v)", owner, string(k), string(v)))
 					if IsPublic(string(k)) {
-						if CheckShare(string(k), owner) /* filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 */ {
-//							log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
+						if /* CheckShare(string(k), owner) */ filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
+							log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
 							list = append(list, string(k))
 						}
 					}
@@ -896,8 +896,8 @@ func TokenFilesByRepo(token string, repo string) (list []string) {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
 					log.Debug(fmt.Sprintf("(TokenFilesByRepo): File of %+v -- (key: %v, value: %v)", owner, string(k), string(v)))
-					if CheckShare(string(k), owner) /* filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 */ {
-//						log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
+					if /* CheckShare(string(k), owner) */ filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
+						log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
 						list = append(list, string(k))
 					}
 					return nil
