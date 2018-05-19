@@ -13,7 +13,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/gorjun/config"
+	"github.com/subutai-io/cdn/config"
 )
 
 var (
@@ -70,9 +70,6 @@ func CheckAuthID(token string) (name string) {
 	return
 }
 
-// CheckRepo walks through specified repo (or all repos, if none is specified) and checks
-// if particular file exists and owner is correct. Returns number of found matches.
-// If owner is empty then CheckRepo counts total number of matches regardless of owner
 func CheckRepo(owner string, repo []string, hash string) (val int) {
 	log.Debug(fmt.Sprintf("CheckRepo (repo: \"%+v (len: %+v)\", owner: \"%+v\", file: \"%+v\" (name: %+v))", repo, len(repo), owner, hash, NameByHash(hash)))
 	if len(repo) == 0 {
@@ -105,7 +102,7 @@ func CheckRepo(owner string, repo []string, hash string) (val int) {
 
 // CheckShare returns true if user has access to file, otherwise - false
 func CheckShare(hash, user string) (shared bool) {
-	log.Debug(fmt.Sprintf("Checking if user %+v has access to file %+v", user, NameByHash(hash)))
+	log.Debug(fmt.Sprintf("Checking if user %+v has access to file %+v (%+v)", user, hash, NameByHash(hash)))
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if c := b.Bucket([]byte("scope")); c != nil {
@@ -523,7 +520,7 @@ func OwnerFilesByRepo(owner string, repo string) (list []string) {
 				files.ForEach(func(k, v []byte) error {
 					log.Debug(fmt.Sprintf("(OwnerFilesByRepo): File of %+v -- (key: %v, value: %v)", owner, string(k), string(v)))
 					if IsPublic(string(k)) {
-						if filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
+						if /* CheckShare(string(k), owner) */ filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
 							log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
 							list = append(list, string(k))
 						}
@@ -899,8 +896,8 @@ func TokenFilesByRepo(token string, repo string) (list []string) {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
 					log.Debug(fmt.Sprintf("(TokenFilesByRepo): File of %+v -- (key: %v, value: %v)", owner, string(k), string(v)))
-					if filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
-						log.Debug(fmt.Sprintf("(TokenFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
+					if /* CheckShare(string(k), owner) */ filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
+						log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
 						list = append(list, string(k))
 					}
 					return nil

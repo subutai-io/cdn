@@ -11,14 +11,14 @@ import (
 	"github.com/subutai-io/agent/log"
 
 	"github.com/jasonlvhit/gocron"
-	"github.com/subutai-io/gorjun/apt"
-	"github.com/subutai-io/gorjun/auth"
-	"github.com/subutai-io/gorjun/auto"
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/raw"
-	"github.com/subutai-io/gorjun/template"
-	"github.com/subutai-io/gorjun/upload"
+	"github.com/subutai-io/cdn/apt"
+	"github.com/subutai-io/cdn/auth"
+	"github.com/subutai-io/cdn/auto"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/raw"
+	"github.com/subutai-io/cdn/template"
+	"github.com/subutai-io/cdn/upload"
 )
 
 var version = "6.3.0"

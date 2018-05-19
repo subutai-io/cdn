@@ -1,6 +1,6 @@
 # NAME
 
-Gorjun - Perl Client to [gorjun daemon](https://github.com/subutai-io/gorjun)
+Gorjun - Perl Client to [gorjun daemon](https://github.com/subutai-io/cdn)
 
 # VERSION
 
@@ -66,7 +66,7 @@ below:
 
 Those are simple one REST call, generally only completing a step of the High Level
 operation. They map to the REST API exactly one-to-one:
-[https://github.com/subutai-io/gorjun/wiki/v1](https://github.com/subutai-io/gorjun/wiki/v1)
+[https://github.com/subutai-io/cdn/wiki/v1](https://github.com/subutai-io/cdn/wiki/v1)
 
 And all of them are completed with `send()` interface. Example:
 

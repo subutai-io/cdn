@@ -19,10 +19,10 @@ import (
 	"code.cloudfoundry.org/archiver/extractor"
 	"errors"
 	"github.com/jhoonb/archivex"
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/download"
-	"github.com/subutai-io/gorjun/upload"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/download"
+	"github.com/subutai-io/cdn/upload"
 	"io/ioutil"
 	"net/url"
 	"reflect"
@@ -32,16 +32,13 @@ import (
 func readTempl(hash string) (configfile string, err error) {
 	var file bytes.Buffer
 	f, err := os.Open(config.Storage.Path + hash)
-	log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+hash, err)
+	log.Check(log.WarnLevel, "Opening file " + config.Storage.Path + hash, err)
 	defer f.Close()
-
 	gzf, err := gzip.NewReader(f)
 	if err != nil {
 		return "", err
 	}
-
 	tr := tar.NewReader(gzf)
-
 	for hdr, err := tr.Next(); err != io.EOF; hdr, err = tr.Next() {
 		if hdr.Name == "config" {
 			if _, err := io.Copy(&file, tr); err != nil {
@@ -72,7 +69,6 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.ToLower(strings.TrimSpace(line[0]))
 			line[1] = strings.ToLower(strings.TrimSpace(line[1]))
-
 			switch line[0] {
 			case "lxc.arch":
 				t.Architecture = line[1]
@@ -106,7 +102,6 @@ func getConfig(hash string, configfile, id string) (t *download.ListItem) {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.TrimSpace(line[0])
 			line[1] = strings.TrimSpace(line[1])
-
 			switch line[0] {
 			case "lxc.arch":
 				t.Architecture = line[1]
@@ -226,7 +221,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 
 // func Torrent(w http.ResponseWriter, r *http.Request) {
 // 	id := r.URL.Query().Get("id")
-// 	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner()(r.URL.Query().Get("token"))) {
+// 	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner()(strings.ToLower(r.URL.Query().Get("token")))) {
 // 		w.WriteHeader(http.StatusNotFound)
 // 		w.Write([]byte("Not found"))
 // 		return
@@ -257,7 +252,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write(info)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
+		w.Write([]byte("404 Not found"))
 	}
 }
 
@@ -267,12 +262,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method"))
 		return
 	}
-	if info := download.List("template", r); len(info) > 2 {
-		w.Write(info)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
-	}
+	w.Write(download.List("template", r))
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
@@ -347,8 +337,8 @@ func delTag(values map[string][]string) (int, error) {
 }
 
 func ModifyConfig(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-	name := r.URL.Query().Get("name")
+	token := strings.ToLower(r.URL.Query().Get("token"))
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)

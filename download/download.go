@@ -14,8 +14,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
 )
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
@@ -47,7 +47,7 @@ type hashsums struct {
 // Handler provides download functionality for all artifacts.
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
-	name := r.URL.Query().Get("name")
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	tag := r.URL.Query().Get("tag")
 
 	log.Info("Len name: ", len(name))
@@ -96,7 +96,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 			id = listbyTag[0]
 		}
 	}
-	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(r.URL.Query().Get("token"))) {
+	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(strings.ToLower(r.URL.Query().Get("token")))) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 		return
@@ -163,16 +163,17 @@ func Info(repo string, r *http.Request) []byte {
 	p := []int{0, 1000}
 	id := r.URL.Query().Get("id")
 	tag := r.URL.Query().Get("tag")
-	name := r.URL.Query().Get("name")
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	page := r.URL.Query().Get("page")
-	owner := r.URL.Query().Get("owner")
-	token := r.URL.Query().Get("token")
+	owner := strings.ToLower(r.URL.Query().Get("owner"))
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
 	version = processVersion(version)
 	list := make([]string, 0)
 	if id != "" {
-		//		log.Debug(fmt.Sprintf("id was provided"))
+//		log.Debug(fmt.Sprintf("id was provided"))
+		name = db.NameByHash(id)
 		list = append(list, id)
 	} else {
 		if name == "" {
@@ -182,19 +183,28 @@ func Info(repo string, r *http.Request) []byte {
 		list = db.SearchName(name)
 		if owner != "" {
 			log.Debug(fmt.Sprintf("If #1"))
+//			log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
 			list = intersect(list, db.OwnerFilesByRepo(owner, repo))
-		} else if token != "" && db.TokenOwner(token) != "" {
-			log.Debug(fmt.Sprintf("If #2"))
-			list = intersect(list, db.TokenFilesByRepo(token, repo))
-			if len(list) == 0 {
-				log.Debug(fmt.Sprintf("If #2.1"))
-				list = db.SearchName(name)
-				verified = "true"
-			}
-		} else {
-			log.Debug(fmt.Sprintf("If #3"))
-			verified = "true"
 		}
+		if token != "" && ((owner == "" && db.TokenOwner(token) != "") || (owner != "" && db.TokenOwner(token) == owner)) {
+			log.Debug(fmt.Sprintf("If #2"))
+			if owner == "" {
+//				log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+				list = intersect(list, db.TokenFilesByRepo(token, repo))
+				if len(list) == 0 {
+					log.Debug(fmt.Sprintf("If #2.1.1"))
+					list = db.SearchName(name)
+					verified = "true"
+				}
+			} else if owner != "" && len(list) == 0 {
+//				log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+			}
+		}
+	}
+	if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
+//		log.Debug(fmt.Sprintf("If #3"))
+		verified = "true"
 	}
 	list = unique(list)
 	if tag != "" {
@@ -204,7 +214,7 @@ func Info(repo string, r *http.Request) []byte {
 		list = intersect(list, listByTag)
 	}
 	if verified == "true" {
-		log.Debug(fmt.Sprintf("Searching among verified users"))
+		log.Debug(fmt.Sprintf("Filtering files to verified users. List: %+v", list))
 		itemLatestVersion = GetVerified(list, name, repo, version)
 		if itemLatestVersion.ID != "" {
 			items = append(items, itemLatestVersion)
@@ -235,7 +245,8 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if name == item.Name && (len(version) == 0 || item.Version == version) {
+		if (name == item.Name /* || (repo == "template" && strings.HasPrefix(item.Name, name+"-subutai-template") )*/) &&
+			(version == "" || (version != "" && item.Version == version)) {
 			items = []ListItem{item}
 			itemVersion, _ := semver.Make(item.Version)
 			if itemVersion.GTE(latestVersion) {
@@ -270,10 +281,10 @@ func List(repo string, r *http.Request) []byte {
 	var items []ListItem
 	p := []int{0, 1000}
 	tag := r.URL.Query().Get("tag")
-	name := r.URL.Query().Get("name")
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	page := r.URL.Query().Get("page")
-	owner := r.URL.Query().Get("owner")
-	token := r.URL.Query().Get("token")
+	owner := strings.ToLower(r.URL.Query().Get("owner"))
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	list := make([]string, 0)
 	list = db.SearchName(name)
@@ -309,7 +320,8 @@ func List(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if (name == "" || (name != "" && name == item.Name)) &&
+		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
+		if (name == "" || (name != "" && (name == item.Name /*|| (repo == "template" && strings.HasPrefix(item.Name, name) )*/))) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = append(items, item)
 		}
@@ -317,9 +329,13 @@ func List(repo string, r *http.Request) []byte {
 			break
 		}
 	}
+	log.Debug(fmt.Sprintf("*** Final list of items: %+v", items))
 	output, err := json.Marshal(items)
-	if err != nil || string(output) == "null" {
+	if err != nil {
 		return nil
+	}
+	if string(output) == "null" {
+		output = []byte("[]")
 	}
 	return output
 }
@@ -344,21 +360,24 @@ func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 	log.Debug(fmt.Sprintf("Getting file \"%+v\" from verified users", name))
 	latestVersion, _ := semver.Make("")
 	var itemLatestVersion ListItem
-	//	log.Debug(fmt.Sprintf("Iterating through list:\n["))
-	//	for _, k := range list {
-	//		log.Debug(fmt.Sprintf("------------- %v", db.NameByHash(k)))
-	//	}
-	//	log.Debug(fmt.Sprintf("\n]"))
+	log.Debug(fmt.Sprintf("Iterating through list:\n["))
+	for _, k := range list {
+		log.Debug(fmt.Sprintf("------------- %+v (name: %+v)", k, db.NameByHash(k)))
+	}
+	log.Debug(fmt.Sprintf("\n]"))
 	for _, k := range list {
 		if info := db.Info(k); db.CheckRepo("", []string{repo}, k) > 0 {
+			log.Debug(fmt.Sprintf("info[\"name\"] %+v == %+v name (%+v)", info["name"], name, info["name"] == name))
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
 					if In(owner, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}) {
 						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
+							log.Debug(fmt.Sprintf("First if %+v", k))
 							latestVersion = itemVersion
 							itemLatestVersion = FormatItem(db.Info(k), repo)
 						} else if versionTemplate == itemVersion.String() {
+							log.Debug(fmt.Sprintf("Second if %+v", k))
 							itemLatestVersion = FormatItem(db.Info(k), repo)
 						}
 					}

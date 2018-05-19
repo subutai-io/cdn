@@ -12,7 +12,7 @@ use File::chdir;
 use File::Slurp;
 use List::Util qw(all);
 use constant {
-    GORJUN_REPO => 'https://github.com/subutai-io/gorjun.git',
+    GORJUN_REPO => 'https://github.com/subutai-io/cdn.git',
     TIMEOUT     => 30,
     BOOT        => 3,
 };

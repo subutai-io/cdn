@@ -1,28 +1,25 @@
 language: go
-
-os:
- - linux
-matrix:
- include:
-   - os: linux
-     dist: xenial
-sudo: enabled
-go:
-  - '1.9.4'
-script:
+go: 1.9
+os: linux
+dist: xenial
+sudo: required
+before_install:
   - go get
-  - make
   - sudo apt-get install systemd --allow-unauthenticated
   - sudo cp -f /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gorjun.service /etc/systemd/system/gorjun.service
   - sudo systemctl daemon-reload
-  - sudo systemctl start gorjun.service
-  - sudo systemctl status gorjun.service
   - sudo apt install -y rng-tools
   - sudo rngd -r /dev/urandom
-  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg.txt
-  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_user.txt
-  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_verified_user.txt
-  - sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
-  - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
-  - cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
- # - go test -v
+    #- sudo chmod +x /home/travis/gopath/src/github.com/subutai-io/gorjun/libgorjun/register.sh
+    #  - gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg.txt
+    #- gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_user.txt
+    #- gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_verified_user.txt
+script:
+  - make
+  - go test -coverprofile=coverage.txt -covermode=atomic
+    #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
+    #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+  - sudo systemctl start gorjun.service
+  - sudo systemctl status gorjun.service

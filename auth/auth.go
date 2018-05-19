@@ -12,8 +12,8 @@ import (
 
 	"github.com/subutai-io/agent/log"
 
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/pgp"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/pgp"
 )
 
 func Register(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func Token(w http.ResponseWriter, r *http.Request) {
 }
 
 func Validate(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	if len(token) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Empty token"))
@@ -150,7 +150,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		log.Warn("Failed to verify signature with user key")
 		return
 	}
-	if db.CheckRepo(owner, []string{}, hash) == 0 {
+	if /* db.CheckShare(hash, owner) */ db.CheckRepo(owner, []string{}, hash) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("File and signature have different owner"))
 		log.Warn("File and signature have different owner")
@@ -164,7 +164,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 }
 
 func Owner(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
