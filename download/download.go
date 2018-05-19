@@ -170,9 +170,19 @@ func Info(repo string, r *http.Request) []byte {
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
 	version = processVersion(version)
+	if id != "" && name != "" && db.NameByHash(id) != name {
+		return nil
+	}
+	if owner != "" && token != "" && db.TokenOwner(token) != owner {
+		return nil
+	}
+	if token != "" && db.TokenOwner(token) == "" {
+		token = ""
+		verified = "true"
+	}
 	list := make([]string, 0)
 	if id != "" {
-//		log.Debug(fmt.Sprintf("id was provided"))
+		log.Debug(fmt.Sprintf("id was provided"))
 		name = db.NameByHash(id)
 		list = append(list, id)
 	} else {
@@ -181,36 +191,36 @@ func Info(repo string, r *http.Request) []byte {
 			return nil
 		}
 		list = db.SearchName(name)
-		if owner != "" {
-			log.Debug(fmt.Sprintf("If #1"))
-//			log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
-			list = intersect(list, db.OwnerFilesByRepo(owner, repo))
-		}
-		if token != "" && ((owner == "" && db.TokenOwner(token) != "") || (owner != "" && db.TokenOwner(token) == owner)) {
-			log.Debug(fmt.Sprintf("If #2"))
-			if owner == "" {
-//				log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
-				list = intersect(list, db.TokenFilesByRepo(token, repo))
-				if len(list) == 0 {
-					log.Debug(fmt.Sprintf("If #2.1.1"))
-					list = db.SearchName(name)
-					verified = "true"
-				}
-			} else if owner != "" && len(list) == 0 {
-//				log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+	}
+	if owner != "" {
+		log.Debug(fmt.Sprintf("If #1"))
+		log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
+		list = intersect(list, db.OwnerFilesByRepo(owner, repo))
+	}
+	if token != "" {
+		log.Debug(fmt.Sprintf("If #2"))
+		if owner == "" {
+			log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+			list = intersect(list, db.TokenFilesByRepo(token, repo))
+			if len(list) == 0 {
+				log.Debug(fmt.Sprintf("If #2.1.1"))
+				list = db.SearchName(name)
+				verified = "true"
+			}
+		} else if owner != "" && len(list) == 0 {
+			log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+			if id != "" {
+				list = intersect([]string{id}, db.TokenFilesByRepo(token, repo))
+			} else {
 				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 			}
 		}
-	}
-	if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
-//		log.Debug(fmt.Sprintf("If #3"))
-		verified = "true"
 	}
 	list = unique(list)
 	if tag != "" {
 		log.Debug(fmt.Sprintf("Filtering with tag %+v", tag))
 		listByTag, err := db.Tag(tag)
-		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
+		log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
 		list = intersect(list, listByTag)
 	}
 	if verified == "true" {
@@ -245,7 +255,7 @@ func Info(repo string, r *http.Request) []byte {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if (name == item.Name /* || (repo == "template" && strings.HasPrefix(item.Name, name+"-subutai-template") )*/) &&
+		if (name == item.Name || (id != "" && repo == "template" && strings.HasPrefix(name, item.Name + "-subutai-template"))) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = []ListItem{item}
 			itemVersion, _ := semver.Make(item.Version)
@@ -321,7 +331,7 @@ func List(repo string, r *http.Request) []byte {
 		}
 		item := FormatItem(db.Info(k), repo)
 		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
-		if (name == "" || (name != "" && (name == item.Name /*|| (repo == "template" && strings.HasPrefix(item.Name, name) )*/))) &&
+		if (name == "" || (name != "" && (name == item.Name || (repo == "template" && strings.HasPrefix(name, item.Name + "-subutai-template"))))) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = append(items, item)
 		}
