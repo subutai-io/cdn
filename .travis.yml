@@ -23,4 +23,3 @@ after_success:
   - bash <(curl -s https://codecov.io/bash)
   - sudo systemctl start gorjun.service
   - sudo systemctl status gorjun.service
-

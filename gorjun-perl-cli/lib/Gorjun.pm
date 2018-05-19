@@ -477,7 +477,7 @@ __END__
 
 =head1 NAME
 
-Gorjun - Perl Client to L<gorjun daemon|https://github.com/subutai-io/gorjun>
+Gorjun - Perl Client to L<gorjun daemon|https://github.com/subutai-io/cdn>
 
 =head1 VERSION
 
@@ -564,7 +564,7 @@ upload( file => $f, token => $t , type => $t)
 
 Those are simple one REST call, generally only completing a step of the High Level
 operation. They map to the REST API exactly one-to-one:
-L<https://github.com/subutai-io/gorjun/wiki/v1>
+L<https://github.com/subutai-io/cdn/wiki/v1>
 
 And all of them are completed with C<send()> interface. Example:
 

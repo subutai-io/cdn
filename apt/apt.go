@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/download"
-	"github.com/subutai-io/gorjun/upload"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/download"
+	"github.com/subutai-io/cdn/upload"
 
 	"os/exec"
 
@@ -179,6 +179,11 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		return
+	}
 	if info := download.Info("apt", r); len(info) != 0 {
 		w.Write(info)
 		return
@@ -187,11 +192,12 @@ func Info(w http.ResponseWriter, r *http.Request) {
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
-	if info := download.List("apt", r); len(info) != 0 {
-		w.Write(info)
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
 		return
 	}
-	w.Write([]byte("Not found"))
+	w.Write(download.List("apt", r))
 }
 
 func renameOldDebFiles() {

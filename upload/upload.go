@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/gorjun/config"
-	"github.com/subutai-io/gorjun/db"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
 )
 
 type share struct {
@@ -26,10 +26,12 @@ type share struct {
 	Repo   string   `json:"repo"`
 }
 
-//Handler function works with income upload requests, makes sanity checks, etc
+// Handler function works with income upload requests, makes sanity checks, etc
 func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner string) {
 	token := r.Header.Get("token")
 	owner = strings.ToLower(db.TokenOwner(token))
+	log.Debug(fmt.Sprintf("Upload request: %+v"))
+	log.Debug(fmt.Sprintf("token: %+v, owner: %+v", token, owner))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Not authorized"))
@@ -37,6 +39,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 	repo := strings.Split(r.URL.EscapedPath(), "/")
+	log.Debug(fmt.Sprintf("repo: %+v", repo))
 	if len(repo) < 4 {
 		log.Warn(r.URL.EscapedPath() + " - bad deletion request")
 		w.WriteHeader(http.StatusBadRequest)
@@ -45,6 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 	}
 	r.ParseMultipartForm(32 << 20)
 	file, header, err := r.FormFile("file")
+	log.Debug(fmt.Sprintf("file, header, err: %+v, %+v, %+v", file, header, err))
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Cannot get file from request"))
@@ -58,6 +62,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 	out, err := os.Create(config.Storage.Path + header.Filename)
+	log.Debug(fmt.Sprintf("Creating file for writing: %+v, %+v", out, err))
 	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Cannot create file"))
@@ -65,6 +70,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 	}
 	defer out.Close()
 	limit := int64(db.QuotaLeft(owner))
+	log.Debug(fmt.Sprintf("limit left: %+v", limit))
 	f := io.Reader(file)
 	if limit != -1 {
 		f = io.LimitReader(file, limit)
@@ -89,7 +95,8 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 	if repo[3] != "apt" {
-		os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+md5sum)
+		log.Debug(fmt.Sprintf("repo[3] is not apt. Renaming %+v to %+v", config.Storage.Path + header.Filename, config.Storage.Path + md5sum))
+		os.Rename(config.Storage.Path + header.Filename, config.Storage.Path + md5sum)
 	}
 	log.Info("File received: " + header.Filename + "(" + md5sum + ")")
 	return md5sum, sha256sum, owner
@@ -99,7 +106,6 @@ func Hash(file string, algo ...string) string {
 	f, err := os.Open(file)
 	log.Check(log.WarnLevel, "Opening file "+file, err)
 	defer f.Close()
-
 	hash := md5.New()
 	if len(algo) != 0 {
 		switch algo[0] {

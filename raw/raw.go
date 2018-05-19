@@ -9,9 +9,9 @@ import (
 
 	"net/url"
 
-	"github.com/subutai-io/gorjun/db"
-	"github.com/subutai-io/gorjun/download"
-	"github.com/subutai-io/gorjun/upload"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/download"
+	"github.com/subutai-io/cdn/upload"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +85,11 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func Info(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		return
+	}
 	info := download.Info("raw", r)
 	if len(info) == 0 {
 		w.WriteHeader(http.StatusNotFound)
@@ -94,10 +99,10 @@ func Info(w http.ResponseWriter, r *http.Request) {
 }
 
 func List(w http.ResponseWriter, r *http.Request) {
-	info := download.List("raw", r)
-	if len(info) == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method"))
+		return
 	}
-	w.Write(info)
+	w.Write(download.List("raw", r))
 }

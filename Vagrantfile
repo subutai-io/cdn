@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 # Change this to wherever you are planning on storing your project
-PROJECT_REPOSITORY='github.com/subutai-io/gorjun'
+PROJECT_REPOSITORY='github.com/subutai-io/cdn'
 BOX_IMAGE = "debian/stretch64"
 
 NODE_COUNT = 1
