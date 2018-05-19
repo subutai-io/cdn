@@ -271,6 +271,10 @@ func TestListPriority(t *testing.T) {
 	v.Register(v.Username)
 	v.AuthenticateUser()
 	fmt.Printf("Token for user %+v = %+v\n", v.Username, v.Token)
+	str, err := v.Upload(fmt.Sprintf("data/subutai/debian-stretch-subutai-template_0.4.1_amd64.tar.gz"), "template", "false")
+	if err != nil {
+		fmt.Printf("Could not upload debian-stretch-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
+	}
 	/*	str, err := v.Upload(fmt.Sprintf("data/%s/mysql-subutai-template_0.3.9_amd64.tar.gz", v.Username), "template", "false")
 	if err != nil {
 		fmt.Printf("Could not upload mysql-subutai-template_0.3.9_amd64.tar.gz: %+v, %+v\n", str, err)
@@ -283,15 +287,15 @@ func TestListPriority(t *testing.T) {
 	if err != nil {
 		fmt.Printf("Could not upload mysql-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
 	}
-*/	f := FirstGorjunUser()
+*//*	f := FirstGorjunUser()
 	f.Register(f.Username)
 	f.AuthenticateUser()
-	str, err := f.Upload(fmt.Sprintf("data/akenzhaliev/debian-stretch-subutai-template_0.4.1_amd64.tar.gz"), "template", "true")
+	fmt.Printf("Token for user %+v = %+v\n", f.Username, f.Token)*/
+/*	str, err = f.Upload(fmt.Sprintf("data/akenzhaliev/debian-stretch-subutai-template_0.4.1_amd64.tar.gz"), "template", "true")
 	if err != nil {
 		fmt.Printf("Could not upload debian-stretch-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
 	}
-	fmt.Printf("Token for user %+v = %+v\n", f.Username, f.Token)
-/*	str, err = f.Upload(fmt.Sprintf("data/%s/debian-stretch-subutai-template_0.4.1_amd64-%s.tar.gz", f.Username, f.Username), "raw", "false")
+*//*	str, err = f.Upload(fmt.Sprintf("data/%s/debian-stretch-subutai-template_0.4.1_amd64-%s.tar.gz", f.Username, f.Username), "raw", "false")
 	if err != nil {
 		fmt.Printf("Could not upload debian-stretch-subutai-template_0.4.1_amd64-%s.tar.gz: %+v, %+v\n", f.Username, str, err)
 	}
@@ -319,6 +323,6 @@ func TestListPriority(t *testing.T) {
 	if err != nil {
 		fmt.Printf("Could not upload mysql-subutai-template_0.4.1_amd64-%s.tar.gz: %+v, %+v\n", s.Username, str, err)
 	}
-*/	fileList, _ := f.GetFileByName("debian-stretch-subutai-template_0.4.1_amd64.tar.gz", "template")
-	f.Share(fileList, v.Username, "template")
+*//*	fileList, _ := f.GetFileByName("debian-stretch-subutai-template_0.4.1_amd64.tar.gz", "template")
+	f.Share(fileList, v.Username, "template")*/
 }

@@ -166,13 +166,14 @@ func Info(repo string, r *http.Request) []byte {
 	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
 	version = processVersion(version)
 	list := make([]string, 0)
 	if id != "" {
 //		log.Debug(fmt.Sprintf("id was provided"))
+		name = db.NameByHash(id)
 		list = append(list, id)
 	} else {
 		if name == "" {
@@ -200,10 +201,10 @@ func Info(repo string, r *http.Request) []byte {
 				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 			}
 		}
-		if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
-			log.Debug(fmt.Sprintf("If #3"))
-			verified = "true"
-		}
+	}
+	if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
+//		log.Debug(fmt.Sprintf("If #3"))
+		verified = "true"
 	}
 	list = unique(list)
 	if tag != "" {
