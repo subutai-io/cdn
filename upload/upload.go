@@ -28,7 +28,7 @@ type share struct {
 
 // Handler function works with income upload requests, makes sanity checks, etc
 func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner string) {
-	token := r.Header.Get("token")
+	token := strings.ToLower(r.Header.Get("token"))
 	owner = strings.ToLower(db.TokenOwner(token))
 	log.Debug(fmt.Sprintf("Upload request: %+v"))
 	log.Debug(fmt.Sprintf("token: %+v, owner: %+v", token, owner))
@@ -125,7 +125,7 @@ func Hash(file string, algo ...string) string {
 
 func Delete(w http.ResponseWriter, r *http.Request) string {
 	id := r.URL.Query().Get("id")
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	if len(id) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Empty file id"))
@@ -244,7 +244,7 @@ func Share(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Empty file id"))
 			return
 		}
-		token := r.URL.Query().Get("token")
+		token := strings.ToLower(r.URL.Query().Get("token"))
 		if len(token) == 0 || len(db.TokenOwner(token)) == 0 {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Not authorized"))
@@ -280,7 +280,7 @@ func Quota(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		user := r.URL.Query().Get("user")
 		fix := r.URL.Query().Get("fix")
-		token := r.URL.Query().Get("token")
+		token := strings.ToLower(r.URL.Query().Get("token"))
 
 		if len(token) == 0 || len(db.TokenOwner(token)) == 0 || db.TokenOwner(token) != "Hub" && !strings.EqualFold(db.TokenOwner(token), user) {
 			w.Write([]byte("Forbidden"))

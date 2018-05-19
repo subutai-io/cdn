@@ -47,7 +47,7 @@ type hashsums struct {
 // Handler provides download functionality for all artifacts.
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
-	name := r.URL.Query().Get("name")
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	tag := r.URL.Query().Get("tag")
 
 	log.Info("Len name: ", len(name))
@@ -96,7 +96,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 			id = listbyTag[0]
 		}
 	}
-	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(r.URL.Query().Get("token"))) {
+	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(strings.ToLower(r.URL.Query().Get("token")))) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 		return
@@ -163,16 +163,17 @@ func Info(repo string, r *http.Request) []byte {
 	p := []int{0, 1000}
 	id := r.URL.Query().Get("id")
 	tag := r.URL.Query().Get("tag")
-	name := r.URL.Query().Get("name")
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	page := r.URL.Query().Get("page")
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
 	version = processVersion(version)
 	list := make([]string, 0)
 	if id != "" {
 //		log.Debug(fmt.Sprintf("id was provided"))
+		name = db.NameByHash(id)
 		list = append(list, id)
 	} else {
 		if name == "" {
@@ -200,10 +201,10 @@ func Info(repo string, r *http.Request) []byte {
 				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 			}
 		}
-		if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
-			log.Debug(fmt.Sprintf("If #3"))
-			verified = "true"
-		}
+	}
+	if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
+//		log.Debug(fmt.Sprintf("If #3"))
+		verified = "true"
 	}
 	list = unique(list)
 	if tag != "" {
@@ -280,10 +281,10 @@ func List(repo string, r *http.Request) []byte {
 	var items []ListItem
 	p := []int{0, 1000}
 	tag := r.URL.Query().Get("tag")
-	name := r.URL.Query().Get("name")
+	name := strings.ToLower(r.URL.Query().Get("name"))
 	page := r.URL.Query().Get("page")
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	list := make([]string, 0)
 	list = db.SearchName(name)

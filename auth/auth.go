@@ -85,7 +85,7 @@ func Token(w http.ResponseWriter, r *http.Request) {
 }
 
 func Validate(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	if len(token) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Empty token"))
@@ -164,7 +164,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 }
 
 func Owner(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
