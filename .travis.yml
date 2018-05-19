@@ -16,7 +16,7 @@ before_install:
     #- gpg --gen-key --batch /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/gpg_verified_user.txt
 script:
   - make
-  - go test -race -coverprofile=coverage.txt -covermode=atomic
+  - go test -coverprofile=coverage.txt -covermode=atomic
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
 after_success:
