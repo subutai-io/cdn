@@ -47,6 +47,7 @@ type hashsums struct {
 // Handler provides download functionality for all artifacts.
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
+	token := strings.ToLower(r.URL.Query().Get("token"))
 	name := strings.ToLower(r.URL.Query().Get("name"))
 	tag := r.URL.Query().Get("tag")
 
@@ -96,7 +97,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 			id = listbyTag[0]
 		}
 	}
-	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(strings.ToLower(r.URL.Query().Get("token")))) {
+	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(token)) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 		return
@@ -135,7 +136,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
 	if name = db.NameByHash(id); len(name) == 0 && len(config.CDN.Node) > 0 {
 		httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-		resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/info?id=" + id)
+		resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/info?id=" + id + "&token=" + token)
 		if !log.Check(log.WarnLevel, "Getting info from CDN", err) {
 			var info ListItem
 			rsp, err := ioutil.ReadAll(resp.Body)
