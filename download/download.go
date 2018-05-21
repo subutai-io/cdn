@@ -48,7 +48,7 @@ type hashsums struct {
 func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	token := strings.ToLower(r.URL.Query().Get("token"))
-	name := strings.ToLower(r.URL.Query().Get("name"))
+	name := r.URL.Query().Get("name")
 	tag := r.URL.Query().Get("tag")
 
 	log.Info("Len name: ", len(name))
@@ -164,7 +164,7 @@ func Info(repo string, r *http.Request) []byte {
 	p := []int{0, 1000}
 	id := r.URL.Query().Get("id")
 	tag := r.URL.Query().Get("tag")
-	name := strings.ToLower(r.URL.Query().Get("name"))
+	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
 	token := strings.ToLower(r.URL.Query().Get("token"))
@@ -292,7 +292,7 @@ func List(repo string, r *http.Request) []byte {
 	var items []ListItem
 	p := []int{0, 1000}
 	tag := r.URL.Query().Get("tag")
-	name := strings.ToLower(r.URL.Query().Get("name"))
+	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
 	token := strings.ToLower(r.URL.Query().Get("token"))
