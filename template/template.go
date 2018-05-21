@@ -338,7 +338,7 @@ func delTag(values map[string][]string) (int, error) {
 
 func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 	token := strings.ToLower(r.URL.Query().Get("token"))
-	name := strings.ToLower(r.URL.Query().Get("name"))
+	name := r.URL.Query().Get("name")
 	owner := strings.ToLower(db.TokenOwner(token))
 	if len(token) == 0 || len(owner) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
