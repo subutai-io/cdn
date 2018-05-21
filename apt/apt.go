@@ -132,33 +132,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 func Download(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Query().Get("hash")
-	tag := r.URL.Query().Get("tag")
-	if len(file) == 0 && len(tag) == 0 {
-		w.Write([]byte("Both hash and tag is empty"))
-		return
-	}
-	if len(file) != 0 {
-		if len(tag) != 0 {
-			listbyTag := db.SearchFileByTag(tag, "apt")
-			for _, l := range listbyTag {
-				if db.IsPublic(l) {
-					apt := db.NameByHash(l)
-					if apt == file {
-						file = apt
-					}
-				}
-			}
-		}
-	} else { //both name and hash is provided
-		if len(tag) != 0 {
-			listbyTag := db.SearchFileByTag(tag, "apt")
-			for _, l := range listbyTag {
-				if db.IsPublic(l) {
-					apt := db.NameByHash(l)
-					file = apt
-				}
-			}
-		}
+	if len(file) == 0 {
+		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
 	size := getSize(config.Storage.Path + "Packages")
 	if file == "Packages" && size == 0 {
