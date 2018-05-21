@@ -1029,9 +1029,12 @@ func Write(owner, key, value string, options ...map[string]string) error {
 						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
 							for _, v := range strings.Split(v, ",") {
 								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
-								t, _ := tx.Bucket(Tags).CreateBucketIfNotExists(tag)
+								t, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte("template"))
+								if tt := t.Get([]byte(tag)); tt != nil {
+									key = string(tt) + "," + key
+								}
 								c.Put(tag, []byte("w"))
-								t.Put([]byte(key), []byte("w"))
+								t.Put([]byte(tag), []byte(key))
 							}
 						}
 					case "signature":
@@ -1066,7 +1069,7 @@ func CheckRepoOfHash(hash string) (repo string) {
 	return repo
 }
 
-// SearchFileByTag performs search file by the specified tag. Return the list of files with such tag.
+// SearchFileByTag performs search file by the specified tag or tags. Return the list of files with such tag.
 func SearchFileByTag(tag string, repo string) (listofIds []string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket); b != nil {
@@ -1076,20 +1079,71 @@ func SearchFileByTag(tag string, repo string) (listofIds []string) {
 				if r == repo {
 					if t == tag {
 						listofIds = append(listofIds, string(k))
-					} else {
-						tt := strings.Split(t, ",")
-						for _, s := range tt {
-							if s == tag {
-								listofIds = append(listofIds, string(k))
-							}
-						}
 					}
 				}
 				return nil
 			})
-			return nil
 		}
 		return nil
 	})
 	return listofIds
 }
+
+//AddTag add new key to bucket Tags
+func AddTag(tags []string, id string, repo string) error {
+	db.Update(func(tx *bolt.Tx) error {
+		if b, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte(repo)); b != nil {
+			for _, tag := range tags {
+				if value := b.Get([]byte(tag)); value != nil {
+					id = string(value) + "," + id
+				}
+				b.Put([]byte(tag), []byte(id))
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
+// SearchByTag is performs search in bucket Tags by tag
+func SearchByTag(tag string, repo string) (list []string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if string(k) == tag {
+					tags := strings.Split(string(v), ",")
+					for _, t := range tags {
+						list = append(list, t)
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+	return list
+}
+
+//Union is return list of the values by respective tags
+// func Union(tags []string, repo string) {
+// 	log.Info("Into union")
+// 	union := make(map[string]bool)
+// 	db.View(func(tx *bolt.Tx) error {
+// 		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+// 			for _, tag := range tags {
+// 			b.ForEach(func(k, v []byte) error {
+// 					if tag == string(k) {
+// 						vv := strings.Split(string(v), ",")
+// 						for _, vvv := range vv {
+// 							union[vvv] = true
+// 						}
+// 						log.Info("Union: ", union)
+// 					}
+// 				  return nil
+// 				}
+// 				return nil
+// 			})
+// 		}
+// 		return nil
+// 	})
+// }

@@ -113,6 +113,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		ID := my_uuid.String()
+		db.AddTag(strings.Split(tags, ","), ID, "apt")
 		err = db.Write(owner, ID, header.Filename, meta)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

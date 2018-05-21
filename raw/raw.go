@@ -37,6 +37,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		_, header, _ := r.FormFile("file")
 		my_uuid, _ := uuid.NewV4()
 		id := my_uuid.String()
+		if tags != "" {
+			db.AddTag(strings.Split(tags, ","), id, "raw")
+		}
 		db.Write(owner, id, header.Filename, info)
 		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
 			log.Info("Sharing " + md5 + " with " + owner)

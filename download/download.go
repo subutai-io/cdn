@@ -50,8 +50,6 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	name := strings.ToLower(r.URL.Query().Get("name"))
 	tag := r.URL.Query().Get("tag")
 
-	log.Info("Len name: ", len(name))
-
 	tagSplit := strings.Split(tag, ",")
 	if len(id) == 0 && len(name) == 0 && len(tag) == 0 {
 		io.WriteString(w, "Please specify id,name or tag")
@@ -61,21 +59,19 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 			if len(tagSplit) > 1 {
 				t := strings.Split(tag, ",")
 				for _, tt := range t {
-					listbyTag := db.SearchFileByTag(tt, repo)
+					listbyTag := db.SearchByTag(tt, repo)
 					for _, l := range listbyTag {
 						if db.NameByHash(string(l)) == name {
 							id = string(l)
-							log.Info("Tag with name. Id: ", id)
 						}
 					}
 				}
 			} else if len(tag) != 0 {
-				listbyTag := db.SearchFileByTag(tag, repo)
+				listbyTag := db.SearchByTag(tag, repo)
 				if len(listbyTag) != 0 {
 					for _, l := range listbyTag {
 						if db.NameByHash(string(l)) == name {
 							id = string(l)
-							log.Info("id: ", id)
 						}
 					}
 				}
@@ -88,12 +84,18 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	//if both name and id is not provided or empty, it will search id by tag and return the first file in list
 	if len(name) == 0 && len(id) == 0 {
 		if len(tag) != 0 {
-			listbyTag := db.SearchFileByTag(tag, repo)
-			if len(listbyTag) == 0 {
-				w.Write([]byte("No file with such tags"))
+			if len(tagSplit) == 1 {
+				listbyTag := db.SearchByTag(tag, repo)
+				if len(listbyTag) == 0 {
+					w.Write([]byte("No file with such tags"))
+					return
+				}
+				id = listbyTag[0]
+			} else if len(tagSplit) > 1 {
+				log.Info("In")
+				db.Union(tagSplit, repo)
 				return
 			}
-			id = listbyTag[0]
 		}
 	}
 	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(strings.ToLower(r.URL.Query().Get("token")))) {
@@ -172,7 +174,7 @@ func Info(repo string, r *http.Request) []byte {
 	version = processVersion(version)
 	list := make([]string, 0)
 	if id != "" {
-//		log.Debug(fmt.Sprintf("id was provided"))
+		//		log.Debug(fmt.Sprintf("id was provided"))
 		name = db.NameByHash(id)
 		list = append(list, id)
 	} else {
@@ -183,13 +185,13 @@ func Info(repo string, r *http.Request) []byte {
 		list = db.SearchName(name)
 		if owner != "" {
 			log.Debug(fmt.Sprintf("If #1"))
-//			log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
+			//			log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
 			list = intersect(list, db.OwnerFilesByRepo(owner, repo))
 		}
 		if token != "" && ((owner == "" && db.TokenOwner(token) != "") || (owner != "" && db.TokenOwner(token) == owner)) {
 			log.Debug(fmt.Sprintf("If #2"))
 			if owner == "" {
-//				log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+				//				log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
 				list = intersect(list, db.TokenFilesByRepo(token, repo))
 				if len(list) == 0 {
 					log.Debug(fmt.Sprintf("If #2.1.1"))
@@ -197,13 +199,13 @@ func Info(repo string, r *http.Request) []byte {
 					verified = "true"
 				}
 			} else if owner != "" && len(list) == 0 {
-//				log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
+				//				log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
 				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 			}
 		}
 	}
 	if owner == "" && (token == "" || (token != "" && db.TokenOwner(token) == "")) {
-//		log.Debug(fmt.Sprintf("If #3"))
+		//		log.Debug(fmt.Sprintf("If #3"))
 		verified = "true"
 	}
 	list = unique(list)
