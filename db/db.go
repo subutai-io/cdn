@@ -730,9 +730,10 @@ func RebuildShare(hash, owner string) {
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
-		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
+		if !log.Check(log.WarnLevel, "Registering user " + strings.ToLower(string(name)), err) {
 			b.Put([]byte("key"), key)
 			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
+				log.Debug(fmt.Sprintf("Created user %+v", name))
 				b.Put(key, nil)
 			}
 		}
