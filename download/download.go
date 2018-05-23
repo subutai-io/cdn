@@ -219,7 +219,14 @@ func Info(repo string, r *http.Request) []byte {
 				verified = "true"
 			} else if owner == "" && token != "" {
 				log.Info("Case 2")
-				list = intersect(db.SearchName(name), db.OwnerFilesByRepo(db.TokenOwner(token), repo))
+				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+				onlyTokenOwner := make([]string, 0)
+				for _, k := range list {
+					if db.FileField(k, "owner")[0] == db.TokenOwner(token) {
+						onlyTokenOwner = append(onlyTokenOwner, k)
+					}
+				}
+				list = onlyTokenOwner
 				if len(list) == 0 {
 					list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 					if len(list) == 0 {
@@ -232,10 +239,7 @@ func Info(repo string, r *http.Request) []byte {
 				list = db.OwnerFilesByRepo(owner, repo)
 			} else {
 				log.Info("Case 4")
-				list = intersect(db.SearchName(name), db.OwnerFilesByRepo(owner, repo))
-				if len(list) == 0 {
-					list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
-				}
+				list = intersect(db.SearchName(name), union(db.OwnerFilesByRepo(owner, repo), intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
 			}
 		} else {
 			list = db.SearchName(name)
