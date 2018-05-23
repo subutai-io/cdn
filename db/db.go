@@ -1069,28 +1069,9 @@ func CheckRepoOfHash(hash string) (repo string) {
 	return repo
 }
 
-// SearchFileByTag performs search file by the specified tag or tags. Return the list of files with such tag.
-func SearchFileByTag(tag string, repo string) (listofIds []string) {
-	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(MyBucket); b != nil {
-			b.ForEach(func(k, v []byte) error {
-				r := CheckRepoOfHash(string(k))
-				t := string(b.Bucket(k).Get([]byte("tag")))
-				if r == repo {
-					if t == tag {
-						listofIds = append(listofIds, string(k))
-					}
-				}
-				return nil
-			})
-		}
-		return nil
-	})
-	return listofIds
-}
-
 //AddTag add new key to bucket Tags
 func AddTag(tags []string, id string, repo string) error {
+	ID := id
 	db.Update(func(tx *bolt.Tx) error {
 		if b, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte(repo)); b != nil {
 			for _, tag := range tags {
@@ -1098,6 +1079,7 @@ func AddTag(tags []string, id string, repo string) error {
 					id = string(value) + "," + id
 				}
 				b.Put([]byte(tag), []byte(id))
+				id = ID
 			}
 		}
 		return nil
@@ -1105,8 +1087,8 @@ func AddTag(tags []string, id string, repo string) error {
 	return nil
 }
 
-// SearchByTag is performs search in bucket Tags by tag
-func SearchByTag(tag string, repo string) (list []string) {
+// SearchByOneTag is performs search in bucket Tags by tag
+func SearchByOneTag(tag string, repo string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
 			b.ForEach(func(k, v []byte) error {
@@ -1124,26 +1106,76 @@ func SearchByTag(tag string, repo string) (list []string) {
 	return list
 }
 
-//Union is return list of the values by respective tags
-// func Union(tags []string, repo string) {
-// 	log.Info("Into union")
-// 	union := make(map[string]bool)
-// 	db.View(func(tx *bolt.Tx) error {
-// 		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
-// 			for _, tag := range tags {
-// 			b.ForEach(func(k, v []byte) error {
-// 					if tag == string(k) {
-// 						vv := strings.Split(string(v), ",")
-// 						for _, vvv := range vv {
-// 							union[vvv] = true
-// 						}
-// 						log.Info("Union: ", union)
-// 					}
-// 				  return nil
-// 				}
-// 				return nil
-// 			})
-// 		}
-// 		return nil
-// 	})
-// }
+// UnionByTags return list of the values by one of respective tags
+func UnionByTags(tags []string, repo string) (list []string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+			for _, tag := range tags {
+				b.ForEach(func(k, v []byte) error {
+					if tag == string(k) {
+						vv := strings.Split(string(v), ",")
+						for _, vvv := range vv {
+							list = append(list, vvv)
+						}
+					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return list
+}
+
+// IntersectOfTags return IDs of files by all respective tags
+func IntersectOfTags(tags []string, repo string) (list []string) {
+	var list1, list2 []string
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if tags[0] == string(k) {
+					vv := strings.Split(string(v), ",")
+					for _, vvv := range vv {
+						list1 = append(list, vvv)
+					}
+				}
+				if tags[1] == string(k) {
+					vv := strings.Split(string(v), ",")
+					for _, vvv := range vv {
+						list2 = append(list, vvv)
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+
+	//intersection
+	low, high := list1, list2
+	if len(list1) > len(list2) {
+		low = list2
+		high = list1
+	}
+	done := false
+	for i, l := range low {
+		for j, h := range high {
+			f1 := i + 1
+			f2 := j + 1
+			if l == h {
+				list = append(list, h)
+				if f1 < len(low) && f2 < len(high) {
+					if low[f1] != high[f2] {
+						done = true
+					}
+				}
+				high = high[:j+copy(high[j:], high[j+1:])]
+				break
+			}
+		}
+		if done {
+			break
+		}
+	}
+	return list
+}
