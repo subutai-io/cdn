@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 	}
 	r.ParseMultipartForm(32 << 20)
 	file, header, err := r.FormFile("file")
-	log.Debug(fmt.Sprintf("file, header, err: %+v, %+v, %+v", file, header, err))
+	log.Info(fmt.Sprintf("header.Filename: %s", header.Filename))
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Cannot get file from request"))
