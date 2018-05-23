@@ -174,64 +174,84 @@ func Info(repo string, r *http.Request) []byte {
 	if id != "" && name != "" && db.NameByHash(id) != name {
 		return nil
 	}
-	if owner != "" && token != "" && db.TokenOwner(token) != owner {
-		return nil
-	}
 	if token != "" && db.TokenOwner(token) == "" {
 		token = ""
-		verified = "true"
+		log.Debug(fmt.Sprintf("Info: provided token is invalid"))
 	}
 	list := make([]string, 0)
 	if id != "" {
-		log.Debug(fmt.Sprintf("id was provided"))
+		log.Info(fmt.Sprintf("id was provided"))
 		name = db.NameByHash(id)
-		list = append(list, id)
+		if verified != "true" {
+			if owner == "" && token == "" {
+				log.Info("Case 1")
+				list = []string{id}
+			} else if owner == "" && token != "" {
+				log.Info("Case 2")
+				list = intersect([]string{id}, intersect(db.SearchName(name), db.OwnerFilesByRepo(db.TokenOwner(token), repo)))
+				if len(list) == 0 {
+					list = intersect([]string{id}, intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo)))
+					if len(list) == 0 {
+						list = intersect([]string{id}, db.SearchName(name))
+					}
+				}
+			} else if owner != "" && token == "" {
+				log.Info("Case 3")
+				list = intersect([]string{id}, db.OwnerFilesByRepo(owner, repo))
+			} else {
+				log.Info("Case 4")
+				list = intersect([]string{id}, union(db.OwnerFilesByRepo(owner, repo), intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
+			}
+		}
 	} else {
 		if name == "" {
 			log.Warn(fmt.Sprintf("Both id and name were not provided"))
 			return nil
 		}
-		list = db.SearchName(name)
-	}
-	if owner != "" {
-		log.Debug(fmt.Sprintf("If #1"))
-		log.Debug(fmt.Sprintf("#1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.OwnerFilesByRepo(owner, repo), intersect(list, db.OwnerFilesByRepo(owner, repo))))
-		list = intersect(list, db.OwnerFilesByRepo(owner, repo))
-	}
-	if token != "" {
-		log.Debug(fmt.Sprintf("If #2"))
-		if owner == "" {
-			log.Debug(fmt.Sprintf("#2.1 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
-			list = intersect(list, db.TokenFilesByRepo(token, repo))
-			if len(list) == 0 {
-				log.Debug(fmt.Sprintf("If #2.1.1"))
+		if owner != "" && token != "" && db.TokenOwner(token) != owner {
+			return nil
+		}
+		log.Info(fmt.Sprintf("name was provided"))
+		if verified != "true" {
+			if owner == "" && token == "" {
+				log.Info("Case 1")
 				list = db.SearchName(name)
 				verified = "true"
-			}
-		} else if owner != "" && len(list) == 0 {
-			log.Debug(fmt.Sprintf("#2.2 List\n\n%+v\n\nintersected with\n\n%+v\n\nResulting in\n\n%+v\n\n", list, db.TokenFilesByRepo(token, repo), intersect(list, db.TokenFilesByRepo(token, repo))))
-			if id != "" {
-				list = intersect([]string{id}, db.TokenFilesByRepo(token, repo))
+			} else if owner == "" && token != "" {
+				log.Info("Case 2")
+				list = intersect(db.SearchName(name), db.OwnerFilesByRepo(db.TokenOwner(token), repo))
+				if len(list) == 0 {
+					list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+					if len(list) == 0 {
+						list = db.SearchName(name)
+						verified = "true"
+					}
+				}
+			} else if owner != "" && token == "" {
+				log.Info("Case 3")
+				list = db.OwnerFilesByRepo(owner, repo)
 			} else {
-				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+				log.Info("Case 4")
+				list = intersect(db.SearchName(name), db.OwnerFilesByRepo(owner, repo))
+				if len(list) == 0 {
+					list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+				}
 			}
+		} else {
+			list = db.SearchName(name)
 		}
 	}
 	list = unique(list)
 	if tag != "" {
-		log.Debug(fmt.Sprintf("Filtering with tag %+v", tag))
-		listByTag, err := db.Tag(tag)
-		log.Check(log.DebugLevel, "Looking for artifacts with tag " + tag, err)
+		listByTag, _ := db.Tag(tag)
 		list = intersect(list, listByTag)
 	}
 	if verified == "true" {
-		log.Debug(fmt.Sprintf("Filtering files to verified users. List: %+v", list))
 		itemLatestVersion = GetVerified(list, name, repo, version)
 		if itemLatestVersion.ID != "" {
 			items = append(items, itemLatestVersion)
 			items[0].Signature = db.FileSignatures(items[0].ID)
 		}
-		log.Debug(fmt.Sprintf("info collected. items (1): %+v", items))
 		output, err := json.Marshal(items)
 		if err == nil && len(items) > 0 && items[0].ID != "" {
 			return output
@@ -244,19 +264,22 @@ func Info(repo string, r *http.Request) []byte {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
 	latestVersion, _ := semver.Make("")
-	log.Debug(fmt.Sprintf("list to be checked: %+v", list))
+	log.Info(fmt.Sprintf("info: list to be checked: "))
+	for i, k := range list {
+		log.Info(fmt.Sprintf("info: item %d: %s (filename: %s)", i, k, db.NameByHash(k)))
+	}
 	for _, k := range list {
 		if (!db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token))) ||
 			(db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0) ||
 			db.CheckRepo("", []string{repo}, k) == 0 {
-			log.Debug(fmt.Sprintf("File %+v (name: %+v, owner: %+v, token: %+v) is ignored: %+v || %+v || %+v", k, db.NameByHash(k), owner, db.TokenOwner(token), !db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token)), db.IsPublic(k) && len(owner) > 0 && db.CheckRepo(owner, []string{repo}, k) == 0, db.CheckRepo("", []string{repo}, k) == 0))
 			continue
 		}
 		if p[0]--; p[0] > 0 {
 			continue
 		}
 		item := FormatItem(db.Info(k), repo)
-		if (name == item.Name || (id != "" && repo == "template" && strings.HasPrefix(name, item.Name + "-subutai-template"))) &&
+		if (id == "" || id == item.ID) &&
+			(name == item.Name || strings.HasPrefix(name, item.Name + "-subutai-template")) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = []ListItem{item}
 			itemVersion, _ := semver.Make(item.Version)
@@ -271,14 +294,13 @@ func Info(repo string, r *http.Request) []byte {
 	}
 	if len(items) == 1 {
 		if version == "" && repo == "template" && itemLatestVersion.ID != "" {
-			log.Debug(fmt.Sprintf("version == \"\" && repo == \"template\" && itemLatestVersion.ID != \"\" returns true.\nitemLatestVersion.ID = %+v", itemLatestVersion))
 			items[0] = itemLatestVersion
 		}
 		items[0].Signature = db.FileSignatures(items[0].ID)
 	}
-	log.Debug(fmt.Sprintf("info collected (repo: %+v, r: %+v). items (2):\n\n\n", repo, r))
-	for i := 0; i < len(items); i++ {
-		log.Debug(fmt.Sprintf("\nItem #%+v: %+v\n", i, items[i]))
+	log.Info(fmt.Sprintf("info: final list: "))
+	for i, k := range items {
+		log.Info(fmt.Sprintf("info: item %d: %s (filename: %s)", i, k.ID, db.NameByHash(k.ID)))
 	}
 	output, err := json.Marshal(items)
 	if err != nil || string(output) == "null" {
@@ -297,15 +319,24 @@ func List(repo string, r *http.Request) []byte {
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
 	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
-	list := make([]string, 0)
-	list = db.SearchName(name)
-	if owner != "" {
-		log.Debug(fmt.Sprintf("Owner not empty: %+v. Gathering his public files"), owner)
-		list = db.OwnerFilesByRepo(owner, repo)
+	if token != "" && db.TokenOwner(token) == "" {
+		token = ""
+		log.Debug(fmt.Sprintf("List: provided token is invalid"))
 	}
-	if token != "" && db.TokenOwner(token) != "" {
-		log.Debug(fmt.Sprintf("%+v token's owner not empty: %+v. Adding his private/shared files", token, db.TokenOwner(token)))
-		list = append(list, db.TokenFilesByRepo(token, repo)[:]...)
+	list := db.SearchName(name)
+	if owner == "" && token == "" {
+		log.Info("Case 1")
+	} else if owner == "" && token != "" {
+		log.Info("Case 2")
+	} else if owner != "" && token == "" {
+		log.Info("Case 3")
+		list = intersect(list, db.OwnerFilesByRepo(owner, repo))
+	} else {
+		log.Info("Case 4")
+		list = union(db.OwnerFilesByRepo(owner, repo),
+			intersect(
+				db.TokenFilesByRepo(db.GetUserToken(owner), repo),
+				db.TokenFilesByRepo(token, repo)))
 	}
 	list = unique(list)
 	if tag != "" {
@@ -318,7 +349,10 @@ func List(repo string, r *http.Request) []byte {
 	if len(pstr) == 2 {
 		p[1], _ = strconv.Atoi(pstr[1])
 	}
-	log.Debug(fmt.Sprintf("list to be checked: %+v", list))
+	log.Info(fmt.Sprintf("list: list to be checked: "))
+	for i, k := range list {
+		log.Info(fmt.Sprintf("list: item %d: %s (filename: %s)", i, k, db.NameByHash(k)))
+	}
 	for i, k := range list {
 		log.Debug(fmt.Sprintf("checking file #%+v: %+v", i, k))
 		if (!db.IsPublic(k) && !db.CheckShare(k, db.TokenOwner(token))) ||
@@ -332,7 +366,7 @@ func List(repo string, r *http.Request) []byte {
 		}
 		item := FormatItem(db.Info(k), repo)
 		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
-		if (name == "" || (name != "" && (name == item.Name || (repo == "template" && strings.HasPrefix(name, item.Name + "-subutai-template"))))) &&
+		if (name == "" || (name != "" && (name == item.Name || strings.HasPrefix(name, item.Name + "-subutai-template")))) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = append(items, item)
 		}
@@ -340,7 +374,10 @@ func List(repo string, r *http.Request) []byte {
 			break
 		}
 	}
-	log.Debug(fmt.Sprintf("*** Final list of items: %+v", items))
+	log.Info(fmt.Sprintf("list: final list: "))
+	for i, k := range items {
+		log.Info(fmt.Sprintf("list: item %d: %s (filename: %s)", i, k.ID, db.NameByHash(k.ID)))
+	}
 	output, err := json.Marshal(items)
 	if err != nil {
 		return nil
@@ -460,4 +497,9 @@ func unique(list []string) []string {
 		}
 	}
 	return result
+}
+
+func union(listA []string, listB []string) []string {
+	listA = append(listA, listB[:]...)
+	return unique(listA)
 }
