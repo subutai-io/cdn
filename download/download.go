@@ -202,6 +202,8 @@ func Info(repo string, r *http.Request) []byte {
 				log.Info("Case 4")
 				list = intersect([]string{id}, union(db.OwnerFilesByRepo(owner, repo), intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
 			}
+		} else {
+			list = []string{id}
 		}
 	} else {
 		if name == "" {
