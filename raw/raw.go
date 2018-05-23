@@ -12,6 +12,7 @@ import (
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/cdn/download"
 	"github.com/subutai-io/cdn/upload"
+	"fmt"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -37,6 +38,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		_, header, _ := r.FormFile("file")
 		my_uuid, _ := uuid.NewV4()
 		id := my_uuid.String()
+		log.Info(fmt.Sprintf("Uploading file %s with id %s and owner %s to raw repo", header.Filename, id, owner))
 		db.Write(owner, id, header.Filename, info)
 		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
 			log.Info("Sharing " + md5 + " with " + owner)
