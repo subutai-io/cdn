@@ -29,7 +29,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if len(r.MultipartForm.Value["key"]) > 0 {
 			key := pgp.Verify("Hub", r.MultipartForm.Value["key"][0])
+			log.Debug(fmt.Sprintf("Key == %+v", r.MultipartForm.Value["key"]))
 			if len(key) == 0 {
+				log.Debug(fmt.Sprintf("Key empty"))
 				w.Write([]byte("Signature check failed"))
 				w.WriteHeader(http.StatusForbidden)
 				return

@@ -384,6 +384,34 @@ func GetFileScope(hash, owner string) (scope []string) {
 	return
 }
 
+func GetUserToken(user string) (token string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tokens); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				log.Debug(fmt.Sprintf("(GetUserToken): Current token %s", string(k)))
+				if c := b.Bucket(k); c != nil {
+					date := new(time.Time)
+					date.UnmarshalText(c.Get([]byte("date")))
+					if date.Add(time.Hour * 24).Before(time.Now()) {
+						return nil
+					}
+					if value := c.Get([]byte("name")); value != nil && string(value) == user {
+						token = string(k)
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+	if token != "" {
+		log.Debug(fmt.Sprintf("(GetUserToken): Found %s's valid token %s", user, token))
+	} else {
+		log.Debug(fmt.Sprintf("(GetUserToken): Couldn't find valid token of %s", user))
+	}
+	return
+}
+
 // Hash returns MD5 and SHA256 hashes by ID
 func Hash(key string) (md5, sha256 string) {
 	db.View(func(tx *bolt.Tx) error {
@@ -730,9 +758,10 @@ func RebuildShare(hash, owner string) {
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
-		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
+		if !log.Check(log.WarnLevel, "Registering user " + strings.ToLower(string(name)), err) {
 			b.Put([]byte("key"), key)
 			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
+				log.Debug(fmt.Sprintf("Created user %+v", name))
 				b.Put(key, nil)
 			}
 		}
@@ -861,26 +890,32 @@ func Tag(query string) (list []string, err error) {
 
 // TokenOwner returns the owner of the given token
 func TokenOwner(token string) (name string) {
-	token = fmt.Sprintf("%x", sha256.Sum256([]byte(token)))
-	//	log.Debug(fmt.Sprintf("Checking token %+v...", token))
+	tokenFormatted := fmt.Sprintf("%x", sha256.Sum256([]byte(token)))
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(Tokens).Bucket([]byte(token)); b != nil {
+		if b := tx.Bucket(Tokens).Bucket([]byte(tokenFormatted)); b != nil {
 			date := new(time.Time)
 			date.UnmarshalText(b.Get([]byte("date")))
 			if date.Add(time.Hour * 24).Before(time.Now()) {
-				//				log.Debug(fmt.Sprintf("Token %+v is too old. Deleting this token", token))
-				tx.Bucket(Tokens).Delete([]byte(token))
+				return nil
+			}
+			if value := b.Get([]byte("name")); value != nil {
+				name = string(value)
+			}
+		} else if b := tx.Bucket(Tokens).Bucket([]byte(token)); b != nil {
+			date := new(time.Time)
+			date.UnmarshalText(b.Get([]byte("date")))
+			if date.Add(time.Hour * 24).Before(time.Now()) {
 				return nil
 			}
 			if value := b.Get([]byte("name")); value != nil {
 				name = string(value)
 			}
 		} else {
-			//			log.Debug(fmt.Sprintf("Token %+v is not found", token))
+			log.Debug(fmt.Sprintf("Token %s (formatted: %s) not found", token, tokenFormatted))
 		}
 		return nil
 	})
-	log.Debug(fmt.Sprintf("Checking token %+v finished. Token corresponds to name %+v", token, name))
+	log.Debug(fmt.Sprintf("Checking token %s (formatted: %s) finished. Token corresponds to name %s", token, tokenFormatted, name))
 	return
 }
 
@@ -888,16 +923,15 @@ func TokenOwner(token string) (name string) {
 func TokenFilesByRepo(token string, repo string) (list []string) {
 	owner := TokenOwner(token)
 	if owner == "" {
-		return list
+		log.Debug(fmt.Sprintf("(TokenFilesByRepo): Couldn't find owner of token %s", token))
+		return
 	}
-	log.Debug(fmt.Sprintf("(TokenFilesByRepo): Gathering all %+v's files from repo %+v...", token, repo))
+	log.Debug(fmt.Sprintf("(TokenFilesByRepo): Gathering all %+v's files from repo %+v...", owner, repo))
 	db.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
-					log.Debug(fmt.Sprintf("(TokenFilesByRepo): File of %+v -- (key: %v, value: %v)", owner, string(k), string(v)))
-					if /* CheckShare(string(k), owner) */ filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
-						log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Found %+v files of %+v with key %v in repo %v", filesNumber, owner, string(k), repo))
+					if filesNumber := CheckRepo(owner, []string{repo}, string(k)); filesNumber > 0 {
 						list = append(list, string(k))
 					}
 					return nil

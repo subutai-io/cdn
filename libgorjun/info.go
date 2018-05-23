@@ -81,7 +81,7 @@ func (g *GorjunUser) Share(lists []GorjunFile, shareWith, artifactType string) (
 	for _, list := range lists {
 		locJson, err := json.Marshal(share{Token: g.Token, Id: list.ID, Add: []string{shareWith}, Remove: []string{}, Repo: artifactType})
 		req, err := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/share", bytes.NewBuffer(locJson))
-		req.Header.Set("Content-Type", "application/json")
+//		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		client := &http.Client{}
 		fmt.Printf("Sending request: %+v\njson:%+v\n", req, string(locJson))
 		resp, err := client.Do(req)

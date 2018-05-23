@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 	}
 	r.ParseMultipartForm(32 << 20)
 	file, header, err := r.FormFile("file")
-	log.Debug(fmt.Sprintf("file, header, err: %+v, %+v, %+v", file, header, err))
+	log.Info(fmt.Sprintf("header.Filename: %s", header.Filename))
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Cannot get file from request"))
@@ -194,15 +194,40 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 // Share receives HTTP Request of type application/json and handles it
 func Share(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		jsonDecoder := json.NewDecoder(r.Body)
+		log.Debug(fmt.Sprintf("POST Share request: %+v", r))
+		log.Debug(fmt.Sprintf("Body: %+v", r.Body))
+		var err error
 		var data share
-		err := jsonDecoder.Decode(&data)
-		if err != nil {
-//			log.Debug(fmt.Sprintf("Bad request: %+v", r))
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Empty json"))
-			log.Warn(fmt.Sprintf("Share request error: %v. Probably empty json, nothing to do", err))
-			return
+		r.ParseMultipartForm(32 << 20)
+		formValue := r.FormValue("json")
+		log.Debug(fmt.Sprintf("r.FormValue(\"json\"): %+v", formValue))
+		multipartFormValue := make([]string, 0)
+		if r.MultipartForm != nil {
+			multipartFormValue = r.MultipartForm.Value["json"]
+			log.Debug(fmt.Sprintf("r.MultipartForm: %+v", multipartFormValue))
+		}
+		log.Debug(fmt.Sprintf("form: %+v", formValue))
+		log.Debug(fmt.Sprintf("multipart: %+v", multipartFormValue))
+		if len(formValue) == 0 && len(multipartFormValue) == 0 {
+			log.Debug(fmt.Sprintf("Both empty. Body: %+v", r.Body))
+			b := r.Body
+			d := json.NewDecoder(b)
+			if err = d.Decode(&data); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Empty json"))
+				log.Warn("Share request: empty json, nothing to do")
+				return
+			}
+		} else {
+			err = json.Unmarshal([]byte(formValue), &data)
+			if err != nil {
+				err = json.Unmarshal([]byte(multipartFormValue[0]), &data)
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte("Failed to parse json body"))
+					return
+				}
+			}
 		}
 		if len(data.Token) == 0 || len(db.TokenOwner(data.Token)) == 0 {
 			w.WriteHeader(http.StatusUnauthorized)

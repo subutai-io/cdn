@@ -12,6 +12,7 @@ import (
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/cdn/download"
 	"github.com/subutai-io/cdn/upload"
+	"fmt"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
