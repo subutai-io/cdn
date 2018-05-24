@@ -11,7 +11,6 @@ import (
 func CleanGarbage() {
 	whiteList := []string{"Packages", "Release", "Release.gpg", "Packages.gz"}
 	list := db.SearchName("")
-
 	for _, k := range list {
 		info := db.Info(k)
 		if len(info["Description"]) > 0 {
@@ -23,18 +22,15 @@ func CleanGarbage() {
 			whiteList = append(whiteList, info["id"])
 		}
 	}
-
 	files, err := ioutil.ReadDir(config.Storage.Path)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	for _, file := range files {
 		if !stringInSlice(file.Name(), whiteList) {
 			os.Remove(config.Storage.Path + file.Name())
 		}
 	}
-
 }
 
 func stringInSlice(a string, list []string) bool {

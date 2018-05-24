@@ -120,6 +120,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(err.Error()))
 			return
 		}
+		if len(r.MultipartForm.Value["private"]) > 0 && r.MultipartForm.Value["private"][0] == "true" {
+			log.Info("Sharing " + ID + " with " + owner)
+			db.MakePrivate(ID, owner)
+		} else {
+			db.MakePublic(ID, owner)
+		}
 		w.Write([]byte(ID))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}
