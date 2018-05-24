@@ -19,6 +19,7 @@ import (
 	"github.com/subutai-io/cdn/raw"
 	"github.com/subutai-io/cdn/template"
 	"github.com/subutai-io/cdn/upload"
+	"github.com/subutai-io/cdn/lib"
 )
 
 var version = "6.3.0"
@@ -65,29 +66,29 @@ func main() {
 	log.Info("Server has started. " + "Listening at " + "127.0.0.1:8080")
 
 	http.HandleFunc("/kurjun/rest/file/get", raw.Download)
-	http.HandleFunc("/kurjun/rest/file/info", raw.Info)
+	http.HandleFunc("/kurjun/rest/file/info", lib.Info)
 	http.HandleFunc("/kurjun/rest/raw/get", raw.Download)
 	http.HandleFunc("/kurjun/rest/template/get", template.Download)
 
 	http.HandleFunc("/kurjun/rest/apt/", apt.Download)
-	http.HandleFunc("/kurjun/rest/apt/info", apt.Info)
-	http.HandleFunc("/kurjun/rest/apt/list", apt.List)
+	http.HandleFunc("/kurjun/rest/apt/info", lib.Info)
+	http.HandleFunc("/kurjun/rest/apt/list", lib.List)
 	http.HandleFunc("/kurjun/rest/apt/delete", apt.Delete)
 	http.HandleFunc("/kurjun/rest/apt/upload", apt.Upload)
 	http.HandleFunc("/kurjun/rest/apt/download", apt.Download)
 	http.HandleFunc("/kurjun/rest/apt/generate", apt.Generate)
 
 	http.HandleFunc("/kurjun/rest/raw/", raw.Download)
-	http.HandleFunc("/kurjun/rest/raw/info", raw.Info)
-	http.HandleFunc("/kurjun/rest/raw/list", raw.List)
+	http.HandleFunc("/kurjun/rest/raw/info", lib.Info)
+	http.HandleFunc("/kurjun/rest/raw/list", lib.List)
 	http.HandleFunc("/kurjun/rest/raw/delete", raw.Delete)
 	http.HandleFunc("/kurjun/rest/raw/upload", raw.Upload)
 	http.HandleFunc("/kurjun/rest/raw/download", raw.Download)
 
 	http.HandleFunc("/kurjun/rest/template/", template.Download)
 	http.HandleFunc("/kurjun/rest/template/tag", template.Tag)
-	http.HandleFunc("/kurjun/rest/template/info", template.Info)
-	http.HandleFunc("/kurjun/rest/template/list", template.List)
+	http.HandleFunc("/kurjun/rest/template/info", lib.Info)
+	http.HandleFunc("/kurjun/rest/template/list", lib.List)
 	http.HandleFunc("/kurjun/rest/template/update", template.ModifyConfig)
 	http.HandleFunc("/kurjun/rest/template/delete", template.Delete)
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)

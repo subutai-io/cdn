@@ -1,4 +1,4 @@
-package download
+package lib
 
 import (
 	"crypto/tls"
@@ -157,7 +157,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 }
 
 // Info returns JSON formatted list of elements. It allows to apply some filters to Search.
-func Info(repo string, r *http.Request) []byte {
+func GetInfo(repo string, r *http.Request) []byte {
 	log.Debug(fmt.Sprintf("Received info request.\n\nrepo: %+v\n\nr: %+v\n\n", repo, r))
 	var items []ListItem
 	var itemLatestVersion ListItem
@@ -170,7 +170,7 @@ func Info(repo string, r *http.Request) []byte {
 	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
-	version = processVersion(version)
+	version = ProcessVersion(version)
 	if id != "" && name != "" && db.NameByHash(id) != name {
 		return nil
 	}
@@ -188,19 +188,19 @@ func Info(repo string, r *http.Request) []byte {
 				list = []string{id}
 			} else if owner == "" && token != "" {
 				log.Info("Case 2")
-				list = intersect([]string{id}, intersect(db.SearchName(name), db.OwnerFilesByRepo(db.TokenOwner(token), repo)))
+				list = Intersect([]string{id}, Intersect(db.SearchName(name), db.OwnerFilesByRepo(db.TokenOwner(token), repo)))
 				if len(list) == 0 {
-					list = intersect([]string{id}, intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo)))
+					list = Intersect([]string{id}, Intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo)))
 					if len(list) == 0 {
-						list = intersect([]string{id}, db.SearchName(name))
+						list = Intersect([]string{id}, db.SearchName(name))
 					}
 				}
 			} else if owner != "" && token == "" {
 				log.Info("Case 3")
-				list = intersect([]string{id}, db.OwnerFilesByRepo(owner, repo))
+				list = Intersect([]string{id}, db.OwnerFilesByRepo(owner, repo))
 			} else {
 				log.Info("Case 4")
-				list = intersect([]string{id}, union(db.OwnerFilesByRepo(owner, repo), intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
+				list = Intersect([]string{id}, Union(db.OwnerFilesByRepo(owner, repo), Intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
 			}
 		} else {
 			list = []string{id}
@@ -221,7 +221,7 @@ func Info(repo string, r *http.Request) []byte {
 				verified = "true"
 			} else if owner == "" && token != "" {
 				log.Info("Case 2")
-				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+				list = Intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 				onlyTokenOwner := make([]string, 0)
 				for _, k := range list {
 					if db.FileField(k, "owner")[0] == db.TokenOwner(token) {
@@ -230,7 +230,7 @@ func Info(repo string, r *http.Request) []byte {
 				}
 				list = onlyTokenOwner
 				if len(list) == 0 {
-					list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+					list = Intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 					if len(list) == 0 {
 						list = db.SearchName(name)
 						verified = "true"
@@ -241,16 +241,16 @@ func Info(repo string, r *http.Request) []byte {
 				list = db.OwnerFilesByRepo(owner, repo)
 			} else {
 				log.Info("Case 4")
-				list = intersect(db.SearchName(name), union(db.OwnerFilesByRepo(owner, repo), intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
+				list = Intersect(db.SearchName(name), Union(db.OwnerFilesByRepo(owner, repo), Intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
 			}
 		} else {
 			list = db.SearchName(name)
 		}
 	}
-	list = unique(list)
+	list = Unique(list)
 	if tag != "" {
 		listByTag, _ := db.Tag(tag)
-		list = intersect(list, listByTag)
+		list = Intersect(list, listByTag)
 	}
 	if verified == "true" {
 		itemLatestVersion = GetVerified(list, name, repo, version)
@@ -315,7 +315,7 @@ func Info(repo string, r *http.Request) []byte {
 	return output
 }
 
-func List(repo string, r *http.Request) []byte {
+func GetList(repo string, r *http.Request) []byte {
 	log.Debug(fmt.Sprintf("Received list request.\nrepo: %+v\nr: %+v", repo, r))
 	var items []ListItem
 	p := []int{0, 1000}
@@ -336,19 +336,19 @@ func List(repo string, r *http.Request) []byte {
 		log.Info("Case 2")
 	} else if owner != "" && token == "" {
 		log.Info("Case 3")
-		list = intersect(list, db.OwnerFilesByRepo(owner, repo))
+		list = Intersect(list, db.OwnerFilesByRepo(owner, repo))
 	} else {
 		log.Info("Case 4")
-		list = union(db.OwnerFilesByRepo(owner, repo),
-			intersect(
+		list = Union(db.OwnerFilesByRepo(owner, repo),
+			Intersect(
 				db.TokenFilesByRepo(db.GetUserToken(owner), repo),
 				db.TokenFilesByRepo(token, repo)))
 	}
-	list = unique(list)
+	list = Unique(list)
 	if tag != "" {
 		listByTag, err := db.Tag(tag)
 		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
-		list = intersect(list, listByTag)
+		list = Intersect(list, listByTag)
 	}
 	pstr := strings.Split(page, ",")
 	p[0], _ = strconv.Atoi(pstr[0])
@@ -392,22 +392,6 @@ func List(repo string, r *http.Request) []byte {
 		output = []byte("[]")
 	}
 	return output
-}
-
-func processVersion(version string) string {
-	if version == "latest" {
-		return ""
-	}
-	return version
-}
-
-func In(str string, list []string) bool {
-	for _, s := range list {
-		if s == str {
-			return true
-		}
-	}
-	return false
 }
 
 func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
@@ -480,32 +464,4 @@ func FormatItem(info map[string]string, repo string) ListItem {
 	return item
 }
 
-func intersect(listA, listB []string) (list []string) {
-	mapA := make(map[string]bool)
-	for _, item := range listA {
-		mapA[item] = true
-	}
-	for _, item := range listB {
-		if mapA[item] {
-			list = append(list, item)
-		}
-	}
-	return list
-}
 
-func unique(list []string) []string {
-	was := make(map[string]bool)
-	result := []string{}
-	for _, v := range list {
-		if !was[v] {
-			was[v] = true
-			result = append(result, v)
-		}
-	}
-	return result
-}
-
-func union(listA []string, listB []string) []string {
-	listA = append(listA, listB[:]...)
-	return unique(listA)
-}

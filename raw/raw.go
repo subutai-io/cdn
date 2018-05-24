@@ -10,9 +10,9 @@ import (
 	"net/url"
 
 	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/cdn/download"
 	"github.com/subutai-io/cdn/upload"
 	"fmt"
+	"github.com/subutai-io/cdn/lib"
 )
 
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	uri = strings.Replace(uri, "/kurjun/rest/raw/get", "/kurjun/rest/raw/download", 1)
 	args := strings.Split(strings.TrimPrefix(uri, "/kurjun/rest/raw/"), "/")
 	if len(args) > 0 && strings.HasPrefix(args[0], "download") {
-		download.Handler("raw", w, r)
+		lib.Handler("raw", w, r)
 		return
 	}
 	if len(args) > 1 {
@@ -84,27 +84,4 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Bad Request"))
 	}
-}
-
-func Info(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		return
-	}
-	info := download.Info("raw", r)
-	if len(info) == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not found"))
-	}
-	w.Write(info)
-}
-
-func List(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		return
-	}
-	w.Write(download.List("raw", r))
 }

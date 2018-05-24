@@ -21,12 +21,12 @@ import (
 	"github.com/jhoonb/archivex"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/cdn/download"
 	"github.com/subutai-io/cdn/upload"
 	"io/ioutil"
 	"net/url"
 	"reflect"
 	"regexp"
+	"github.com/subutai-io/cdn/lib"
 )
 
 func readTempl(hash string) (configfile string, err error) {
@@ -61,9 +61,9 @@ func readTemplate(dir string) (configfile string, err error) {
 	return configfile, nil
 }
 
-func getConf(hash string, configfile string) (t *download.ListItem) {
+func getConf(hash string, configfile string) (t *lib.ListItem) {
 	my_uuid, _ := uuid.NewV4()
-	t = &download.ListItem{ID: my_uuid.String()}
+	t = &lib.ListItem{ID: my_uuid.String()}
 	t.Hash.Md5 = hash
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
@@ -96,8 +96,8 @@ func getConf(hash string, configfile string) (t *download.ListItem) {
 	return
 }
 
-func getConfig(hash string, configfile, id string) (t *download.ListItem) {
-	t = &download.ListItem{ID: id}
+func getConfig(hash string, configfile, id string) (t *lib.ListItem) {
+	t = &lib.ListItem{ID: id}
 	for _, v := range strings.Split(configfile, "\n") {
 		if line := strings.Split(v, "="); len(line) > 1 {
 			line[0] = strings.TrimSpace(line[0])
@@ -181,7 +181,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 				if ID == t.ID {
 					continue
 				}
-				item := download.FormatItem(db.Info(ID), "template")
+				item := lib.FormatItem(db.Info(ID), "template")
 				if db.Delete(owner, "template", item.ID) < 1 {
 					f, _ := os.Stat(config.Storage.Path + item.Hash.Md5)
 					if f != nil { // TODO : Understand what's the matter here
@@ -201,7 +201,7 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	uri := strings.Replace(r.RequestURI, "/kurjun/rest/template/get", "/kurjun/rest/template/download", 1)
 	args := strings.Split(strings.TrimPrefix(uri, "/kurjun/rest/template/"), "/")
 	if len(args) > 0 && strings.HasPrefix(args[0], "download") {
-		download.Handler("template", w, r)
+		lib.Handler("template", w, r)
 		return
 	}
 	if len(args) > 1 {
@@ -217,52 +217,6 @@ func Download(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/kurjun/rest/template/download?id="+list[0]+"&token="+token, 302)
 		}
 	}
-}
-
-// func Torrent(w http.ResponseWriter, r *http.Request) {
-// 	id := r.URL.Query().Get("id")
-// 	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner()(strings.ToLower(r.URL.Query().Get("token")))) {
-// 		w.WriteHeader(http.StatusNotFound)
-// 		w.Write([]byte("Not found"))
-// 		return
-// 	}
-
-// 	reader := torrent.Load([]byte(id))
-// 	if reader == nil {
-// 		return
-// 	}
-// 	mi, err := metainfo.Load(reader)
-// 	if log.Check(log.WarnLevel, "Creating torrent for", err) {
-// 		w.WriteHeader(http.StatusNotFound)
-// 		w.Write([]byte("File not found"))
-// 		return
-// 	}
-
-// 	err = mi.Write(w)
-// 	log.Check(log.WarnLevel, "Writing to HTTP output", err)
-// }
-
-func Info(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		return
-	}
-	if info := download.Info("template", r); len(info) > 2 {
-		w.Write(info)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("404 Not found"))
-	}
-}
-
-func List(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		return
-	}
-	w.Write(download.List("template", r))
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
@@ -358,7 +312,7 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		item := download.FormatItem(db.Info(k), "template")
+		item := lib.FormatItem(db.Info(k), "template")
 		md5 := item.Hash.Md5
 		configPath := config.Storage.Path + "/tmp/foo/config"
 
@@ -403,10 +357,10 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func appendConfig(confPath string, item download.ListItem) error {
+func appendConfig(confPath string, item lib.ListItem) error {
 	templateParent := item.Parent
 	list := db.SearchName(templateParent)
-	latestVerified := download.GetVerified(list, templateParent, "template", "")
+	latestVerified := lib.GetVerified(list, templateParent, "template", "")
 	if latestVerified.ID == "" {
 		return errors.New("Can't find parent of template")
 	}
@@ -510,7 +464,7 @@ func SetContainerConf(confPath string, conf [][]string) error {
 	return ioutil.WriteFile(confPath, []byte(newconf), 0644)
 }
 
-func isValidTemplate(templateData *download.ListItem, owner string) (bool, string) {
+func isValidTemplate(templateData *lib.ListItem, owner string) (bool, string) {
 	var parentExist bool
 	valid, message := allFieldsPresent(templateData)
 	if !valid {
@@ -533,7 +487,7 @@ func isValidTemplate(templateData *download.ListItem, owner string) (bool, strin
 
 }
 
-func allFieldsPresent(templateData *download.ListItem) (bool, string) {
+func allFieldsPresent(templateData *lib.ListItem) (bool, string) {
 	s := reflect.ValueOf(templateData).Elem()
 	typeOfT := s.Type()
 	requiredFields := []string{"Parent", "ParentOwner", "ParentVersion", "Version", "Name", "Owner"}
@@ -542,7 +496,7 @@ func allFieldsPresent(templateData *download.ListItem) (bool, string) {
 		fieldName := typeOfT.Field(i).Name
 		fieldValue := f.Interface()
 
-		if (download.In(fieldName, requiredFields) && fieldValue == "") ||
+		if (lib.In(fieldName, requiredFields) && fieldValue == "") ||
 			(fieldName == "Owner" && len(templateData.Owner) == 0) {
 			message := fieldName + " field required"
 			return false, message
@@ -551,10 +505,10 @@ func allFieldsPresent(templateData *download.ListItem) (bool, string) {
 	return true, ""
 }
 
-func isParentExist(templateData *download.ListItem) (bool, string) {
+func isParentExist(templateData *lib.ListItem) (bool, string) {
 	list := db.SearchName(templateData.Parent)
 	for _, id := range list {
-		item := download.FormatItem(db.Info(id), "template")
+		item := lib.FormatItem(db.Info(id), "template")
 		if len(item.Owner) == 0 {
 			log.Info("Missing template owner")
 			continue
@@ -568,14 +522,14 @@ func isParentExist(templateData *download.ListItem) (bool, string) {
 	return false, "Parent not found"
 }
 
-func isOwnerCorrect(templateData *download.ListItem, owner string) (bool, string) {
+func isOwnerCorrect(templateData *lib.ListItem, owner string) (bool, string) {
 	if owner != templateData.Owner[0] {
 		return false, "Owner in config file is different"
 	}
 	return true, ""
 }
 
-func loop(templateData *download.ListItem, parentExist bool) (bool, string) {
+func loop(templateData *lib.ListItem, parentExist bool) (bool, string) {
 	log.Debug(fmt.Sprintf("Checking for loop (templateData.Parent: %v, templateData.Name: %v, parentExist: %v)", templateData.Parent, templateData.Name, parentExist))
 	if parentExist || templateData.Parent == templateData.Name {
 		log.Debug(fmt.Sprintf("Everything is OK)"))
@@ -585,7 +539,7 @@ func loop(templateData *download.ListItem, parentExist bool) (bool, string) {
 	return false, "loop detected"
 }
 
-func isFormatCorrect(templateData *download.ListItem) (bool, string) {
+func isFormatCorrect(templateData *lib.ListItem) (bool, string) {
 	name, _ := regexp.MatchString("^[a-zA-Z0-9._-]+$", templateData.Name)
 	version, _ := regexp.MatchString("^[a-zA-Z0-9._-]+$", templateData.Version)
 	if (name && version) == true {

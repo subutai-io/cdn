@@ -15,13 +15,13 @@ script:
   - go test -coverprofile=auto.out -covermode=atomic github.com/subutai-io/cdn/auto
   - go test -coverprofile=config.out -covermode=atomic github.com/subutai-io/cdn/config
   - go test -coverprofile=db.out -covermode=atomic github.com/subutai-io/cdn/db
-  - go test -coverprofile=download.out -covermode=atomic github.com/subutai-io/cdn/download
+  - go test -coverprofile=lib.out -covermode=atomic github.com/subutai-io/cdn/lib
   - go test -coverprofile=pgp.out -covermode=atomic github.com/subutai-io/cdn/pgp
   - go test -coverprofile=raw.out -covermode=atomic github.com/subutai-io/cdn/raw
   - go test -coverprofile=template.out -covermode=atomic github.com/subutai-io/cdn/template
   - go test -coverprofile=torrent.out -covermode=atomic github.com/subutai-io/cdn/torrent
   - go test -coverprofile=upload.out -covermode=atomic github.com/subutai-io/cdn/upload
-  - touch main.out cdn.out apt.out auth.out auto.out config.out db.out download.out pgp.out raw.out template.out torrent.out upload.out
+  - touch main.out cdn.out apt.out auth.out auto.out config.out db.out lib.out pgp.out raw.out template.out torrent.out upload.out
     #- go test -coverprofile=libgorjun.out -covermode=atomic github.com/subutai-io/cdn/libgorjun
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun; go get github.com/stretchr/testify/assert;
@@ -34,7 +34,7 @@ after_success:
   - cat auto.out >> coverage.txt
   - cat config.out >> coverage.txt
   - cat db.out >> coverage.txt
-  - cat download.out >> coverage.txt
+  - cat lib.out >> coverage.txt
   - cat libgorjun.out >> coverage.txt
   - cat pgp.out >> coverage.txt
   - cat raw.out >> coverage.txt

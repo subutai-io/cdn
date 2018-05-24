@@ -12,7 +12,6 @@ import (
 
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/cdn/download"
 	"github.com/subutai-io/cdn/upload"
 
 	"os/exec"
@@ -20,6 +19,7 @@ import (
 	"github.com/mkrautz/goar"
 	"github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
+	"github.com/subutai-io/cdn/lib"
 )
 
 func readDeb(hash string) (control bytes.Buffer, err error) {
@@ -159,35 +159,13 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Info(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		return
-	}
-	if info := download.Info("apt", r); len(info) != 0 {
-		w.Write(info)
-		return
-	}
-	w.Write([]byte("Not found"))
-}
-
-func List(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method"))
-		return
-	}
-	w.Write(download.List("apt", r))
-}
-
 func renameOldDebFiles() {
 	list := db.SearchName("")
 	for _, k := range list {
 		if db.CheckRepo("", []string{"apt"}, k) == 0 {
 			continue
 		}
-		item := download.FormatItem(db.Info(k), "apt")
+		item := lib.FormatItem(db.Info(k), "apt")
 		os.Rename(config.Storage.Path+item.Hash.Md5, config.Storage.Path+item.Name)
 	}
 }
