@@ -59,7 +59,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	if len(name) != 0 {
 		if len(tag) != 0 {
 			if len(tagSplit) > 1 {
-				listbyTag := db.UnionByTags(tagSplit, repo)
+				listbyTag := db.IntersectOfTags(tagSplit, repo)
 				for _, t := range listbyTag {
 					if db.NameByHash(t) == name {
 						id = t

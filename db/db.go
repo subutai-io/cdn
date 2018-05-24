@@ -758,7 +758,7 @@ func RebuildShare(hash, owner string) {
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
-		if !log.Check(log.WarnLevel, "Registering user " + strings.ToLower(string(name)), err) {
+		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
 			b.Put([]byte("key"), key)
 			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
 				log.Debug(fmt.Sprintf("Created user %+v", name))
@@ -1140,6 +1140,15 @@ func SearchByOneTag(tag string, repo string) (list []string) {
 	return list
 }
 
+func Exists(str string, list []string) bool {
+	for _, l := range list {
+		if str == l {
+			return true
+		}
+	}
+	return false
+}
+
 // UnionByTags return list of the values by one of respective tags
 func UnionByTags(tags []string, repo string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
@@ -1149,7 +1158,9 @@ func UnionByTags(tags []string, repo string) (list []string) {
 					if tag == string(k) {
 						vv := strings.Split(string(v), ",")
 						for _, vvv := range vv {
-							list = append(list, vvv)
+							if !Exists(vvv, list) {
+								list = append(list, vvv)
+							}
 						}
 					}
 					return nil
