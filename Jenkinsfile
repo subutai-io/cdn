@@ -10,7 +10,7 @@ try {
 	/* Building agent binary.
 	Node block used to separate agent and subos code.
 	*/
-	node(deb) {
+	node("deb") {
 		String goenvDir = ".goenv"
 		deleteDir()
 
