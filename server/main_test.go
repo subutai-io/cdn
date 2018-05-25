@@ -1,1 +1,1 @@
-package server
+package main
