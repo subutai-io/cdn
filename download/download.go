@@ -51,33 +51,25 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	tag := r.URL.Query().Get("tag")
 
-	log.Info("Len name: ", len(name))
-
 	tagSplit := strings.Split(tag, ",")
-	if len(id) == 0 && len(name) == 0 && len(tag) == 0 {
-		io.WriteString(w, "Please specify id,name or tag")
+	if len(id) == 0 && len(name) == 0 {
+		io.WriteString(w, "Please specify id or name")
 		return
-	} else if len(name) != 0 {
+	}
+	if len(name) != 0 {
 		if len(tag) != 0 {
 			if len(tagSplit) > 1 {
-				t := strings.Split(tag, ",")
-				for _, tt := range t {
-					listbyTag := db.SearchFileByTag(tt, repo)
-					for _, l := range listbyTag {
-						if db.NameByHash(string(l)) == name {
-							id = string(l)
-							log.Info("Tag with name. Id: ", id)
-						}
+				listbyTag := db.IntersectOfTags(tagSplit, repo)
+				for _, t := range listbyTag {
+					if db.NameByHash(t) == name {
+						id = t
 					}
 				}
-			} else if len(tag) != 0 {
-				listbyTag := db.SearchFileByTag(tag, repo)
-				if len(listbyTag) != 0 {
-					for _, l := range listbyTag {
-						if db.NameByHash(string(l)) == name {
-							id = string(l)
-							log.Info("id: ", id)
-						}
+			} else {
+				listbyTag := db.SearchByOneTag(tag, repo)
+				for _, t := range listbyTag {
+					if db.NameByHash(t) == name {
+						id = t
 					}
 				}
 			}
@@ -86,18 +78,7 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//if both name and id is not provided or empty, it will search id by tag and return the first file in list
-	if len(name) == 0 && len(id) == 0 {
-		if len(tag) != 0 {
-			listbyTag := db.SearchFileByTag(tag, repo)
-			if len(listbyTag) == 0 {
-				w.Write([]byte("No file with such tags"))
-				return
-			}
-			id = listbyTag[0]
-		}
-	}
-	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(token)) {
+	if len(db.NameByHash(id)) > 0 && !db.IsPublic(id) && !db.CheckShare(id, db.TokenOwner(strings.ToLower(r.URL.Query().Get("token")))) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Not found"))
 		return
@@ -180,7 +161,7 @@ func Info(repo string, r *http.Request) []byte {
 	}
 	list := make([]string, 0)
 	if id != "" {
-		log.Info(fmt.Sprintf("id was provided"))
+		//		log.Debug(fmt.Sprintf("id was provided"))
 		name = db.NameByHash(id)
 		if verified != "true" {
 			if owner == "" && token == "" {
@@ -285,7 +266,7 @@ func Info(repo string, r *http.Request) []byte {
 		}
 		item := FormatItem(db.Info(k), repo)
 		if (id == "" || id == item.ID) &&
-			(name == item.Name || strings.HasPrefix(name, item.Name + "-subutai-template")) &&
+			(name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = []ListItem{item}
 			itemVersion, _ := semver.Make(item.Version)
@@ -372,7 +353,7 @@ func List(repo string, r *http.Request) []byte {
 		}
 		item := FormatItem(db.Info(k), repo)
 		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
-		if (name == "" || (name != "" && (name == item.Name || strings.HasPrefix(name, item.Name + "-subutai-template")))) &&
+		if (name == "" || (name != "" && (name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")))) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = append(items, item)
 		}

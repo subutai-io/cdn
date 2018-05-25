@@ -758,7 +758,7 @@ func RebuildShare(hash, owner string) {
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
-		if !log.Check(log.WarnLevel, "Registering user " + strings.ToLower(string(name)), err) {
+		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
 			b.Put([]byte("key"), key)
 			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
 				log.Debug(fmt.Sprintf("Created user %+v", name))
@@ -1063,9 +1063,12 @@ func Write(owner, key, value string, options ...map[string]string) error {
 						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
 							for _, v := range strings.Split(v, ",") {
 								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
-								t, _ := tx.Bucket(Tags).CreateBucketIfNotExists(tag)
+								t, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte("template"))
+								if tt := t.Get([]byte(tag)); tt != nil {
+									key = string(tt) + "," + key
+								}
 								c.Put(tag, []byte("w"))
-								t.Put([]byte(key), []byte("w"))
+								t.Put([]byte(tag), []byte(key))
 							}
 						}
 					case "signature":
@@ -1100,30 +1103,124 @@ func CheckRepoOfHash(hash string) (repo string) {
 	return repo
 }
 
-// SearchFileByTag performs search file by the specified tag. Return the list of files with such tag.
-func SearchFileByTag(tag string, repo string) (listofIds []string) {
+//AddTag add new key to bucket Tags
+func AddTag(tags []string, id string, repo string) error {
+	ID := id
+	db.Update(func(tx *bolt.Tx) error {
+		if b, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte(repo)); b != nil {
+			for _, tag := range tags {
+				if value := b.Get([]byte(tag)); value != nil {
+					id = string(value) + "," + id
+				}
+				b.Put([]byte(tag), []byte(id))
+				id = ID
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
+// SearchByOneTag is performs search in bucket Tags by tag
+func SearchByOneTag(tag string, repo string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(MyBucket); b != nil {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
 			b.ForEach(func(k, v []byte) error {
-				r := CheckRepoOfHash(string(k))
-				t := string(b.Bucket(k).Get([]byte("tag")))
-				if r == repo {
-					if t == tag {
-						listofIds = append(listofIds, string(k))
-					} else {
-						tt := strings.Split(t, ",")
-						for _, s := range tt {
-							if s == tag {
-								listofIds = append(listofIds, string(k))
-							}
-						}
+				if string(k) == tag {
+					tags := strings.Split(string(v), ",")
+					for _, t := range tags {
+						list = append(list, t)
 					}
 				}
 				return nil
 			})
-			return nil
 		}
 		return nil
 	})
-	return listofIds
+	return list
+}
+
+func Exists(str string, list []string) bool {
+	for _, l := range list {
+		if str == l {
+			return true
+		}
+	}
+	return false
+}
+
+// UnionByTags return list of the values by one of respective tags
+func UnionByTags(tags []string, repo string) (list []string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+			for _, tag := range tags {
+				b.ForEach(func(k, v []byte) error {
+					if tag == string(k) {
+						vv := strings.Split(string(v), ",")
+						for _, vvv := range vv {
+							if !Exists(vvv, list) {
+								list = append(list, vvv)
+							}
+						}
+					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return list
+}
+
+// IntersectOfTags return IDs of files by all respective tags
+func IntersectOfTags(tags []string, repo string) (list []string) {
+	var list1, list2 []string
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if tags[0] == string(k) {
+					vv := strings.Split(string(v), ",")
+					for _, vvv := range vv {
+						list1 = append(list, vvv)
+					}
+				}
+				if tags[1] == string(k) {
+					vv := strings.Split(string(v), ",")
+					for _, vvv := range vv {
+						list2 = append(list, vvv)
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+
+	//intersection
+	low, high := list1, list2
+	if len(list1) > len(list2) {
+		low = list2
+		high = list1
+	}
+	done := false
+	for i, l := range low {
+		for j, h := range high {
+			f1 := i + 1
+			f2 := j + 1
+			if l == h {
+				list = append(list, h)
+				if f1 < len(low) && f2 < len(high) {
+					if low[f1] != high[f2] {
+						done = true
+					}
+				}
+				high = high[:j+copy(high[j:], high[j+1:])]
+				break
+			}
+		}
+		if done {
+			break
+		}
+	}
+	return list
 }
