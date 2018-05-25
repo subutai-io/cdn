@@ -93,7 +93,7 @@ func main() {
 	http.HandleFunc("/kurjun/rest/template/upload", template.Upload)
 	http.HandleFunc("/kurjun/rest/template/download", template.Download)
 
-//	http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
+	//	http.HandleFunc("/kurjun/rest/template/torrent", template.Torrent)
 
 	http.HandleFunc("/kurjun/rest/auth/key", auth.Key)
 	http.HandleFunc("/kurjun/rest/auth/keys", auth.Keys)
