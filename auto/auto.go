@@ -3,9 +3,10 @@ package auto
 import (
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/agent/log"
 	"io/ioutil"
-	"log"
 	"os"
+	"fmt"
 )
 
 func CleanGarbage() {
@@ -31,6 +32,30 @@ func CleanGarbage() {
 			os.Remove(config.Storage.Path + file.Name())
 		}
 	}
+	for _, k := range list {
+		md5, _ := db.Hash(k)
+		name := db.FileField(k, "name")
+		ok := false
+		for _, file := range files {
+			if file.Name() == md5 || (len(name) > 0 && file.Name() == name[0]) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			log.Info(fmt.Sprintf("Deleted file %s", k))
+			owner := db.FileField(k, "owner")
+			if len(owner) > 0 {
+				db.Delete(db.FileField(k, "owner")[0], db.CheckRepoOfHash(k), k)
+			} else {
+				db.Delete("", db.CheckRepoOfHash(k), k)
+			}
+		}
+	}
+	db.CleanSearchIndex()
+	db.CleanUserFiles()
+	db.CleanTokens()
+	db.CleanAuthID()
 }
 
 func stringInSlice(a string, list []string) bool {

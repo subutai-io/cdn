@@ -131,6 +131,79 @@ func CheckShare(hash, user string) (shared bool) {
 	return
 }
 
+func CleanAuthID() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(AuthID)
+		b.ForEach(func(k, v []byte) error {
+			b.Delete(k)
+			return nil
+		})
+		return nil
+	})
+}
+
+func CleanSearchIndex() {
+	db.Update(func(tx *bolt.Tx) error {
+		list := make([]string, 0)
+		b := tx.Bucket(SearchIndex)
+		b.ForEach(func(k, v []byte) error {
+			c := b.Bucket(k)
+			key, _ := c.Cursor().First()
+			if key == nil {
+				list = append(list, string(k))
+			} else {
+				c.ForEach(func(kk, vv []byte) error {
+					if tx.Bucket(MyBucket).Bucket(vv) == nil {
+						list = append(list, string(k))
+					}
+					return nil
+				})
+			}
+			return nil
+		})
+		for _, k := range list {
+			tx.Bucket(SearchIndex).DeleteBucket([]byte(k))
+		}
+		return nil
+	})
+}
+
+func CleanTokens() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(Tokens)
+		b.ForEach(func(k, v []byte) error {
+			if TokenOwner(string(k)) == "" {
+				b.DeleteBucket(k)
+			}
+			return nil
+		})
+		return nil
+	})
+}
+
+func CleanUserFiles() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(Users)
+		b.ForEach(func(k, v []byte) error {
+			c := b.Bucket(k)
+			if d := c.Bucket([]byte("files")); d != nil {
+				list := make([]string, 0)
+				d.ForEach(func(kk, vv []byte) error {
+					if tx.Bucket(MyBucket).Bucket(kk) == nil {
+						list = append(list, string(kk))
+					}
+					return nil
+				})
+				for _, kk := range list {
+					d.Delete([]byte(kk))
+				}
+			}
+			return nil
+		})
+		return nil
+	})
+}
+
 func Close() {
 	db.Close()
 }
@@ -208,6 +281,7 @@ func Delete(owner, repo, key string) (total int) {
 		}
 		// Deleting file association with user
 		if b := tx.Bucket(Users).Bucket([]byte(owner)); owned == 1 && b != nil {
+			log.Info(fmt.Sprintf("Deleting %s from %s's files bucket", key, owner))
 			if b := b.Bucket([]byte("files")); b != nil {
 				filename = b.Get([]byte(key))
 				b.Delete([]byte(key))
@@ -215,6 +289,7 @@ func Delete(owner, repo, key string) (total int) {
 		}
 		// Removing indexes and file only if no file owners left
 		if total == 1 || key != md5 {
+			log.Info(fmt.Sprintf("Deleting file %s completely", key))
 			// Deleting SearchIndex index
 			if b := tx.Bucket(SearchIndex).Bucket(bytes.ToLower(filename)); b != nil {
 				b.ForEach(func(k, v []byte) error {
@@ -1116,11 +1191,13 @@ func Write(owner, key, value string, options ...map[string]string) error {
 // CheckRepoOfHash return the type of file by its hash
 func CheckRepoOfHash(hash string) (repo string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)).Bucket([]byte("type")); b != nil {
-			b.ForEach(func(k, v []byte) error {
-				repo = string(k)
-				return nil
-			})
+		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("type")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					repo = string(k)
+					return nil
+				})
+			}
 		}
 		return nil
 	})
