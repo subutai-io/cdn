@@ -4,7 +4,6 @@ import (
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
 	"io/ioutil"
-	"log"
 	"os"
 )
 
@@ -22,10 +21,7 @@ func CleanGarbage() {
 			whiteList = append(whiteList, info["id"])
 		}
 	}
-	files, err := ioutil.ReadDir(config.Storage.Path)
-	if err != nil {
-		log.Fatal(err)
-	}
+	files, _ := ioutil.ReadDir(config.Storage.Path)
 	for _, file := range files {
 		if !stringInSlice(file.Name(), whiteList) {
 			os.Remove(config.Storage.Path + file.Name())

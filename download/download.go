@@ -462,28 +462,28 @@ func FormatItem(info map[string]string, repo string) ListItem {
 }
 
 func intersect(listA, listB []string) (list []string) {
-	mapA := make(map[string]bool)
+	mapA := make(map[string]int)
 	for _, item := range listA {
-		mapA[item] = true
+		mapA[item]++
 	}
 	for _, item := range listB {
-		if mapA[item] {
+		if mapA[item] > 0 {
+			mapA[item]--
 			list = append(list, item)
 		}
 	}
-	return list
+	return
 }
 
-func unique(list []string) []string {
+func unique(list []string) (result []string) {
 	was := make(map[string]bool)
-	result := []string{}
 	for _, v := range list {
 		if !was[v] {
 			was[v] = true
 			result = append(result, v)
 		}
 	}
-	return result
+	return
 }
 
 func union(listA []string, listB []string) []string {
