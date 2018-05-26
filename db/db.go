@@ -131,6 +131,79 @@ func CheckShare(hash, user string) (shared bool) {
 	return
 }
 
+func CleanAuthID() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(AuthID)
+		b.ForEach(func(k, v []byte) error {
+			b.Delete(k)
+			return nil
+		})
+		return nil
+	})
+}
+
+func CleanSearchIndex() {
+	db.Update(func(tx *bolt.Tx) error {
+		list := make([]string, 0)
+		b := tx.Bucket(SearchIndex)
+		b.ForEach(func(k, v []byte) error {
+			c := b.Bucket(k)
+			key, _ := c.Cursor().First()
+			if key == nil {
+				list = append(list, string(k))
+			} else {
+				c.ForEach(func(kk, vv []byte) error {
+					if tx.Bucket(MyBucket).Bucket(vv) == nil {
+						list = append(list, string(k))
+					}
+					return nil
+				})
+			}
+			return nil
+		})
+		for _, k := range list {
+			tx.Bucket(SearchIndex).DeleteBucket([]byte(k))
+		}
+		return nil
+	})
+}
+
+func CleanTokens() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(Tokens)
+		b.ForEach(func(k, v []byte) error {
+			if TokenOwner(string(k)) == "" {
+				b.DeleteBucket(k)
+			}
+			return nil
+		})
+		return nil
+	})
+}
+
+func CleanUserFiles() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(Users)
+		b.ForEach(func(k, v []byte) error {
+			c := b.Bucket(k)
+			if d := c.Bucket([]byte("files")); d != nil {
+				list := make([]string, 0)
+				d.ForEach(func(kk, vv []byte) error {
+					if tx.Bucket(MyBucket).Bucket(kk) == nil {
+						list = append(list, string(kk))
+					}
+					return nil
+				})
+				for _, kk := range list {
+					d.Delete([]byte(kk))
+				}
+			}
+			return nil
+		})
+		return nil
+	})
+}
+
 func Close() {
 	db.Close()
 }
@@ -208,6 +281,7 @@ func Delete(owner, repo, key string) (total int) {
 		}
 		// Deleting file association with user
 		if b := tx.Bucket(Users).Bucket([]byte(owner)); owned == 1 && b != nil {
+			log.Info(fmt.Sprintf("Deleting %s from %s's files bucket", key, owner))
 			if b := b.Bucket([]byte("files")); b != nil {
 				filename = b.Get([]byte(key))
 				b.Delete([]byte(key))
@@ -215,6 +289,7 @@ func Delete(owner, repo, key string) (total int) {
 		}
 		// Removing indexes and file only if no file owners left
 		if total == 1 || key != md5 {
+			log.Info(fmt.Sprintf("Deleting file %s completely", key))
 			// Deleting SearchIndex index
 			if b := tx.Bucket(SearchIndex).Bucket(bytes.ToLower(filename)); b != nil {
 				b.ForEach(func(k, v []byte) error {
@@ -539,6 +614,30 @@ func NameByHash(hash string) (name string) {
 	return
 }
 
+func OwnerHadThisFile(owner, md5 string) (has bool) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Users).Bucket([]byte(owner)); b != nil {
+			if c := b.Bucket([]byte("files")); c != nil {
+				c.ForEach(func(k, v []byte) error {
+					m, _ := Hash(string(k))
+					log.Info(fmt.Sprintf("OwnerHadThisFile: checking file %s - md5 == %s against (owner: %s, md5: %s)", string(k), m, owner, md5))
+					if md5 == m {
+						has = true
+					}
+					return nil
+				})
+			} else {
+				log.Info("OwnerHadThisFile: couldn't find files bucket")
+			}
+		} else {
+			log.Info("OwnerHadThisFile: couldn't find this user")
+		}
+		return nil
+	})
+	log.Info(fmt.Sprintf("OwnerHadThisFile: %v", has))
+	return
+}
+
 // OwnerFilesByRepo returns all public files of owner from specified repo
 func OwnerFilesByRepo(owner string, repo string) (list []string) {
 	log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Gathering all %+v's files from repo %+v...", owner, repo))
@@ -758,7 +857,7 @@ func RebuildShare(hash, owner string) {
 func RegisterUser(name, key []byte) {
 	db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
-		if !log.Check(log.WarnLevel, "Registering user " + strings.ToLower(string(name)), err) {
+		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
 			b.Put([]byte("key"), key)
 			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
 				log.Debug(fmt.Sprintf("Created user %+v", name))
@@ -1063,9 +1162,12 @@ func Write(owner, key, value string, options ...map[string]string) error {
 						if c, err := b.CreateBucketIfNotExists([]byte("tags")); err == nil && len(v) > 0 {
 							for _, v := range strings.Split(v, ",") {
 								tag := []byte(strings.ToLower(strings.TrimSpace(v)))
-								t, _ := tx.Bucket(Tags).CreateBucketIfNotExists(tag)
+								t, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte("template"))
+								if tt := t.Get([]byte(tag)); tt != nil {
+									key = string(tt) + "," + key
+								}
 								c.Put(tag, []byte("w"))
-								t.Put([]byte(key), []byte("w"))
+								t.Put([]byte(tag), []byte(key))
 							}
 						}
 					case "signature":
@@ -1089,41 +1191,137 @@ func Write(owner, key, value string, options ...map[string]string) error {
 // CheckRepoOfHash return the type of file by its hash
 func CheckRepoOfHash(hash string) (repo string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)).Bucket([]byte("type")); b != nil {
-			b.ForEach(func(k, v []byte) error {
-				repo = string(k)
-				return nil
-			})
+		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
+			if b := b.Bucket([]byte("type")); b != nil {
+				b.ForEach(func(k, v []byte) error {
+					repo = string(k)
+					return nil
+				})
+			}
 		}
 		return nil
 	})
 	return repo
 }
 
-// SearchFileByTag performs search file by the specified tag. Return the list of files with such tag.
-func SearchFileByTag(tag string, repo string) (listofIds []string) {
+//AddTag add new key to bucket Tags
+func AddTag(tags []string, id string, repo string) error {
+	ID := id
+	db.Update(func(tx *bolt.Tx) error {
+		if b, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte(repo)); b != nil {
+			for _, tag := range tags {
+				if value := b.Get([]byte(tag)); value != nil {
+					id = string(value) + "," + id
+				}
+				b.Put([]byte(tag), []byte(id))
+				id = ID
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
+// SearchByOneTag is performs search in bucket Tags by tag
+func SearchByOneTag(tag string, repo string) (list []string) {
 	db.View(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(MyBucket); b != nil {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
 			b.ForEach(func(k, v []byte) error {
-				r := CheckRepoOfHash(string(k))
-				t := string(b.Bucket(k).Get([]byte("tag")))
-				if r == repo {
-					if t == tag {
-						listofIds = append(listofIds, string(k))
-					} else {
-						tt := strings.Split(t, ",")
-						for _, s := range tt {
-							if s == tag {
-								listofIds = append(listofIds, string(k))
-							}
-						}
+				if string(k) == tag {
+					tags := strings.Split(string(v), ",")
+					for _, t := range tags {
+						list = append(list, t)
 					}
 				}
 				return nil
 			})
-			return nil
 		}
 		return nil
 	})
-	return listofIds
+	return list
+}
+
+func Exists(str string, list []string) bool {
+	for _, l := range list {
+		if str == l {
+			return true
+		}
+	}
+	return false
+}
+
+// UnionByTags return list of the values by one of respective tags
+func UnionByTags(tags []string, repo string) (list []string) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+			for _, tag := range tags {
+				b.ForEach(func(k, v []byte) error {
+					if tag == string(k) {
+						vv := strings.Split(string(v), ",")
+						for _, vvv := range vv {
+							if !Exists(vvv, list) {
+								list = append(list, vvv)
+							}
+						}
+					}
+					return nil
+				})
+			}
+		}
+		return nil
+	})
+	return list
+}
+
+// IntersectOfTags return IDs of files by all respective tags
+func IntersectOfTags(tags []string, repo string) (list []string) {
+	var list1, list2 []string
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
+			b.ForEach(func(k, v []byte) error {
+				if tags[0] == string(k) {
+					vv := strings.Split(string(v), ",")
+					for _, vvv := range vv {
+						list1 = append(list, vvv)
+					}
+				}
+				if tags[1] == string(k) {
+					vv := strings.Split(string(v), ",")
+					for _, vvv := range vv {
+						list2 = append(list, vvv)
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+
+	//intersection
+	low, high := list1, list2
+	if len(list1) > len(list2) {
+		low = list2
+		high = list1
+	}
+	done := false
+	for i, l := range low {
+		for j, h := range high {
+			f1 := i + 1
+			f2 := j + 1
+			if l == h {
+				list = append(list, h)
+				if f1 < len(low) && f2 < len(high) {
+					if low[f1] != high[f2] {
+						done = true
+					}
+				}
+				high = high[:j+copy(high[j:], high[j+1:])]
+				break
+			}
+		}
+		if done {
+			break
+		}
+	}
+	return list
 }

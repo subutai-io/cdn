@@ -16,23 +16,24 @@ import (
 	"fmt"
 
 	"bufio"
-	"code.cloudfoundry.org/archiver/extractor"
 	"errors"
+	"io/ioutil"
+	"net/url"
+	"reflect"
+	"regexp"
+
+	"code.cloudfoundry.org/archiver/extractor"
 	"github.com/jhoonb/archivex"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/cdn/download"
 	"github.com/subutai-io/cdn/upload"
-	"io/ioutil"
-	"net/url"
-	"reflect"
-	"regexp"
 )
 
 func readTempl(hash string) (configfile string, err error) {
 	var file bytes.Buffer
 	f, err := os.Open(config.Storage.Path + hash)
-	log.Check(log.WarnLevel, "Opening file " + config.Storage.Path + hash, err)
+	log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+hash, err)
 	defer f.Close()
 	gzf, err := gzip.NewReader(f)
 	if err != nil {
@@ -146,7 +147,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 				log.Warn(message)
 				w.WriteHeader(http.StatusNotAcceptable)
 				w.Write([]byte(message))
+				log.Info("Template is not valid")
+				if db.OwnerHadThisFile(t.Owner[0], md5) {
+					return
+				}
 			}
+			log.Info("Deleting uploaded template")
 			if db.Delete(owner, "template", md5) < 1 {
 				f, _ := os.Stat(config.Storage.Path + md5)
 				db.QuotaUsageSet(owner, -int(f.Size()))
@@ -425,7 +431,7 @@ func appendConfig(confPath string, item download.ListItem) error {
 
 func updateMetaDB(id, owner, hash, filename, configPath string) error {
 	md5sum := upload.Hash(config.Storage.Path + "/tmp/foo.tar.gz")
-	sha256sum := upload.Hash(config.Storage.Path + "/tmp/foo.tar.gz", "sha256")
+	sha256sum := upload.Hash(config.Storage.Path+"/tmp/foo.tar.gz", "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + hash)
 		return errors.New("Failed to calculate")
