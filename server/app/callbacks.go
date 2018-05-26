@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-// Info handles http request on
+// Info handles the HTTP request sent on one of the info endpoints
 func Info(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -20,6 +20,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// List handles the HTTP request sent on one of the list endpoints
 func List(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)

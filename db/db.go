@@ -23,7 +23,7 @@ var (
 	Tokens      = []byte("Tokens")
 	AuthID      = []byte("AuthID")
 	Tags        = []byte("Tags")
-	db          = InitDB()
+	DB          = InitDB()
 )
 
 var (
@@ -34,7 +34,7 @@ var (
 // AddShare adds user to share scope of file if the file wasn't shared with him yet
 func AddShare(hash, owner, user string) {
 	log.Debug(fmt.Sprintf("Sharing %+v's file %+v (filename: %+v) with user %+v", owner, hash, NameByHash(hash), user))
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				if b.Get([]byte(user)) == nil {
@@ -59,7 +59,7 @@ func AddShare(hash, owner, user string) {
 }
 
 func CheckAuthID(token string) (name string) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(AuthID)
 		if value := b.Get([]byte(token)); value != nil {
 			name = string(value)
@@ -76,7 +76,7 @@ func CheckRepo(owner string, repo []string, hash string) (val int) {
 		repo = []string{"apt", "template", "raw"}
 		log.Debug(fmt.Sprintf("Provided empty repo. New repo: %+v", repo))
 	}
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if len(owner) > 0 && !CheckShare(hash, owner) {
 				log.Debug(fmt.Sprintf("File %+v (name: %+v) doesn't belong to and is not shared with %+v", hash, NameByHash(hash), owner))
@@ -103,7 +103,7 @@ func CheckRepo(owner string, repo []string, hash string) (val int) {
 // CheckShare returns true if user has access to file, otherwise - false
 func CheckShare(hash, user string) (shared bool) {
 	log.Debug(fmt.Sprintf("Checking if user %+v has access to file %+v (%+v)", user, hash, NameByHash(hash)))
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if c := b.Bucket([]byte("scope")); c != nil {
 				if c.Get(publicScope) != nil {
@@ -132,12 +132,12 @@ func CheckShare(hash, user string) (shared bool) {
 }
 
 func Close() {
-	db.Close()
+	DB.Close()
 }
 
 // Count all artifacts that have MD5 equal to hash
 func CountMd5(hash string) (md5 int) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				if b := b.Bucket(k).Bucket([]byte("hash")); b != nil {
@@ -155,7 +155,7 @@ func CountMd5(hash string) (md5 int) {
 
 // CountTotal counts and sets user's total quota usage
 func CountTotal(user string) (total int) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(user)); b != nil {
 			if c := b.Bucket([]byte("files")); c != nil {
 				c.ForEach(func(k, v []byte) error {
@@ -171,10 +171,10 @@ func CountTotal(user string) (total int) {
 }
 
 func DebugDatabase() {
-	//	log.Debug(fmt.Sprintf("\ndb.GoString():\n%+v\n", db.GoString()))
-	//	log.Debug(fmt.Sprintf("\ndb.Stats():\n%+v\n", db.Stats()))
-	//	log.Debug(fmt.Sprintf("\ndb.Info():\n%+v\n", db.Info()))
-	db.View(func(tx *bolt.Tx) error {
+	//	log.Debug(fmt.Sprintf("\nDB.GoString():\n%+v\n", DB.GoString()))
+	//	log.Debug(fmt.Sprintf("\nDB.Stats():\n%+v\n", DB.Stats()))
+	//	log.Debug(fmt.Sprintf("\nDB.Info():\n%+v\n", DB.Info()))
+	DB.View(func(tx *bolt.Tx) error {
 		tx.ForEach(func(name []byte, b *bolt.Bucket) error {
 			log.Debug(fmt.Sprintf("\nPrinting tx:\n(name: %+v, b: %+v)\n", string(name), b))
 			PrintBuckets(b, []string{string(name)})
@@ -187,7 +187,7 @@ func DebugDatabase() {
 // Delete removes record about file from DB*2
 
 func Delete(owner, repo, key string) (total int) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		var filename []byte
 		owned := CheckRepo(owner, []string{}, key)
 		md5, _ := Hash(key)
@@ -242,7 +242,7 @@ func Edit(owner, key, value string, options ...map[string]string) {
 	if len(owner) == 0 {
 		owner = "subutai"
 	}
-	err := db.Update(func(tx *bolt.Tx) error {
+	err := DB.Update(func(tx *bolt.Tx) error {
 		//		Associating files with user
 		b, _ := tx.Bucket(Users).CreateBucketIfNotExists([]byte(owner))
 		if b, err := b.CreateBucketIfNotExists([]byte("files")); err == nil {
@@ -317,7 +317,7 @@ func Edit(owner, key, value string, options ...map[string]string) {
 func FileField(hash, field string) (list []string) {
 	log.Debug(fmt.Sprintf("FileField: providing field %+v for file %+v", field, NameByHash(hash)))
 	list = []string{}
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if f := b.Bucket([]byte(field)); f != nil {
 				//				log.Debug(fmt.Sprintf("Iterating through MyBucket tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", string(MyBucket), NameByHash(hash), field))
@@ -343,7 +343,7 @@ func FileField(hash, field string) (list []string) {
 func FileSignatures(hash string) (list map[string]string) {
 	log.Debug(fmt.Sprintf("Gathering owners and their signatures of file %+v", NameByHash(hash)))
 	list = map[string]string{}
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("owner")); b != nil {
 				b.ForEach(func(k, v []byte) error {
@@ -363,7 +363,7 @@ func FileSignatures(hash string) (list map[string]string) {
 // GetFileScope shows users with whom owner shared a file with particular hash
 func GetFileScope(hash, owner string) (scope []string) {
 	scope = []string{}
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				if b.Get(publicScope) == nil && b.Get(privateScope) == nil {
@@ -385,7 +385,7 @@ func GetFileScope(hash, owner string) (scope []string) {
 }
 
 func GetUserToken(user string) (token string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Tokens); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				log.Debug(fmt.Sprintf("(GetUserToken): Current token %s", string(k)))
@@ -414,7 +414,7 @@ func GetUserToken(user string) (token string) {
 
 // Hash returns MD5 and SHA256 hashes by ID
 func Hash(key string) (md5, sha256 string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(key)); b != nil {
 			if b := b.Bucket([]byte("hash")); b != nil {
 				if value := b.Get([]byte("md5")); value != nil {
@@ -433,7 +433,7 @@ func Hash(key string) (md5, sha256 string) {
 func Info(id string) map[string]string {
 	log.Debug(fmt.Sprintf("\n\nGathering %+v file's info", NameByHash(id)))
 	list := make(map[string]string)
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(id)); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				list[string(k)] = string(v)
@@ -472,7 +472,7 @@ func InitDB() *bolt.DB {
 // IsPublic returns true if file is publicly accessible
 func IsPublic(hash string) (public bool) {
 	log.Debug(fmt.Sprintf("Checking if file %+v (hash: %+v) is public", NameByHash(hash), hash))
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if c := b.Bucket([]byte("scope")); c != nil {
 				if c.Get(publicScope) == nil && c.Get(privateScope) == nil {
@@ -497,7 +497,7 @@ func IsPublic(hash string) (public bool) {
 
 // LastHash returns hash of the last uploaded file
 func LastHash(name, t string) (hash string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(SearchIndex).Bucket([]byte(strings.ToLower(name))); b != nil {
 			c := b.Cursor()
 			for k, v := c.Last(); k != nil; k, v = c.Prev() {
@@ -528,7 +528,7 @@ func MakePrivate(hash, owner string) {
 
 // NameByHash returns file's name by its ID
 func NameByHash(hash string) (name string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if value := b.Get([]byte("name")); value != nil {
 				name = string(value)
@@ -542,7 +542,7 @@ func NameByHash(hash string) (name string) {
 // OwnerFilesByRepo returns all public files of owner from specified repo
 func OwnerFilesByRepo(owner string, repo string) (list []string) {
 	log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Gathering all %+v's files from repo %+v...", owner, repo))
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
@@ -589,7 +589,7 @@ func PrintBuckets(b *bolt.Bucket, parents []string) {
 
 // QuotaGet returns value of user's disk quota
 func QuotaGet(user string) (quota int) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(user)); b != nil {
 			if q := b.Get([]byte("quota")); q != nil {
 				quota, _ = strconv.Atoi(string(q))
@@ -605,7 +605,7 @@ func QuotaGet(user string) (quota int) {
 // QuotaLeft returns user's quota left space
 func QuotaLeft(user string) int {
 	var quota, stored int
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(user)); b != nil {
 			if q := b.Get([]byte("quota")); q != nil {
 				quota, _ = strconv.Atoi(string(q))
@@ -631,7 +631,7 @@ func QuotaLeft(user string) int {
 
 // QuotaSet sets changes default storage quota for user
 func QuotaSet(user, quota string) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(user)); b != nil {
 			b.Put([]byte("quota"), []byte(quota))
 		}
@@ -641,7 +641,7 @@ func QuotaSet(user, quota string) {
 
 // QuotaUsageCorrect updates saved values of quota usage according to file index table
 func QuotaUsageCorrect() {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				if c := b.Bucket(k); c != nil {
@@ -661,7 +661,7 @@ func QuotaUsageCorrect() {
 
 // QuotaUsageGet returns value of used disk quota
 func QuotaUsageGet(user string) (stored int) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(user)); b != nil {
 			if s := b.Get([]byte("stored")); s != nil {
 				stored, _ = strconv.Atoi(string(s))
@@ -678,7 +678,7 @@ func QuotaUsageGet(user string) (stored int) {
 // QuotaUsageSet accepts size of added/removed file and updates quota usage for user
 func QuotaUsageSet(user string, value int) {
 	var stored int
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(user)); b != nil {
 			if s := b.Get([]byte("stored")); s != nil {
 				stored, _ = strconv.Atoi(string(s))
@@ -694,7 +694,7 @@ func QuotaUsageSet(user string, value int) {
 func RebuildShare(hash, owner string) {
 	log.Debug(fmt.Sprintf("RebuildShare(%+v, %+v) started", hash, owner))
 	public := true
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		log.Debug(fmt.Sprintf("Starting RebuildShare"))
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			/*			name := ""
@@ -756,7 +756,7 @@ func RebuildShare(hash, owner string) {
 }
 
 func RegisterUser(name, key []byte) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
 		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
 			b.Put([]byte("key"), key)
@@ -772,7 +772,7 @@ func RegisterUser(name, key []byte) {
 // RemoveShare removes user from share scope of file if the file was shared with him
 func RemoveShare(hash, owner, user string) {
 	log.Debug(fmt.Sprintf("RemoveShare(%+v, %+v, %+v) started", hash, owner, user))
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if b := b.Bucket([]byte("scope")); b != nil {
 				if b.Get([]byte(user)) != nil {
@@ -795,7 +795,7 @@ func RemoveShare(hash, owner, user string) {
 // RemoveTags deletes tag from index bucket and file information.
 // It should be executed on every file deletion to keep DB consistant.
 func RemoveTags(key, list string) error {
-	return db.Update(func(tx *bolt.Tx) error {
+	return DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(key)); b != nil {
 			if t := b.Bucket([]byte("tags")); t != nil {
 				for _, v := range strings.Split(list, ",") {
@@ -812,14 +812,14 @@ func RemoveTags(key, list string) error {
 }
 
 func SaveAuthID(name, token string) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		tx.Bucket(AuthID).Put([]byte(token), []byte(name))
 		return nil
 	})
 }
 
 func SaveToken(name, token string) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b, _ := tx.Bucket(Tokens).CreateBucketIfNotExists([]byte(token)); b != nil {
 			b.Put([]byte("name"), []byte(name))
 			now, _ := time.Now().MarshalText()
@@ -831,7 +831,7 @@ func SaveToken(name, token string) {
 
 // SaveTorrent saves torrent file for particular template in DB for future usage to prevent regeneration same file again.
 func SaveTorrent(hash, torrent []byte) {
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b, err := tx.Bucket(MyBucket).CreateBucketIfNotExists(hash); err == nil {
 			b.Put([]byte("torrent"), torrent)
 		}
@@ -841,8 +841,8 @@ func SaveTorrent(hash, torrent []byte) {
 
 // SearchName searches for all (public/private) files of all users that have "query" substring in their names
 func SearchName(query string) (list []string) {
-	log.Debug(fmt.Sprintf("Starting db.SearchName(%+v)", query))
-	db.View(func(tx *bolt.Tx) error {
+	log.Debug(fmt.Sprintf("Starting DB.SearchName(%+v)", query))
+	DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(SearchIndex)
 		b.ForEach(func(k, v []byte) error {
 			//			log.Debug(fmt.Sprintf("tx.Bucket(%+v).ForEach(key: %+v, value: %+v)", string(SearchIndex), string(k), string(v)))
@@ -873,8 +873,8 @@ func SearchName(query string) (list []string) {
 // Tag returns a list of artifacts that contains requested tags.
 // If no records found list will be empty.
 func Tag(query string) (list []string, err error) {
-	log.Debug(fmt.Sprintf("Starting db.Tag(%+v)", query))
-	err = db.View(func(tx *bolt.Tx) error {
+	log.Debug(fmt.Sprintf("Starting DB.Tag(%+v)", query))
+	err = DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Tags).Bucket([]byte(strings.ToLower(query))); b != nil {
 			return b.ForEach(func(k, v []byte) error {
 				list = append(list, string(k))
@@ -891,7 +891,7 @@ func Tag(query string) (list []string, err error) {
 // TokenOwner returns the owner of the given token
 func TokenOwner(token string) (name string) {
 	tokenFormatted := fmt.Sprintf("%x", sha256.Sum256([]byte(token)))
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Tokens).Bucket([]byte(tokenFormatted)); b != nil {
 			date := new(time.Time)
 			date.UnmarshalText(b.Get([]byte("date")))
@@ -927,7 +927,7 @@ func TokenFilesByRepo(token string, repo string) (list []string) {
 		return
 	}
 	log.Debug(fmt.Sprintf("(TokenFilesByRepo): Gathering all %+v's files from repo %+v...", owner, repo))
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
@@ -946,7 +946,7 @@ func TokenFilesByRepo(token string, repo string) (list []string) {
 
 // Torrent retrieves torrent file for template from DB. If no torrent file found it returns nil.
 func Torrent(hash []byte) (val []byte) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket(hash); b != nil {
 			if value := b.Get([]byte("torrent")); value != nil {
 				val = value
@@ -962,7 +962,7 @@ func UserFile(owner, file string) (list []string) {
 	if len(owner) == 0 {
 		owner = "subutai"
 	}
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
@@ -980,7 +980,7 @@ func UserFile(owner, file string) (list []string) {
 
 // UserKey is replaced by UserKeys and left for compatibility. This function should be removed later.
 func UserKey(name string) (key string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(strings.ToLower(name))); b != nil {
 			if value := b.Get([]byte("key")); value != nil {
 				key = string(value)
@@ -993,7 +993,7 @@ func UserKey(name string) (key string) {
 
 // UserKeys returns list of users' GPG keys
 func UserKeys(name string) (keys []string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Users).Bucket([]byte(strings.ToLower(name))); b != nil {
 			if k := b.Bucket([]byte("keys")); k != nil {
 				return k.ForEach(func(k, v []byte) error {
@@ -1013,7 +1013,7 @@ func Write(owner, key, value string, options ...map[string]string) error {
 	if len(owner) == 0 {
 		owner = "subutai"
 	}
-	err := db.Update(func(tx *bolt.Tx) error {
+	err := DB.Update(func(tx *bolt.Tx) error {
 		now, _ := time.Now().MarshalText()
 		// Associating files with user
 		b, _ := tx.Bucket(Users).CreateBucketIfNotExists([]byte(owner))
@@ -1091,7 +1091,7 @@ func Write(owner, key, value string, options ...map[string]string) error {
 
 // CheckRepoOfHash return the type of file by its hash
 func CheckRepoOfHash(hash string) (repo string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)).Bucket([]byte("type")); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				repo = string(k)
@@ -1106,7 +1106,7 @@ func CheckRepoOfHash(hash string) (repo string) {
 //AddTag add new key to bucket Tags
 func AddTag(tags []string, id string, repo string) error {
 	ID := id
-	db.Update(func(tx *bolt.Tx) error {
+	DB.Update(func(tx *bolt.Tx) error {
 		if b, _ := tx.Bucket(Tags).CreateBucketIfNotExists([]byte(repo)); b != nil {
 			for _, tag := range tags {
 				if value := b.Get([]byte(tag)); value != nil {
@@ -1123,7 +1123,7 @@ func AddTag(tags []string, id string, repo string) error {
 
 // SearchByOneTag is performs search in bucket Tags by tag
 func SearchByOneTag(tag string, repo string) (list []string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				if string(k) == tag {
@@ -1151,7 +1151,7 @@ func Exists(str string, list []string) bool {
 
 // UnionByTags return list of the values by one of respective tags
 func UnionByTags(tags []string, repo string) (list []string) {
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
 			for _, tag := range tags {
 				b.ForEach(func(k, v []byte) error {
@@ -1175,7 +1175,7 @@ func UnionByTags(tags []string, repo string) (list []string) {
 // IntersectOfTags return IDs of files by all respective tags
 func IntersectOfTags(tags []string, repo string) (list []string) {
 	var list1, list2 []string
-	db.View(func(tx *bolt.Tx) error {
+	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(Tags).Bucket([]byte(repo)); b != nil {
 			b.ForEach(func(k, v []byte) error {
 				if tags[0] == string(k) {

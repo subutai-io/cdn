@@ -3,6 +3,9 @@ package app
 import (
 	"net/http"
 	"strings"
+	"github.com/subutai-io/cdn/db"
+	"github.com/boltdb/bolt"
+	"fmt"
 )
 
 type SearchRequest struct {
@@ -27,6 +30,7 @@ func (r *SearchRequest) ParseRequest(req *http.Request) (err error) {
 	return
 }
 
+// BuildQuery constructs the query out of the existing parameters in SearchRequest
 func (r *SearchRequest) BuildQuery() (query map[string]string) {
 	if r.fileID != "" {
 		query["fileID"] = r.fileID
@@ -56,6 +60,36 @@ type SearchResult struct {
 
 }
 
-func Retrieve() {
+func Retrieve(request SearchRequest) []SearchResult {
+	query := request.BuildQuery()
+	results, err := Search(query)
+	if err != nil {
 
+	}
+	return results
+}
+
+func GetFileInfo(id string) (info map[string]string, err error) {
+	err = db.DB.View(func(tx *bolt.Tx) error {
+		file := tx.Bucket(db.MyBucket).Bucket([]byte(id))
+		if file == nil {
+			return fmt.Errorf("file %s not found", id)
+		}
+
+	})
+	if err != nil {
+		return nil, err
+	}
+
+}
+
+func Search(query map[string]string) ([]SearchResult, error) {
+	db.DB.View(func(tx *bolt.Tx) error {
+		files := tx.Bucket(db.MyBucket)
+		files.ForEach(func(k, v []byte) error {
+
+			return nil
+		})
+		return nil
+	})
 }
