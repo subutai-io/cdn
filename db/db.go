@@ -539,6 +539,30 @@ func NameByHash(hash string) (name string) {
 	return
 }
 
+func OwnerHadThisFile(owner, md5 string) (has bool) {
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(Users).Bucket([]byte(owner)); b != nil {
+			if c := b.Bucket([]byte("files")); c != nil {
+				c.ForEach(func(k, v []byte) error {
+					m, _ := Hash(string(k))
+					log.Info(fmt.Sprintf("OwnerHadThisFile: checking file %s - md5 == %s against (owner: %s, md5: %s)", string(k), m, owner, md5))
+					if md5 == m {
+						has = true
+					}
+					return nil
+				})
+			} else {
+				log.Info("OwnerHadThisFile: couldn't find files bucket")
+			}
+		} else {
+			log.Info("OwnerHadThisFile: couldn't find this user")
+		}
+		return nil
+	})
+	log.Info(fmt.Sprintf("OwnerHadThisFile: %v", has))
+	return
+}
+
 // OwnerFilesByRepo returns all public files of owner from specified repo
 func OwnerFilesByRepo(owner string, repo string) (list []string) {
 	log.Debug(fmt.Sprintf("(OwnerFilesByRepo): Gathering all %+v's files from repo %+v...", owner, repo))
