@@ -147,7 +147,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 				log.Warn(message)
 				w.WriteHeader(http.StatusNotAcceptable)
 				w.Write([]byte(message))
+				log.Info("Template is not valid")
+				if db.OwnerHadThisFile(t.Owner[0], md5) {
+					return
+				}
 			}
+			log.Info("Deleting uploaded template")
 			if db.Delete(owner, "template", md5) < 1 {
 				f, _ := os.Stat(config.Storage.Path + md5)
 				db.QuotaUsageSet(owner, -int(f.Size()))
