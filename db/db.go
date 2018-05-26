@@ -31,7 +31,7 @@ var (
 	privateScope = []byte("06e3ef83aafe325400bdd4b0321be4ad") // MD5 Hash of "private-scope"
 )
 
-// AddShare adds user to share scope of file if the file wasn't shared with him yet
+// AddShare adds user to share scope of file if the file wasn't shared with him yet.
 func AddShare(hash, owner, user string) {
 	log.Debug(fmt.Sprintf("Sharing %+v's file %+v (filename: %+v) with user %+v", owner, hash, NameByHash(hash), user))
 	DB.Update(func(tx *bolt.Tx) error {
