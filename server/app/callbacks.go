@@ -18,6 +18,9 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect list request"))
 		return
 	}
+	req.operation = "info"
+	files := Retrieve(req)
+
 }
 
 // List handles the HTTP request sent on one of the list endpoints
@@ -34,4 +37,6 @@ func List(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect list request"))
 		return
 	}
+	req.operation = "list"
+
 }
