@@ -12,15 +12,15 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method for info request"))
 		return
 	}
-	var req SearchRequest
-	err := req.ParseRequest(r)
+	var request SearchRequest
+	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect list request"))
 		return
 	}
-	req.operation = "info"
-	files := Retrieve(req)
+	request.operation = "info"
+	files := Retrieve(request)
 	result, _ := json.Marshal(files)
 	w.Write([]byte(result))
 }
@@ -32,15 +32,15 @@ func List(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method for list request"))
 		return
 	}
-	var req SearchRequest
-	err := req.ParseRequest(r)
+	var request SearchRequest
+	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect list request"))
 		return
 	}
-	req.operation = "list"
-	files := Retrieve(req)
+	request.operation = "list"
+	files := Retrieve(request)
 	results, _ := json.Marshal(files)
 	w.Write([]byte(results))
 }
