@@ -179,6 +179,7 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 		}
 		info["version"] = string(file.Get([]byte("version")))
 		info["tags"] = string(file.Get([]byte("tag")))
+		info["date"] = string(file.Get([]byte("date")))
 		return nil
 	})
 	if err != nil {
@@ -196,6 +197,7 @@ func MatchQuery(file, query map[string]string) bool {
 	return true
 }
 
+// Search return list of files with parameters like query
 func Search(query map[string]string) (list []SearchResult, err error) {
 	var sr SearchResult
 	db.DB.View(func(tx *bolt.Tx) error {

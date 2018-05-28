@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"net/http"
 )
 
@@ -19,7 +20,9 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.operation = "info"
-	//files := Retrieve(req)
+	files := Retrieve(req)
+	result, _ := json.Marshal(files)
+	w.Write([]byte(result))
 }
 
 // List handles the HTTP request sent on one of the list endpoints
@@ -37,5 +40,7 @@ func List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.operation = "list"
-
+	files := Retrieve(req)
+	results, _ := json.Marshal(files)
+	w.Write([]byte(results))
 }
