@@ -1,11 +1,12 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
-	"github.com/subutai-io/cdn/db"
+
 	"github.com/boltdb/bolt"
-	"fmt"
+	"github.com/subutai-io/cdn/db"
 )
 
 type SearchRequest struct {
@@ -54,8 +55,27 @@ func (r *SearchRequest) BuildQuery() (query map[string]string) {
 	return
 }
 
+// SearchResult is a struct which return after search in db by parameters of SearchRequest
 type SearchResult struct {
-
+	fileID       string `json:"id,omitempty"`
+	owner        string `json:",omitempty"`
+	name         string `json:",omitempty"`
+	filename     string `json",omitempty"`
+	repo         string `json:"type,omitempty"`
+	version      string `json:",omitempty"`
+	scope        string `json:",omitempty"`
+	md5          string `json:",omitempty"`
+	sha256       string `json:",omitempty"`
+	size         int    `json:",omitempty"`
+	tags         string `json:",omitempty"`
+	date         string `json:"upload-date-formatted,omitempty"`
+	timestamp    string `json:"upload-date-timestamp,omitempty"`
+	description  string `json:",omitempty"`
+	architecture string `json:",omitempty"`
+	parent       string `json:",omitempty"`
+	pversion     string `json:"parent-version,omitempty"`
+	powner       string `json:"parent-owner,omitempty"`
+	prefsize     string `json:",omitempty"`
 }
 
 func Retrieve(request SearchRequest) []SearchResult {
@@ -64,7 +84,7 @@ func Retrieve(request SearchRequest) []SearchResult {
 	if err != nil {
 
 	}
-//	if operation == ""
+	//	if operation == ""
 	return results
 }
 
@@ -102,11 +122,12 @@ func MatchQuery(file, query map[string]string) bool {
 		if file[key] != value {
 			return false
 		}
- 	}
- 	return true
+	}
+	return true
 }
 
 func Search(query map[string]string) ([]SearchResult, error) {
+	var sr SearchResult
 	db.DB.View(func(tx *bolt.Tx) error {
 		files := tx.Bucket(db.MyBucket)
 		files.ForEach(func(k, v []byte) error {
