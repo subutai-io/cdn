@@ -55,7 +55,16 @@ func (r *SearchRequest) BuildQuery() (query map[string]string) {
 }
 
 type SearchResult struct {
-
+	fileID  string // file's UUID (or MD5)
+	owner   string // file's owner username
+	name    string // file's name within CDN
+	repo    string // file's repository - either "apt", "raw", or "template"
+	version string // file's version
+	scope   string // file's availibility scope - public/private and users with whom it was shared
+	md5     string // file's MD5
+	sha256  string // file's SHA256
+	size    string // file's size in bytes
+	tags    string // file's tags in format: "tag1,tag2,tag3"
 }
 
 func Retrieve(request SearchRequest) []SearchResult {
@@ -64,7 +73,11 @@ func Retrieve(request SearchRequest) []SearchResult {
 	if err != nil {
 
 	}
-//	if operation == ""
+	if operation == "info" {
+
+	} else if operation == "list" {
+
+	}
 	return results
 }
 
