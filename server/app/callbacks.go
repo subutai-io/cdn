@@ -22,6 +22,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 	request.operation = "info"
 	files := Retrieve(request)
 	result, _ := json.Marshal(files)
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(result))
 }
 
@@ -42,5 +43,6 @@ func List(w http.ResponseWriter, r *http.Request) {
 	request.operation = "list"
 	files := Retrieve(request)
 	results, _ := json.Marshal(files)
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(results))
 }

@@ -21,30 +21,33 @@ type SearchRequest struct {
 	version   string // files' version
 	tags      string // files' tags in format: "tag1,tag2,tag3"
 	token     string // user's token
+	verified  string // flag for searching only among verified CDN users
 	operation string // operation type requested
 }
 
 // ParseRequest takes HTTP request and converts it into Request struct
 func (request *SearchRequest) ParseRequest(httpRequest *http.Request) (err error) {
-	request.fileID = httpRequest.URL.Query().Get("id")
-	request.name = httpRequest.URL.Query().Get("name")
-	request.owner = httpRequest.URL.Query().Get("owner")
-	request.repo = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func"]
-	request.version = httpRequest.URL.Query().Get("version")
-	request.tags = httpRequest.URL.Query().Get("tags")
-	request.token = httpRequest.URL.Query().Get("token")
+	request.fileID   = httpRequest.URL.Query().Get("id")
+	request.owner    = httpRequest.URL.Query().Get("owner")
+	request.name     = httpRequest.URL.Query().Get("name")
+	request.repo     = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func"]
+	request.version  = httpRequest.URL.Query().Get("version")
+	request.tags     = httpRequest.URL.Query().Get("tags")
+	request.token    = httpRequest.URL.Query().Get("token")
+	request.verified = httpRequest.URL.Query().Get("verified")
 	return
 }
 
 type validateFunc func(SearchRequest) error
 
 var (
-	validators map[string]validateFunc
+	validators    = make(map[string]validateFunc)
+	verifiedUsers = []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}
 )
 
 func InitValidators() {
 	validators["info"] = ValidateInfo
-	validators["list"]	= ValidateList
+	validators["list"] = ValidateList
 }
 
 func (request SearchRequest) ValidateRequest() error {
@@ -52,11 +55,57 @@ func (request SearchRequest) ValidateRequest() error {
 	return validator(request)
 }
 
+func CheckOwner(owner string) bool {
+	exists := false
+	db.DB.View(func(tx *bolt.Tx) error {
+		exists = tx.Bucket(db.Users).Bucket([]byte(owner)) != nil
+		return nil
+	})
+	return exists
+}
+
+func CheckToken(token string) bool {
+	return db.TokenOwner(token) != ""
+}
+
+func In(item string, list []string) bool {
+	for _, v := range list {
+		if item == v {
+			return true
+		}
+	}
+	return false
+}
+
 func ValidateInfo(request SearchRequest) error {
+	if request.fileID == "" && request.name == "" {
+		return fmt.Errorf("both fileID and name weren't given")
+	}
+	if request.fileID != "" && request.name != "" && db.NameByHash(request.fileID) != request.name {
+		return fmt.Errorf("both fileID and name provided but they are not the same")
+	}
+	if !CheckOwner(request.owner) {
+		request.owner = ""
+	}
+	if !CheckToken(request.token) {
+		request.token = ""
+	}
+	if request.verified == "true" && len(request.owner) > 0 && !In(request.owner, verifiedUsers) {
+		return fmt.Errorf("both verified = true and owner given but owner is not a verified user")
+	}
 	return nil
 }
 
 func ValidateList(request SearchRequest) error {
+	if !CheckOwner(request.owner) {
+		request.owner = ""
+	}
+	if !CheckToken(request.token) {
+		request.token = ""
+	}
+	if request.verified == "true" && len(request.owner) > 0 && !In(request.owner, verifiedUsers) {
+		return fmt.Errorf("both verified = true and owner given but owner is not a verified user")
+	}
 	return nil
 }
 
@@ -82,6 +131,12 @@ func (r *SearchRequest) BuildQuery() (query map[string]string) {
 	}
 	if r.tags != "" {
 		query["tags"] = r.tags
+	}
+	if r.token != "" {
+		query["token"] = r.token
+ 	}
+	if r.verified != "" {
+		query["verified"] = r.verified
 	}
 	return
 }
@@ -112,7 +167,7 @@ type SearchResult struct {
 type filterFunc func(map[string]string, []SearchResult) []SearchResult
 
 var (
-	filters map[string]filterFunc
+	filters = make(map[string]filterFunc)
 )
 
 func InitFilters() {
@@ -142,8 +197,8 @@ func BuildResult(info map[string]string) (result SearchResult) {
 		} else if k == "sha256" {
 			result.sha256 = v
 		} else if k == "size" {
-			sz, _ := strconv.Atoi(v)
-			result.size = sz
+			size, _ := strconv.Atoi(v)
+			result.size = size
 		} else if k == "tags" {
 			result.tags = v
 		} else if k == "date" {
@@ -160,8 +215,10 @@ func BuildResult(info map[string]string) (result SearchResult) {
 			result.parentVersion = v
 		} else if k == "parentOwner" {
 			result.parentOwner = v
-		} else if k == "prefsize" {
+		} else if k == "prefSize" {
 			result.prefSize = v
+		} else {
+			log.Warn(fmt.Sprintf("Unrecognized key %s", k))
 		}
 	}
 	return result
@@ -204,21 +261,6 @@ func FilterInfo(query map[string]string, files []SearchResult) (result []SearchR
 }
 
 func FilterList(query map[string]string, files []SearchResult) (results []SearchResult) {
-	owner := query["owner"]
-	token := query["token"]
-	if owner == "" {
-		if token == "" {
-
-		} else {
-
-		}
-	} else {
-		if token == "" {
-
-		} else {
-
-		}
-	}
 	return files
 }
 
@@ -254,9 +296,18 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 
 func MatchQuery(file, query map[string]string) bool {
 	for key, value := range query {
+		if key == "token" || key == "verified" {
+			continue
+		}
 		if file[key] != value {
 			return false
 		}
+	}
+	if query["verified"] == "true" && !In(file["owner"], verifiedUsers) {
+		return false
+	}
+	if query["token"] != "" && !db.CheckShare(file["fileID"], db.TokenOwner(query["token"])) {
+		return false
 	}
 	return true
 }
