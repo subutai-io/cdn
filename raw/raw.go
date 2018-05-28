@@ -47,6 +47,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		} else {
 			db.MakePublic(id, owner)
 		}
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(id))
 		log.Info(header.Filename + " saved to raw repo by " + owner)
 	}
