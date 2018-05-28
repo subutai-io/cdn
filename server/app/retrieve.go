@@ -27,14 +27,15 @@ type SearchRequest struct {
 
 // ParseRequest takes HTTP request and converts it into Request struct
 func (request *SearchRequest) ParseRequest(httpRequest *http.Request) (err error) {
-	request.fileID   = httpRequest.URL.Query().Get("id")
-	request.owner    = httpRequest.URL.Query().Get("owner")
-	request.name     = httpRequest.URL.Query().Get("name")
-	request.repo     = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func"]
-	request.version  = httpRequest.URL.Query().Get("version")
-	request.tags     = httpRequest.URL.Query().Get("tags")
-	request.token    = httpRequest.URL.Query().Get("token")
-	request.verified = httpRequest.URL.Query().Get("verified")
+	request.fileID    = httpRequest.URL.Query().Get("id")
+	request.owner     = httpRequest.URL.Query().Get("owner")
+	request.name      = httpRequest.URL.Query().Get("name")
+	request.repo      = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
+	request.version   = httpRequest.URL.Query().Get("version")
+	request.tags      = httpRequest.URL.Query().Get("tags")
+	request.token     = httpRequest.URL.Query().Get("token")
+	request.verified  = httpRequest.URL.Query().Get("verified")
+	request.operation = strings.Split(httpRequest.RequestURI, "/")[4][:4]
 	return
 }
 
