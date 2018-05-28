@@ -9,14 +9,14 @@ import (
 )
 
 type SearchRequest struct {
-	fileID    string
-	name      string
-	owner     string
-	token     string
-	tags      string
-	version   string
-	repo      string
-	operation string
+	fileID    string // files' UUID (or MD5)
+	owner     string // files' owner username
+	name      string // files' name within CDN
+	repo      string // files' repository - either "apt", "raw", or "template"
+	version   string // files' version
+	tags      string // files' tags in format: "tag1,tag2,tag3"
+	token     string // user's token
+	operation string // operation type requested
 }
 
 // ParseRequest takes HTTP request and converts it into Request struct
@@ -24,10 +24,10 @@ func (r *SearchRequest) ParseRequest(req *http.Request) (err error) {
 	r.fileID = req.URL.Query().Get("id")
 	r.name = req.URL.Query().Get("name")
 	r.owner = req.URL.Query().Get("owner")
-	r.token = req.URL.Query().Get("token")
-	r.tags = req.URL.Query().Get("tags")
-	r.version = req.URL.Query().Get("version")
 	r.repo = strings.Split(req.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func"]
+	r.version = req.URL.Query().Get("version")
+	r.tags = req.URL.Query().Get("tags")
+	r.token = req.URL.Query().Get("token")
 	return
 }
 
@@ -36,20 +36,20 @@ func (r *SearchRequest) BuildQuery() (query map[string]string) {
 	if r.fileID != "" {
 		query["fileID"] = r.fileID
 	}
-	if r.name != "" {
-		query["name"] = r.name
-	}
 	if r.owner != "" {
 		query["owner"] = r.owner
 	}
-	if r.tags != "" {
-		query["tags"] = r.tags
+	if r.name != "" {
+		query["name"] = r.name
+	}
+	if r.repo != "" {
+		query["repo"] = r.repo
 	}
 	if r.version != "" {
 		query["version"] = r.version
 	}
-	if r.repo != "" {
-		query["repo"] = r.repo
+	if r.tags != "" {
+		query["tags"] = r.tags
 	}
 	return
 }
@@ -60,11 +60,11 @@ type SearchResult struct {
 	name    string // file's name within CDN
 	repo    string // file's repository - either "apt", "raw", or "template"
 	version string // file's version
+	tags    string // file's tags in format: "tag1,tag2,tag3"
 	scope   string // file's availibility scope - public/private and users with whom it was shared
 	md5     string // file's MD5
 	sha256  string // file's SHA256
 	size    string // file's size in bytes
-	tags    string // file's tags in format: "tag1,tag2,tag3"
 }
 
 func Retrieve(request SearchRequest) []SearchResult {
