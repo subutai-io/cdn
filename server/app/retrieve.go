@@ -1,11 +1,15 @@
 package app
 
 import (
-	"net/http"
-	"strings"
-	"github.com/subutai-io/cdn/db"
-	"github.com/boltdb/bolt"
 	"fmt"
+	"time"
+	"strings"
+	"net/http"
+
+	"github.com/boltdb/bolt"
+	"github.com/blang/semver"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/agent/log"
 )
 
 type SearchRequest struct {
@@ -20,15 +24,39 @@ type SearchRequest struct {
 }
 
 // ParseRequest takes HTTP request and converts it into Request struct
-func (r *SearchRequest) ParseRequest(req *http.Request) (err error) {
-	r.fileID = req.URL.Query().Get("id")
-	r.name = req.URL.Query().Get("name")
-	r.owner = req.URL.Query().Get("owner")
-	r.repo = strings.Split(req.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func"]
-	r.version = req.URL.Query().Get("version")
-	r.tags = req.URL.Query().Get("tags")
-	r.token = req.URL.Query().Get("token")
+func (request *SearchRequest) ParseRequest(httpRequest *http.Request) (err error) {
+	request.fileID = httpRequest.URL.Query().Get("id")
+	request.name = httpRequest.URL.Query().Get("name")
+	request.owner = httpRequest.URL.Query().Get("owner")
+	request.repo = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func"]
+	request.version = httpRequest.URL.Query().Get("version")
+	request.tags = httpRequest.URL.Query().Get("tags")
+	request.token = httpRequest.URL.Query().Get("token")
 	return
+}
+
+type validateFunc func(SearchRequest) error
+
+var (
+	validators map[string]validateFunc
+)
+
+func InitValidators() {
+	validators["info"] = ValidateInfo
+	validators["list"]	= ValidateList
+}
+
+func (request SearchRequest) ValidateRequest() error {
+	validator := validators[request.operation]
+	return validator(request)
+}
+
+func ValidateInfo(request SearchRequest) error {
+	return nil
+}
+
+func ValidateList(request SearchRequest) error {
+	return nil
 }
 
 // BuildQuery constructs the query out of the existing parameters in SearchRequest
@@ -46,6 +74,9 @@ func (r *SearchRequest) BuildQuery() (query map[string]string) {
 		query["repo"] = r.repo
 	}
 	if r.version != "" {
+		if r.version == "latest" {
+			r.version = ""
+		}
 		query["version"] = r.version
 	}
 	if r.tags != "" {
@@ -55,30 +86,88 @@ func (r *SearchRequest) BuildQuery() (query map[string]string) {
 }
 
 type SearchResult struct {
-	fileID  string // file's UUID (or MD5)
-	owner   string // file's owner username
-	name    string // file's name within CDN
-	repo    string // file's repository - either "apt", "raw", or "template"
-	version string // file's version
-	tags    string // file's tags in format: "tag1,tag2,tag3"
-	scope   string // file's availibility scope - public/private and users with whom it was shared
-	md5     string // file's MD5
-	sha256  string // file's SHA256
-	size    string // file's size in bytes
+	fileID        string `json:"id,omitempty"`            // file's UUID (or MD5)
+	owner         string `json:"owner,omitempty"`         // file owner's username
+	name          string `json:"name,omitempty"`          // file's name within CDN
+	repo          string `json:"repo,omitempty"`          // file's repository - either "apt", "raw", or "template"
+	version       string `json:"version,omitempty"`       // file's version
+	tags          string `json:"tags,omitempty"`          // file's tags in format: "tag1,tag2,tag3"
+	scope         string `json:"scope,omitempty"`         // file's availibility scope - public/private and users with whom it was shared
+	md5           string `json:"md5,omitempty"`           // file's MD5
+	sha256        string `json:"sha256,omitempty"`        // file's SHA256
+	date          string `json:"date,omitempty"`          // file's upload date
+	size          string `json:"size,omitempty"`          // file's size in bytes
+	parent        string `json:"parent,omitempty"`        // template's parent template
+	parentOwner   string `json:"parentOwner,omitempty"`   // parent template owner's username
+	parentVersion string `json:"parentVersion,omitempty"` // parent template's version
+	prefSize      string `json:"prefSize,omitempty"`      // template's preffered size
+	architecture  string `json:"architecture,omitempty"`  // template's architecture
+}
+
+type filterFunc func(map[string]string, []SearchResult) []SearchResult
+
+var (
+	filters map[string]filterFunc
+)
+
+func InitFilters() {
+	filters["info"] = FilterInfo
+	filters["list"]	= FilterList
 }
 
 func Retrieve(request SearchRequest) []SearchResult {
 	query := request.BuildQuery()
-	results, err := Search(query)
+	files, err := Search(query)
 	if err != nil {
-
+		log.Error("retrieve couldn't search the query %+v", query)
+		return nil
 	}
-	if operation == "info" {
-
-	} else if operation == "list" {
-
-	}
+	filter := filters[request.operation]
+	results := filter(query, files)
 	return results
+}
+
+func FilterInfo(query map[string]string, files []SearchResult) (result []SearchResult) {
+	queryVersion, _ := semver.Make(query["version"])
+	for _, file := range files {
+		fileVersion, _ := semver.Make(file.version)
+		if query["version"] == "" {
+			if fileVersion.GTE(queryVersion) {
+				queryVersion = fileVersion
+				result = []SearchResult{file}
+			} else if fileVersion.EQ(queryVersion) && len(result) > 0 {
+				resultDate, _ := time.Parse(time.RFC3339, result[0].date)
+				fileDate, _ := time.Parse(time.RFC3339, file.date)
+				if resultDate.After(fileDate) {
+					result = []SearchResult{file}
+				}
+			}
+		} else {
+			if queryVersion.EQ(fileVersion) {
+				result = []SearchResult{file}
+			}
+		}
+	}
+	return
+}
+
+func FilterList(query map[string]string, files []SearchResult) (results []SearchResult) {
+	owner := query["owner"]
+	token := query["token"]
+	if owner == "" {
+		if token == "" {
+
+		} else {
+
+		}
+	} else {
+		if token == "" {
+
+		} else {
+
+		}
+	}
+	return files
 }
 
 func GetFileInfo(id string) (info map[string]string, err error) {
@@ -134,4 +223,5 @@ func Search(query map[string]string) ([]SearchResult, error) {
 		})
 		return nil
 	})
+	return nil, nil
 }
