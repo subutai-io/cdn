@@ -19,8 +19,7 @@ func Info(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.operation = "info"
-	files := Retrieve(req)
-
+	//files := Retrieve(req)
 }
 
 // List handles the HTTP request sent on one of the list endpoints
