@@ -2,15 +2,15 @@ package app
 
 import (
 	"fmt"
-	"time"
-	"strings"
-	"strconv"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/blang/semver"
-	"github.com/subutai-io/cdn/db"
+	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
+	"github.com/subutai-io/cdn/db"
 )
 
 type SearchRequest struct {
@@ -44,7 +44,7 @@ var (
 
 func InitValidators() {
 	validators["info"] = ValidateInfo
-	validators["list"]	= ValidateList
+	validators["list"] = ValidateList
 }
 
 func (request SearchRequest) ValidateRequest() error {
@@ -244,6 +244,34 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 		info["version"] = string(file.Get([]byte("version")))
 		info["tags"] = string(file.Get([]byte("tag")))
 		info["date"] = string(file.Get([]byte("date")))
+		if hash := tx.Bucket(db.MyBucket).Bucket([]byte(id)).Bucket([]byte("hash")); hash != nil {
+			hash.ForEach(func(k, v []byte) error {
+				if string(k) == "md5" {
+					info["md5"] = string(v)
+				}
+				if string(k) == "sha256" {
+					info["sha256"] = string(v)
+				}
+				return nil
+			})
+		}
+		sz := file.Get([]byte("size"))
+		if sz != nil {
+			info["size"] = string(sz)
+		} else {
+			info["size"] = string(file.Get([]byte("Size")))
+		}
+		info["description"] = string(file.Get([]byte("Description")))
+		arch := file.Get([]byte("Architecture"))
+		if arch != nil {
+			info["architecture"] = string(arch)
+		} else {
+			info["architecture"] = string(file.Get([]byte("arch")))
+		}
+		info["parent"] = string(file.Get([]byte("parent")))
+		info["parentVersion"] = string(file.Get([]byte("parent-version")))
+		info["parentOwner"] = string(file.Get([]byte("parent-owner")))
+		info["prefSize"] = string(file.Get([]byte("prefsize")))
 		return nil
 	})
 	if err != nil {
