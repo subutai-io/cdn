@@ -126,8 +126,7 @@ func MatchQuery(file, query map[string]string) bool {
 	return true
 }
 
-func Search(query map[string]string) ([]SearchResult, error) {
-	var sr SearchResult
+func Search(query map[string]string) (list []SearchResult, err error) {
 	db.DB.View(func(tx *bolt.Tx) error {
 		files := tx.Bucket(db.MyBucket)
 		files.ForEach(func(k, v []byte) error {
@@ -142,4 +141,5 @@ func Search(query map[string]string) ([]SearchResult, error) {
 		})
 		return nil
 	})
+	return list, nil
 }
