@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -78,6 +79,71 @@ type SearchResult struct {
 	prefsize     string `json:",omitempty"`
 }
 
+// BuildResult is make SearchResult struct from map of values
+func BuildResult(res map[string]string) (searchRes SearchResult) {
+	for k, v := range res {
+		if k == "fileID" {
+			searchRes.fileID = v
+		}
+		if k == "owner" {
+			searchRes.owner = v
+		}
+		if k == "name" {
+			searchRes.name = v
+		}
+		if k == "filename" {
+			searchRes.filename = v
+		}
+		if k == "repo" {
+			searchRes.repo = v
+		}
+		if k == "version" {
+			searchRes.version = v
+		}
+		if k == "scope" {
+			searchRes.scope = v
+		}
+		if k == "md5" {
+			searchRes.md5 = v
+		}
+		if k == "sha256" {
+			searchRes.sha256 = v
+		}
+		if k == "size" {
+			sz, _ := strconv.Atoi(v)
+			searchRes.size = sz
+		}
+		if k == "tags" {
+			searchRes.tags = v
+		}
+		if k == "date" {
+			searchRes.date = v
+		}
+		if k == "timestamp" {
+			searchRes.timestamp = v
+		}
+		if k == "description" {
+			searchRes.description = v
+		}
+		if k == "architecture" {
+			searchRes.architecture = v
+		}
+		if k == "parent" {
+			searchRes.parent = v
+		}
+		if k == "pversion" {
+			searchRes.pversion = v
+		}
+		if k == "powner" {
+			searchRes.powner = v
+		}
+		if k == "prefsize" {
+			searchRes.prefsize = v
+		}
+	}
+	return searchRes
+}
+
 func Retrieve(request SearchRequest) []SearchResult {
 	query := request.BuildQuery()
 	results, err := Search(query)
@@ -131,6 +197,7 @@ func MatchQuery(file, query map[string]string) bool {
 }
 
 func Search(query map[string]string) (list []SearchResult, err error) {
+	var sr SearchResult
 	db.DB.View(func(tx *bolt.Tx) error {
 		files := tx.Bucket(db.MyBucket)
 		files.ForEach(func(k, v []byte) error {
@@ -139,7 +206,8 @@ func Search(query map[string]string) (list []SearchResult, err error) {
 				return err
 			}
 			if MatchQuery(file, query) {
-
+				sr = BuildResult(file)
+				list = append(list, sr)
 			}
 			return nil
 		})
