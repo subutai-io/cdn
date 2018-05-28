@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 	"strings"
+	"strconv"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -85,23 +86,27 @@ func (r *SearchRequest) BuildQuery() (query map[string]string) {
 	return
 }
 
+// SearchResult is a struct which return after search in db by parameters of SearchRequest
 type SearchResult struct {
-	fileID        string `json:"id,omitempty"`            // file's UUID (or MD5)
-	owner         string `json:"owner,omitempty"`         // file owner's username
-	name          string `json:"name,omitempty"`          // file's name within CDN
-	repo          string `json:"repo,omitempty"`          // file's repository - either "apt", "raw", or "template"
-	version       string `json:"version,omitempty"`       // file's version
-	tags          string `json:"tags,omitempty"`          // file's tags in format: "tag1,tag2,tag3"
-	scope         string `json:"scope,omitempty"`         // file's availibility scope - public/private and users with whom it was shared
-	md5           string `json:"md5,omitempty"`           // file's MD5
-	sha256        string `json:"sha256,omitempty"`        // file's SHA256
-	date          string `json:"date,omitempty"`          // file's upload date
-	size          string `json:"size,omitempty"`          // file's size in bytes
-	parent        string `json:"parent,omitempty"`        // template's parent template
-	parentOwner   string `json:"parentOwner,omitempty"`   // parent template owner's username
-	parentVersion string `json:"parentVersion,omitempty"` // parent template's version
-	prefSize      string `json:"prefSize,omitempty"`      // template's preffered size
-	architecture  string `json:"architecture,omitempty"`  // template's architecture
+	fileID        string `json:"id,omitempty"`
+	owner         string `json:"owner,omitempty"`
+	name          string `json:"name,omitempty"`
+	filename      string `json:"filename,omitempty"`
+	repo          string `json:"type,omitempty"`
+	version       string `json:"version,omitempty"`
+	scope         string `json:"scope,omitempty"`
+	md5           string `json:"md5,omitempty"`
+	sha256        string `json:"sha256,omitempty"`
+	size          int    `json:"size,omitempty"`
+	tags          string `json:"tags,omitempty"`
+	date          string `json:"date,omitempty"`
+	timestamp     string `json:"timestamp,omitempty"`
+	description   string `json:"description,omitempty"`
+	architecture  string `json:"architecture,omitempty"`
+	parent        string `json:"parent,omitempty"`
+	parentVersion string `json:"parentVersion,omitempty"`
+	parentOwner   string `json:"parentOwner,omitempty"`
+	prefSize      string `json:"prefSize,omitempty"`
 }
 
 type filterFunc func(map[string]string, []SearchResult) []SearchResult
@@ -112,7 +117,54 @@ var (
 
 func InitFilters() {
 	filters["info"] = FilterInfo
-	filters["list"]	= FilterList
+	filters["list"] = FilterList
+}
+
+// BuildResult makes SearchResult struct from map
+func BuildResult(info map[string]string) (result SearchResult) {
+	for k, v := range info {
+		if k == "fileID" {
+			result.fileID = v
+		} else if k == "owner" {
+			result.owner = v
+		} else if k == "name" {
+			result.name = v
+		} else if k == "filename" {
+			result.filename = v
+		} else if k == "repo" {
+			result.repo = v
+		} else if k == "version" {
+			result.version = v
+		} else if k == "scope" {
+			result.scope = v
+		} else if k == "md5" {
+			result.md5 = v
+		} else if k == "sha256" {
+			result.sha256 = v
+		} else if k == "size" {
+			sz, _ := strconv.Atoi(v)
+			result.size = sz
+		} else if k == "tags" {
+			result.tags = v
+		} else if k == "date" {
+			result.date = v
+		} else if k == "timestamp" {
+			result.timestamp = v
+		} else if k == "description" {
+			result.description = v
+		} else if k == "architecture" {
+			result.architecture = v
+		} else if k == "parent" {
+			result.parent = v
+		} else if k == "parentVersion" {
+			result.parentVersion = v
+		} else if k == "parentOwner" {
+			result.parentOwner = v
+		} else if k == "prefsize" {
+			result.prefSize = v
+		}
+	}
+	return result
 }
 
 func Retrieve(request SearchRequest) []SearchResult {
@@ -204,11 +256,12 @@ func MatchQuery(file, query map[string]string) bool {
 		if file[key] != value {
 			return false
 		}
- 	}
- 	return true
+	}
+	return true
 }
 
-func Search(query map[string]string) ([]SearchResult, error) {
+func Search(query map[string]string) (list []SearchResult, err error) {
+	var sr SearchResult
 	db.DB.View(func(tx *bolt.Tx) error {
 		files := tx.Bucket(db.MyBucket)
 		files.ForEach(func(k, v []byte) error {
@@ -217,11 +270,12 @@ func Search(query map[string]string) ([]SearchResult, error) {
 				return err
 			}
 			if MatchQuery(file, query) {
-
+				sr = BuildResult(file)
+				list = append(list, sr)
 			}
 			return nil
 		})
 		return nil
 	})
-	return nil, nil
+	return list, nil
 }
