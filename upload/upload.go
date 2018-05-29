@@ -48,7 +48,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 	}
 	r.ParseMultipartForm(32 << 20)
 	file, header, err := r.FormFile("file")
-	log.Info(fmt.Sprintf("header.Filename: %s", header.Filename))
+	log.Info(fmt.Sprintf("file: %T, header.Filename: %s", file, header.Filename))
 	if log.Check(log.WarnLevel, "Failed to parse POST form", err) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Cannot get file from request"))
@@ -87,7 +87,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		log.Info("User " + owner + ", quota usage +" + strconv.Itoa(int(copied)))
 	}
 	md5sum = Hash(config.Storage.Path + header.Filename)
-	sha256sum = Hash(config.Storage.Path+header.Filename, "sha256")
+	sha256sum = Hash(config.Storage.Path + header.Filename, "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + header.Filename)
 		w.WriteHeader(http.StatusInternalServerError)
