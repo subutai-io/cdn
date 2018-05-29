@@ -9,7 +9,7 @@ import (
 func FileSearch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect method for info request"))
+		w.Write([]byte("Incorrect method for info/list request"))
 		return
 	}
 	var request SearchRequest
@@ -23,4 +23,14 @@ func FileSearch(w http.ResponseWriter, r *http.Request) {
 	result, _ := json.Marshal(files)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(result))
+}
+
+func FileUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method for upload request"))
+		return
+	}
+	var request ActionRequest
+
 }
