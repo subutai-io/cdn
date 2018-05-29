@@ -35,7 +35,7 @@ func (request *SearchRequest) ParseRequest(httpRequest *http.Request) (err error
 	request.tags = httpRequest.URL.Query().Get("tags")
 	request.token = httpRequest.URL.Query().Get("token")
 	request.verified = httpRequest.URL.Query().Get("verified")
-	request.operation = strings.Split(httpRequest.RequestURI, "/")[4][:4]
+	request.operation = strings.Split(strings.Split(httpRequest.RequestURI, "/")[4], "?")[0]
 	return
 }
 
