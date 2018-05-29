@@ -2,41 +2,27 @@ package app
 
 import (
 	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
 	"time"
-
-	"github.com/blang/semver"
+	"strings"
+	"net/http"
 	"github.com/boltdb/bolt"
-	"github.com/subutai-io/agent/log"
+	"github.com/blang/semver"
+	"github.com/fatih/structs"
 	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/agent/log"
+	"github.com/mitchellh/mapstructure"
 )
 
 type SearchRequest struct {
-	fileID    string // files' UUID (or MD5)
-	owner     string // files' owner username
-	name      string // files' name within CDN
-	repo      string // files' repository - either "apt", "raw", or "template"
-	version   string // files' version
-	tags      string // files' tags in format: "tag1,tag2,tag3"
-	token     string // user's token
-	verified  string // flag for searching only among verified CDN users
-	operation string // operation type requested
-}
-
-// ParseRequest takes HTTP request and converts it into Request struct
-func (request *SearchRequest) ParseRequest(httpRequest *http.Request) (err error) {
-	request.fileID    = httpRequest.URL.Query().Get("id")
-	request.owner     = httpRequest.URL.Query().Get("owner")
-	request.name      = httpRequest.URL.Query().Get("name")
-	request.repo      = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
-	request.version   = httpRequest.URL.Query().Get("version")
-	request.tags      = httpRequest.URL.Query().Get("tags")
-	request.token     = httpRequest.URL.Query().Get("token")
-	request.verified  = httpRequest.URL.Query().Get("verified")
-	request.operation = strings.Split(strings.Split(httpRequest.RequestURI, "/")[4], "?")[0]
-	return
+	FileID    string `json:"FileID,omitempty"`    // files' UUID (or MD5)
+	Owner     string `json:"Owner,omitempty"`     // files' owner username
+	Name      string `json:"Name,omitempty"`      // files' name within CDN
+	Repo      string `json:"Repo,omitempty"`      // files' repository - either "apt", "raw", or "template"
+	Version   string `json:"Version,omitempty"`   // files' version
+	Tags      string `json:"Tags,omitempty"`      // files' tags in format: "tag1,tag2,tag3"
+	Token     string `json:"Token,omitempty"`     // user's token
+	Verified  string `json:"Verified,omitempty"`  // flag for searching only among verified CDN users
+	Operation string `json:"Operation,omitempty"` // operation type requested
 }
 
 type validateFunc func(SearchRequest) error
@@ -52,7 +38,7 @@ func InitValidators() {
 }
 
 func (request SearchRequest) ValidateRequest() error {
-	validator := validators[request.operation]
+	validator := validators[request.Operation]
 	return validator(request)
 }
 
@@ -79,90 +65,90 @@ func In(item string, list []string) bool {
 }
 
 func ValidateInfo(request SearchRequest) error {
-	if request.fileID == "" && request.name == "" {
+	if request.FileID == "" && request.Name == "" {
 		return fmt.Errorf("both fileID and name weren't given")
 	}
-	if request.fileID != "" && request.name != "" && db.NameByHash(request.fileID) != request.name {
+	if request.FileID != "" && request.Name != "" && db.NameByHash(request.FileID) != request.Name {
 		return fmt.Errorf("both fileID and name provided but they are not the same")
 	}
-	if !CheckOwner(request.owner) {
-		request.owner = ""
+	if !CheckOwner(request.Owner) {
+		request.Owner = ""
 	}
-	if !CheckToken(request.token) {
-		request.token = ""
+	if !CheckToken(request.Token) {
+		request.Token = ""
 	}
-	if request.verified == "true" && len(request.owner) > 0 && !In(request.owner, verifiedUsers) {
+	if request.Verified == "true" && len(request.Owner) > 0 && !In(request.Owner, verifiedUsers) {
 		return fmt.Errorf("both verified = true and owner given but owner is not a verified user")
 	}
 	return nil
 }
 
 func ValidateList(request SearchRequest) error {
-	if !CheckOwner(request.owner) {
-		request.owner = ""
+	if !CheckOwner(request.Owner) {
+		request.Owner = ""
 	}
-	if !CheckToken(request.token) {
-		request.token = ""
+	if !CheckToken(request.Token) {
+		request.Token = ""
 	}
-	if request.verified == "true" && len(request.owner) > 0 && !In(request.owner, verifiedUsers) {
+	if request.Verified == "true" && len(request.Owner) > 0 && !In(request.Owner, verifiedUsers) {
 		return fmt.Errorf("both verified = true and owner given but owner is not a verified user")
 	}
 	return nil
 }
 
+// ParseRequest takes HTTP request and converts it into Request struct
+func (request *SearchRequest) ParseRequest(httpRequest *http.Request) error {
+	request.FileID    = httpRequest.URL.Query().Get("id")
+	request.Owner     = httpRequest.URL.Query().Get("owner")
+	request.Name      = httpRequest.URL.Query().Get("name")
+	request.Repo      = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
+	request.Version   = httpRequest.URL.Query().Get("version")
+	request.Tags      = httpRequest.URL.Query().Get("tags")
+	request.Token     = strings.ToLower(httpRequest.URL.Query().Get("token"))
+	request.Verified  = strings.ToLower(httpRequest.URL.Query().Get("verified"))
+	request.Operation = strings.Split(strings.Split(httpRequest.RequestURI, "/")[4], "?")[0]
+	return request.ValidateRequest()
+}
+
 // BuildQuery constructs the query out of the existing parameters in SearchRequest
-func (r *SearchRequest) BuildQuery() (query map[string]string) {
-	if r.fileID != "" {
-		query["fileID"] = r.fileID
-	}
-	if r.owner != "" {
-		query["owner"] = r.owner
-	}
-	if r.name != "" {
-		query["name"] = r.name
-	}
-	if r.repo != "" {
-		query["repo"] = r.repo
-	}
-	if r.version != "" {
-		if r.version == "latest" {
-			r.version = ""
+func (request *SearchRequest) BuildQuery() (query map[string]string) {
+	m := structs.Map(request)
+	for k, v := range m {
+		query[k] = v.(string)
+		if query[k] == "latest" {
+			query[k] = ""
 		}
-		query["version"] = r.version
-	}
-	if r.tags != "" {
-		query["tags"] = r.tags
-	}
-	if r.token != "" {
-		query["token"] = r.token
- 	}
-	if r.verified != "" {
-		query["verified"] = r.verified
 	}
 	return
 }
 
 // SearchResult is a struct which return after search in db by parameters of SearchRequest
 type SearchResult struct {
-	fileID        string `json:"id,omitempty"`
-	owner         string `json:"owner,omitempty"`
-	name          string `json:"name,omitempty"`
-	filename      string `json:"filename,omitempty"`
-	repo          string `json:"type,omitempty"`
-	version       string `json:"version,omitempty"`
-	scope         string `json:"scope,omitempty"`
-	md5           string `json:"md5,omitempty"`
-	sha256        string `json:"sha256,omitempty"`
-	size          int    `json:"size,omitempty"`
-	tags          string `json:"tags,omitempty"`
-	date          string `json:"date,omitempty"`
-	timestamp     string `json:"timestamp,omitempty"`
-	description   string `json:"description,omitempty"`
-	architecture  string `json:"architecture,omitempty"`
-	parent        string `json:"parent,omitempty"`
-	parentVersion string `json:"parentVersion,omitempty"`
-	parentOwner   string `json:"parentOwner,omitempty"`
-	prefSize      string `json:"prefSize,omitempty"`
+	FileID        string `json:"fileID,omitempty"`
+	Owner         string `json:"owner,omitempty"`
+	Name          string `json:"name,omitempty"`
+	Filename      string `json:"filename,omitempty"`
+	Repo          string `json:"type,omitempty"`
+	Version       string `json:"version,omitempty"`
+	Scope         string `json:"scope,omitempty"`
+	Md5           string `json:"md5,omitempty"`
+	Sha256        string `json:"sha256,omitempty"`
+	Size          int    `json:"size,omitempty"`
+	Tags          string `json:"tags,omitempty"`
+	Date          string `json:"date,omitempty"`
+	Timestamp     string `json:"timestamp,omitempty"`
+	Description   string `json:"description,omitempty"`
+	Architecture  string `json:"architecture,omitempty"`
+	Parent        string `json:"parent,omitempty"`
+	ParentVersion string `json:"parentVersion,omitempty"`
+	ParentOwner   string `json:"parentOwner,omitempty"`
+	PrefSize      string `json:"prefSize,omitempty"`
+}
+
+// BuildResult makes SearchResult struct from map
+func BuildResult(info map[string]string) (result SearchResult) {
+	mapstructure.Decode(info, &result)
+	return
 }
 
 type filterFunc func(map[string]string, []SearchResult) []SearchResult
@@ -176,78 +162,17 @@ func InitFilters() {
 	filters["list"] = FilterList
 }
 
-// BuildResult makes SearchResult struct from map
-func BuildResult(info map[string]string) (result SearchResult) {
-	for k, v := range info {
-		if k == "fileID" {
-			result.fileID = v
-		} else if k == "owner" {
-			result.owner = v
-		} else if k == "name" {
-			result.name = v
-		} else if k == "filename" {
-			result.filename = v
-		} else if k == "repo" {
-			result.repo = v
-		} else if k == "version" {
-			result.version = v
-		} else if k == "scope" {
-			result.scope = v
-		} else if k == "md5" {
-			result.md5 = v
-		} else if k == "sha256" {
-			result.sha256 = v
-		} else if k == "size" {
-			size, _ := strconv.Atoi(v)
-			result.size = size
-		} else if k == "tags" {
-			result.tags = v
-		} else if k == "date" {
-			result.date = v
-		} else if k == "timestamp" {
-			result.timestamp = v
-		} else if k == "description" {
-			result.description = v
-		} else if k == "architecture" {
-			result.architecture = v
-		} else if k == "parent" {
-			result.parent = v
-		} else if k == "parentVersion" {
-			result.parentVersion = v
-		} else if k == "parentOwner" {
-			result.parentOwner = v
-		} else if k == "prefSize" {
-			result.prefSize = v
-		} else {
-			log.Warn(fmt.Sprintf("Unrecognized key %s", k))
-		}
-	}
-	return result
-}
-
-func Retrieve(request SearchRequest) []SearchResult {
-	query := request.BuildQuery()
-	files, err := Search(query)
-	if err != nil {
-		log.Error("retrieve couldn't search the query %+v", query)
-		return nil
-	}
-	filter := filters[request.operation]
-	results := filter(query, files)
-	return results
-}
-
 func FilterInfo(query map[string]string, files []SearchResult) (result []SearchResult) {
 	queryVersion, _ := semver.Make(query["version"])
 	for _, file := range files {
-		fileVersion, _ := semver.Make(file.version)
+		fileVersion, _ := semver.Make(file.Version)
 		if query["version"] == "" {
 			if fileVersion.GTE(queryVersion) {
 				queryVersion = fileVersion
 				result = []SearchResult{file}
 			} else if fileVersion.EQ(queryVersion) && len(result) > 0 {
-				resultDate, _ := time.Parse(time.RFC3339, result[0].date)
-				fileDate, _ := time.Parse(time.RFC3339, file.date)
+				resultDate, _ := time.Parse(time.RFC3339, result[0].Date)
+				fileDate, _ := time.Parse(time.RFC3339, file.Date)
 				if resultDate.After(fileDate) {
 					result = []SearchResult{file}
 				}
@@ -263,6 +188,18 @@ func FilterInfo(query map[string]string, files []SearchResult) (result []SearchR
 
 func FilterList(query map[string]string, files []SearchResult) (results []SearchResult) {
 	return files
+}
+
+func Retrieve(request SearchRequest) []SearchResult {
+	query := request.BuildQuery()
+	files, err := Search(query)
+	if err != nil {
+		log.Error("retrieve couldn't search the query %+v", query)
+		return nil
+	}
+	filter := filters[request.Operation]
+	results := filter(query, files)
+	return results
 }
 
 func GetFileInfo(id string) (info map[string]string, err error) {
@@ -335,7 +272,7 @@ func MatchQuery(file, query map[string]string) bool {
 	if query["verified"] == "true" && !In(file["owner"], verifiedUsers) {
 		return false
 	}
-	if query["token"] != "" && !db.CheckShare(file["fileID"], db.TokenOwner(query["token"])) {
+	if !(query["verified"] == "true") && query["token"] != "" && !db.CheckShare(file["fileID"], db.TokenOwner(query["token"])) {
 		return false
 	}
 	return true
