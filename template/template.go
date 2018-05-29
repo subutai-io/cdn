@@ -180,6 +180,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		} else {
 			db.MakePublic(t.ID, owner)
 		}
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(t.ID))
 		log.Info(t.Name + " saved to template repo by " + owner)
 		if IDs := db.UserFile(owner, filename); len(IDs) > 0 {
