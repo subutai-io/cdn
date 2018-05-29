@@ -16,7 +16,7 @@ func FileSearch(w http.ResponseWriter, r *http.Request) {
 	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Incorrect list request"))
+		w.Write([]byte("Incorrect info/list request"))
 		return
 	}
 	files := Retrieve(request)
@@ -31,6 +31,13 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method for upload request"))
 		return
 	}
-	var request ActionRequest
+	var request UploadRequest
+	err := request.ParseRequest(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect upload request"))
+		return
+	}
+	defer request.file.Close()
 
 }
