@@ -14,15 +14,15 @@ import (
 )
 
 type SearchRequest struct {
-	FileID    string `json:"FileID,omitempty"`    // files' UUID (or MD5)
-	Owner     string `json:"Owner,omitempty"`     // files' owner username
-	Name      string `json:"Name,omitempty"`      // files' name within CDN
-	Repo      string `json:"Repo,omitempty"`      // files' repository - either "apt", "raw", or "template"
-	Version   string `json:"Version,omitempty"`   // files' version
-	Tags      string `json:"Tags,omitempty"`      // files' tags in format: "tag1,tag2,tag3"
-	Token     string `json:"Token,omitempty"`     // user's token
-	Verified  string `json:"Verified,omitempty"`  // flag for searching only among verified CDN users
-	Operation string `json:"Operation,omitempty"` // operation type requested
+	FileID    string `json:"id,omitempty"`    // files' UUID (or MD5)
+	Owner     string `json:"owner,omitempty"`     // files' owner username
+	Name      string `json:"name,omitempty"`      // files' name within CDN
+	Repo      string `json:"type,omitempty"`      // files' repository - either "apt", "raw", or "template"
+	Version   string `json:"version,omitempty"`   // files' version
+	Tags      string `json:"tags,omitempty"`      // files' tags in format: "tag1,tag2,tag3"
+	Token     string `json:"token,omitempty"`     // user's token
+	Verified  string `json:"verified,omitempty"`  // flag for searching only among verified CDN users
+	Operation string `json:"operation,omitempty"` // operation type requested
 }
 
 type validateFunc func(SearchRequest) error
@@ -124,7 +124,7 @@ func (request *SearchRequest) BuildQuery() (query map[string]string) {
 
 // SearchResult is a struct which return after search in db by parameters of SearchRequest
 type SearchResult struct {
-	FileID        string `json:"fileID,omitempty"`
+	FileID        string `json:"id,omitempty"`
 	Owner         string `json:"owner,omitempty"`
 	Name          string `json:"name,omitempty"`
 	Filename      string `json:"filename,omitempty"`
