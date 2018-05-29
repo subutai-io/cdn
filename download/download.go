@@ -430,12 +430,16 @@ func FormatItem(info map[string]string, repo string) ListItem {
 	}
 	date, _ := time.Parse(time.RFC3339Nano, info["date"])
 	timestamp := strconv.FormatInt(date.Unix(), 10)
+	tags := "tag"
+	if repo == "template" {
+		tags += "s"
+	}
 	item := ListItem{
 		ID:            info["id"],
 		Date:          date,
 		Hash:          hashsums{Md5: info["md5"], Sha256: info["sha256"]},
 		Name:          strings.Split(info["name"], "-subutai-template")[0],
-		Tags:          db.FileField(info["id"], "tag"),
+		Tags:          db.FileField(info["id"], tags),
 		Owner:         db.FileField(info["id"], "owner"),
 		Version:       info["version"],
 		Filename:      info["name"],

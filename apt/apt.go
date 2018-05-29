@@ -126,6 +126,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		} else {
 			db.MakePublic(ID, owner)
 		}
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(ID))
 		log.Info(meta["Filename"] + " saved to apt repo by " + owner)
 	}
