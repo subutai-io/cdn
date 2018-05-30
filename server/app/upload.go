@@ -114,6 +114,7 @@ func FormatConfiguration(hash string, configuration string) (template *Result) {
 	my_uuid, _ := uuid.NewV4()
 	template = new(Result)
 	template.FileID = my_uuid.String()
+	template.Repo = "template"
 	template.Md5 = hash
 	for _, line := range strings.Split(configuration, "\n") {
 		if blocks := strings.Split(line, "="); len(blocks) > 1 {
@@ -232,8 +233,12 @@ func (request *UploadRequest) UploadTemplate(md5Sum, sha256Sum string, size int6
 	result := FormatConfiguration(md5Sum, configuration)
 	err = request.TemplateCheckValid(result)
 	if err != nil {
-
+		if err.Error() != "owner in config file is different" {
+			
+		}
+		return err
 	}
+
 	return nil
 }
 
