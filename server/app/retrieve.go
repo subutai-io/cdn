@@ -17,21 +17,21 @@ import (
 type ValidateFunction func() error
 
 type SearchRequest struct {
-	FileID     string `json:"FileID,omitempty"`    // files' UUID (or MD5)
-	Owner      string `json:"Owner,omitempty"`     // files' owner username
-	Name       string `json:"Name,omitempty"`      // files' name within CDN
-	Repo       string `json:"Repo,omitempty"`      // files' repository - either "apt", "raw", or "template"
-	Version    string `json:"Version,omitempty"`   // files' version
-	Tags       string `json:"Tags,omitempty"`      // files' tags in format: "tag1,tag2,tag3"
-	Token      string `json:"Token,omitempty"`     // user's token
-	Verified   string `json:"Verified,omitempty"`  // flag for searching only among verified CDN users
-	Operation  string `json:"Operation,omitempty"` // operation type requested
+	FileID    string `json:"FileID,omitempty"`    // files' UUID (or MD5)
+	Owner     string `json:"Owner,omitempty"`     // files' owner username
+	Name      string `json:"Name,omitempty"`      // files' name within CDN
+	Repo      string `json:"Repo,omitempty"`      // files' repository - either "apt", "raw", or "template"
+	Version   string `json:"Version,omitempty"`   // files' version
+	Tags      string `json:"Tags,omitempty"`      // files' tags in format: "tag1,tag2,tag3"
+	Token     string `json:"Token,omitempty"`     // user's token
+	Verified  string `json:"Verified,omitempty"`  // flag for searching only among verified CDN users
+	Operation string `json:"Operation,omitempty"` // operation type requested
 
 	validators map[string]ValidateFunction
 }
 
 func (request *SearchRequest) InitValidators() {
-	request.validators         = make(map[string]ValidateFunction)
+	request.validators = make(map[string]ValidateFunction)
 	request.validators["info"] = request.ValidateInfo
 	request.validators["list"] = request.ValidateList
 }
@@ -113,7 +113,7 @@ type Result struct {
 	Scope         string `json:"Scope,omitempty"`
 	Md5           string `json:"Md5,omitempty"`
 	Sha256        string `json:"Sha256,omitempty"`
-	Size          int    `json:"Size,omitempty"`
+	Size          int64  `json:"Size,omitempty"`
 	Tags          string `json:"Tags,omitempty"`
 	Date          string `json:"Date,omitempty"`
 	Timestamp     string `json:"Timestamp,omitempty"`

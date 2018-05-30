@@ -1,16 +1,17 @@
 package app
 
 import (
-	"io"
-	"os"
-	"fmt"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"fmt"
+	"io"
+	"os"
+
 	"github.com/boltdb/bolt"
-	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/agent/log"
+	"github.com/subutai-io/cdn/db"
 )
 
 var (
@@ -62,4 +63,3 @@ func In(item string, list []string) bool {
 	}
 	return false
 }
-
