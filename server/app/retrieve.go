@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -95,6 +96,10 @@ func (request *SearchRequest) BuildQuery() (query map[string]string) {
 		if k == "validators" {
 			continue
 		}
+		value := v.(string)
+		if value == "" {
+			continue
+		}
 		query[k] = v.(string)
 		if query[k] == "latest" {
 			query[k] = ""
@@ -124,6 +129,28 @@ type Result struct {
 	ParentVersion string `json:"ParentVersion,omitempty"`
 	ParentOwner   string `json:"ParentOwner,omitempty"`
 	PrefSize      string `json:"PrefSize,omitempty"`
+}
+
+func (result *Result) ConvertToOld() *OldResult {
+	oldResult := new(OldResult)
+	oldResult.FileID = result.FileID
+	oldResult.Owner = []string{result.Owner}
+	oldResult.Name = result.Name
+	oldResult.Filename = result.Filename
+	oldResult.Version = result.Version
+	oldResult.Hash.Md5 = result.Md5
+	oldResult.Hash.Sha256 = result.Sha256
+	oldResult.Size = result.Size
+	oldResult.Tags = strings.Split(result.Tags, ",")
+	oldResult.Date = result.Date
+	oldResult.Timestamp = result.Timestamp
+	oldResult.Description = result.Description
+	oldResult.Architecture = result.Architecture
+	oldResult.Parent = result.Parent
+	oldResult.ParentVersion = result.ParentVersion
+	oldResult.ParentOwner = result.ParentOwner
+	oldResult.PrefSize = result.PrefSize
+	return oldResult
 }
 
 // BuildResult makes Result struct from map
@@ -174,7 +201,9 @@ func FilterList(query map[string]string, files []*Result) (results []*Result) {
 
 func (request *SearchRequest) Retrieve() []*Result {
 	query := request.BuildQuery()
+	log.Info("Query: ", query)
 	files, err := Search(query)
+	log.Info("Files: ", files)
 	if err != nil {
 		log.Error("retrieve couldn't search the query %+v", query)
 		return nil
@@ -207,6 +236,8 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 		info["Version"] = string(file.Get([]byte("version")))
 		info["Tags"] = string(file.Get([]byte("tag")))
 		info["Date"] = string(file.Get([]byte("date")))
+		date, _ := time.Parse(time.RFC3339Nano, info["Date"])
+		info["Timestamp"] = strconv.FormatInt(date.Unix(), 10)
 		if hash := tx.Bucket(db.MyBucket).Bucket([]byte(id)).Bucket([]byte("hash")); hash != nil {
 			hash.ForEach(func(k, v []byte) error {
 				if string(k) == "md5" {
@@ -245,10 +276,11 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 
 func MatchQuery(file, query map[string]string) bool {
 	for key, value := range query {
-		if key == "Token" || key == "Verified" {
+		if key == "Token" || key == "Verified" || key == "Operation" {
 			continue
 		}
 		if file[key] != value {
+			log.Info(fmt.Sprintf("Key: %v, value: %v, file: %v", key, value, file[key]))
 			return false
 		}
 	}
@@ -268,9 +300,12 @@ func Search(query map[string]string) (list []*Result, err error) {
 		files.ForEach(func(k, v []byte) error {
 			file, err := GetFileInfo(string(k))
 			if err != nil {
+				log.Info("error")
 				return err
 			}
+			//log.Info("File: ", file)
 			if MatchQuery(file, query) {
+				log.Info("File and query are equal")
 				sr := new(Result)
 				sr.BuildResult(file)
 				list = append(list, sr)
