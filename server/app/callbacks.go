@@ -78,5 +78,5 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Error while uploading file: %v", err)))
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("File uploaded successfully"))
+	w.Write([]byte(request.fileID))
 }

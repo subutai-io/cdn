@@ -31,6 +31,7 @@ type UploadRequest struct {
 	Tags     string
 	Version  string
 
+	fileID string
 	md5    string
 	sha256 string
 	size   int64
@@ -89,7 +90,8 @@ func (request *UploadRequest) ExecRequest() error {
 func (request *UploadRequest) BuildResult() *Result {
 	result := new(Result)
 	myUUID, _ := uuid.NewV4()
-	result.FileID = myUUID.String()
+	request.fileID = myUUID.String()
+	result.FileID = request.fileID
 	result.Filename = request.Filename
 	result.Repo = request.Repo
 	result.Owner = request.Owner
@@ -159,6 +161,7 @@ func (request *UploadRequest) UploadApt() error {
 	result.Description = info["Description"]
 	result.Version = info["Version"]
 	WriteDB(result)
+
 	return nil
 }
 
