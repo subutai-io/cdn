@@ -14,10 +14,6 @@ var (
 
 func init() {
 	app.InitFilters()
-	var uploadRequests app.UploadRequest
-	var searchRequests app.SearchRequest
-	uploadRequests.InitUploaders()
-	searchRequests.InitValidators()
 }
 
 // main starts CDN server

@@ -138,6 +138,7 @@ var (
 )
 
 func InitFilters() {
+	log.Info("Initializing filters")
 	filters["info"] = FilterInfo
 	filters["list"] = FilterList
 }

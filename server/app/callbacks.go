@@ -14,6 +14,7 @@ func FileSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request := new(SearchRequest)
+	request.InitValidators()
 	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -33,6 +34,7 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request := new(UploadRequest)
+	request.InitUploaders()
 	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
