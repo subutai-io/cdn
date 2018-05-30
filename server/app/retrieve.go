@@ -285,7 +285,7 @@ func MatchQuery(file, query map[string]string) bool {
 		}
 	}
 	log.Info(fmt.Sprintf("FileID: %s", file["FileID"]))
-	log.Info(fmt.Sprintf("IsPublic: %v", db.IsPublic(file["FileID"]))
+	log.Info(fmt.Sprintf("IsPublic: %v", db.IsPublic(file["FileID"])))
 	if (query["Token"] == "" && !db.IsPublic(file["FileID"])) ||
 		(query["Token"] != "" && !db.CheckShare(file["FileID"], db.TokenOwner(query["Token"]))) {
 		return false
