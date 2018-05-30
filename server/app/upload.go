@@ -103,6 +103,14 @@ func (request *UploadRequest) BuildResult() *Result {
 	return result
 }
 
+func (request *UploadRequest) HandlePrivate() {
+	if request.Private == "true" {
+		db.MakePrivate(request.fileID, request.Owner)
+	} else {
+		db.MakePublic(request.fileID, request.Owner)
+	}
+}
+
 func (request *UploadRequest) ReadDeb() (control bytes.Buffer, err error) {
 	file, err := os.Open(config.Storage.Path + request.Filename)
 	log.Check(log.WarnLevel, "Opening deb package", err)
@@ -161,12 +169,13 @@ func (request *UploadRequest) UploadApt() error {
 	result.Description = info["Description"]
 	result.Version = info["Version"]
 	WriteDB(result)
-
+	request.HandlePrivate()
 	return nil
 }
 
 func (request *UploadRequest) UploadRaw() error {
 	WriteDB(request.BuildResult())
+	request.HandlePrivate()
 	return nil
 }
 
@@ -318,11 +327,11 @@ func (request *UploadRequest) UploadTemplate() error {
 	err = request.TemplateCheckValid(result)
 	if err != nil {
 		if err.Error() != "owner in config file is different" {
-			
+			os.Remove(config.Storage.Path + request.md5)
 		}
 		return err
 	}
-
+	request.HandlePrivate()
 	return nil
 }
 
