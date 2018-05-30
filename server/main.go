@@ -14,8 +14,10 @@ var (
 
 func init() {
 	app.InitFilters()
-	app.InitUploaders()
-	app.InitValidators()
+	var uploadRequests app.UploadRequest
+	var searchRequests app.SearchRequest
+	uploadRequests.InitUploaders()
+	searchRequests.InitValidators()
 }
 
 // main starts CDN server
@@ -40,5 +42,6 @@ func main() {
 		Addr:    ":" + config.Network.Port,
 		Handler: nil,
 	}
+
 	srv.ListenAndServe()
 }
