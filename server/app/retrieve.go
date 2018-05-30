@@ -284,6 +284,10 @@ func MatchQuery(file, query map[string]string) bool {
 			return false
 		}
 	}
+	if (query["Token"] == "" && !db.IsPublic(file["FileID"])) ||
+		(query["Token"] != "" && !db.CheckShare(file["FileID"], db.TokenOwner(query["Token"]))) {
+		return false
+	}
 	if query["Verified"] == "true" && !In(file["Owner"], verifiedUsers) {
 		return false
 	}
