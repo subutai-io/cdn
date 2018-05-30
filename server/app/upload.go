@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	ar "github.com/mkrautz/goar"
 	uuid "github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/config"
@@ -85,13 +86,84 @@ func (request *UploadRequest) ExecRequest() error {
 	return uploader()
 }
 
-func (request *UploadRequest) UploadApt() error {
+func (request *UploadRequest) BuildResult() *Result {
+	result := new(Result)
+	myUUID, _ := uuid.NewV4()
+	result.FileID = myUUID.String()
+	result.Filename = request.Filename
+	result.Repo = request.Repo
+	result.Owner = request.Owner
+	result.Tags = request.Tags
+	result.Version = request.Version
+	result.Md5 = request.md5
+	result.Sha256 = request.sha256
+	result.Size = request.size
+	return result
+}
 
+func (request *UploadRequest) ReadDeb() (control bytes.Buffer, err error) {
+	file, err := os.Open(config.Storage.Path + request.Filename)
+	log.Check(log.WarnLevel, "Opening deb package", err)
+
+	defer file.Close()
+
+	library := ar.NewReader(file)
+	for header, err := library.Next(); err != io.EOF; header, err = library.Next() {
+		if err != nil {
+			return control, err
+		}
+		if header.Name == "control.tar.gz" {
+			ungzip, err := gzip.NewReader(library)
+			if err != nil {
+				return control, err
+			}
+
+			defer ungzip.Close()
+
+			tr := tar.NewReader(ungzip)
+			for tarHeader, err := tr.Next(); err != io.EOF; tarHeader, err = tr.Next() {
+				if err != nil {
+					return control, err
+				}
+				if tarHeader.Name == "./control" {
+					if _, err := io.Copy(&control, tr); err != nil {
+						return control, err
+					}
+					break
+				}
+			}
+		}
+	}
+	return
+}
+
+func GetControl(control bytes.Buffer) map[string]string {
+	d := make(map[string]string)
+	for _, v := range strings.Split(control.String(), "\n") {
+		line := strings.Split(v, ":")
+		if len(line) > 1 {
+			d[line[0]] = strings.TrimPrefix(line[1], " ")
+		}
+	}
+	return d
+}
+
+func (request *UploadRequest) UploadApt() error {
+	control, err := request.ReadDeb()
+	if err != nil {
+		return err
+	}
+	info := GetControl(control)
+	result := request.BuildResult()
+	result.Architecture = info["Architecture"]
+	result.Description = info["Description"]
+	result.Version = info["Version"]
+	WriteDB(result)
 	return nil
 }
 
 func (request *UploadRequest) UploadRaw() error {
-
+	WriteDB(request.BuildResult())
 	return nil
 }
 
