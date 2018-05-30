@@ -2,15 +2,16 @@ package app
 
 import (
 	"fmt"
-	"time"
-	"strings"
 	"net/http"
-	"github.com/boltdb/bolt"
+	"strings"
+	"time"
+
 	"github.com/blang/semver"
+	"github.com/boltdb/bolt"
 	"github.com/fatih/structs"
-	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/agent/log"
 	"github.com/mitchellh/mapstructure"
+	"github.com/subutai-io/agent/log"
+	"github.com/subutai-io/cdn/db"
 )
 
 type ValidateFunction func() error
@@ -74,14 +75,14 @@ func (request *SearchRequest) ValidateList() error {
 
 // ParseRequest takes HTTP request and converts it into Request struct
 func (request *SearchRequest) ParseRequest(httpRequest *http.Request) error {
-	request.FileID    = httpRequest.URL.Query().Get("id")
-	request.Owner     = httpRequest.URL.Query().Get("owner")
-	request.Name      = httpRequest.URL.Query().Get("name")
-	request.Repo      = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
-	request.Version   = httpRequest.URL.Query().Get("version")
-	request.Tags      = httpRequest.URL.Query().Get("tags")
-	request.Token     = strings.ToLower(httpRequest.URL.Query().Get("token"))
-	request.Verified  = strings.ToLower(httpRequest.URL.Query().Get("verified"))
+	request.FileID = httpRequest.URL.Query().Get("id")
+	request.Owner = httpRequest.URL.Query().Get("owner")
+	request.Name = httpRequest.URL.Query().Get("name")
+	request.Repo = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
+	request.Version = httpRequest.URL.Query().Get("version")
+	request.Tags = httpRequest.URL.Query().Get("tags")
+	request.Token = strings.ToLower(httpRequest.URL.Query().Get("token"))
+	request.Verified = strings.ToLower(httpRequest.URL.Query().Get("verified"))
 	request.Operation = strings.Split(strings.Split(httpRequest.RequestURI, "/")[4], "?")[0]
 	return request.ValidateRequest()
 }
