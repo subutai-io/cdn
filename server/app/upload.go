@@ -1,17 +1,22 @@
 package app
 
 import (
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
-	"github.com/subutai-io/cdn/db"
+	"net/http"
+	"os"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+
+	uuid "github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/config"
-	"regexp"
-	"reflect"
+	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/cdn/download"
 )
 
@@ -22,8 +27,12 @@ type UploadRequest struct {
 	Owner    string
 	Token    string
 	Private  string
-	Md5      string
-	Size     int
+	Tags     string
+	Version  string
+
+	md5    string
+	sha256 string
+	size   int64
 
 	uploaders map[string]UploadFunction
 }
@@ -53,29 +62,35 @@ func (request *UploadRequest) ParseRequest(r *http.Request) error {
 	if len(r.MultipartForm.Value["private"]) > 0 {
 		request.Private = r.MultipartForm.Value["private"][0]
 	}
+	if len(r.MultipartForm.Value["version"]) > 0 {
+		request.Version = r.MultipartForm.Value["version"][0]
+	}
+	if len(r.MultipartForm.Value["tags"]) > 0 {
+		request.Tags = r.MultipartForm.Value["tags"][0]
+	}
 	return nil
 }
 
-type UploadFunction func(string, string, int64) error
+type UploadFunction func() error
 
 func (request *UploadRequest) InitUploaders() {
-	request.uploaders             = make(map[string]UploadFunction)
-	request.uploaders["apt"]      = request.UploadApt
-	request.uploaders["raw"]      = request.UploadRaw
+	request.uploaders = make(map[string]UploadFunction)
+	request.uploaders["apt"] = request.UploadApt
+	request.uploaders["raw"] = request.UploadRaw
 	request.uploaders["template"] = request.UploadTemplate
 }
 
-func (request *UploadRequest) ExecRequest(md5Sum, sha256Sum string, size int64) error {
+func (request *UploadRequest) ExecRequest() error {
 	uploader := request.uploaders[request.Repo]
-	return uploader(md5Sum, sha256Sum, size)
+	return uploader()
 }
 
-func (request *UploadRequest) UploadApt(md5Sum, sha256Sum string, size int64) error {
+func (request *UploadRequest) UploadApt() error {
 
 	return nil
 }
 
-func (request *UploadRequest) UploadRaw(md5Sum, sha256Sum string, size int64) error {
+func (request *UploadRequest) UploadRaw() error {
 
 	return nil
 }
@@ -210,7 +225,7 @@ func (request *UploadRequest) TemplateCheckDependencies(template *Result) error 
 }
 
 func (request *UploadRequest) TemplateCheckFormat(template *Result) error {
-	name, _    := regexp.MatchString("^[a-zA-Z0-9._-]+$", template.Name)
+	name, _ := regexp.MatchString("^[a-zA-Z0-9._-]+$", template.Name)
 	version, _ := regexp.MatchString("^[a-zA-Z0-9._-]+$", template.Version)
 	if name && version {
 		return nil
@@ -218,12 +233,12 @@ func (request *UploadRequest) TemplateCheckFormat(template *Result) error {
 	return fmt.Errorf("name or version format is wrong")
 }
 
-func (request *UploadRequest) UploadTemplate(md5Sum, sha256Sum string, size int64) error {
-	configuration, err := LoadConfiguration(md5Sum)
+func (request *UploadRequest) UploadTemplate() error {
+	configuration, err := LoadConfiguration(request.md5)
 	if err != nil {
 		return err
 	}
-	result := FormatConfiguration(md5Sum, configuration)
+	result := FormatConfiguration(request.md5, configuration)
 	err = request.TemplateCheckValid(result)
 	if err != nil {
 
@@ -240,25 +255,25 @@ func (request *UploadRequest) Upload() error {
 	}
 	defer file.Close()
 	limit := int64(db.QuotaLeft(request.Owner))
-	size, err := io.Copy(file, request.File)
-	if limit != -1 && (size == limit || err != nil) {
+	request.size, err = io.Copy(file, request.File)
+	if limit != -1 && (request.size == limit || err != nil) {
 		log.Warn("User " + request.Owner + " exceeded storage quota, removing file")
 		os.Remove(filePath)
 		return fmt.Errorf("failed to write file or storage quota exceeded")
 	} else {
-		db.QuotaUsageSet(request.Owner, int(size))
-		log.Info("User " + request.Owner + ", quota usage +" + strconv.Itoa(int(size)))
+		db.QuotaUsageSet(request.Owner, int(request.size))
+		log.Info("User " + request.Owner + ", quota usage +" + strconv.Itoa(int(request.size)))
 	}
-	md5Sum    := Hash(filePath, "md5")
-	sha256Sum := Hash(filePath, "sha256")
-	if len(md5Sum) == 0 || len(sha256Sum) == 0 {
+	request.md5 = Hash(filePath, "md5")
+	request.sha256 = Hash(filePath, "sha256")
+	if len(request.md5) == 0 || len(request.sha256) == 0 {
 		log.Warn("Failed to calculate hash for " + request.Filename)
 		return fmt.Errorf("failed to calculate hash")
 	}
 	if request.Repo != "apt" {
-		md5Path := config.Storage.Path + md5Sum
+		md5Path := config.Storage.Path + request.md5
 		os.Rename(filePath, md5Path)
 		log.Debug(fmt.Sprintf("repo is not apt: renamed %s to %s", filePath, md5Path))
 	}
-	return request.ExecRequest(md5Sum, sha256Sum, size)
+	return request.ExecRequest()
 }
