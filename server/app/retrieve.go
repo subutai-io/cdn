@@ -89,6 +89,7 @@ func (request *SearchRequest) ParseRequest(httpRequest *http.Request) error {
 
 // BuildQuery constructs the query out of the existing parameters in SearchRequest
 func (request *SearchRequest) BuildQuery() (query map[string]string) {
+	query = make(map[string]string)
 	m := structs.Map(request)
 	for k, v := range m {
 		if k == "validators" {
@@ -184,6 +185,7 @@ func (request *SearchRequest) Retrieve() []*Result {
 }
 
 func GetFileInfo(id string) (info map[string]string, err error) {
+	info = make(map[string]string)
 	info["FileID"] = id
 	err = db.DB.View(func(tx *bolt.Tx) error {
 		file := tx.Bucket(db.MyBucket).Bucket([]byte(id))
