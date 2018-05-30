@@ -13,14 +13,14 @@ func FileSearch(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Incorrect method for info/list request"))
 		return
 	}
-	var request SearchRequest
+	request := new(SearchRequest)
 	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(fmt.Sprintf("Incorrect info/list request: %v", err)))
 		return
 	}
-	files := Retrieve(request)
+	files := request.Retrieve()
 	result, _ := json.Marshal(files)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(result))
@@ -32,14 +32,14 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Incorrect method for upload request")))
 		return
 	}
-	var request UploadRequest
+	request := new(UploadRequest)
 	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(fmt.Sprintf("Incorrect upload request: %v", err)))
 		return
 	}
-	err = Upload(request)
+	err = request.Upload()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while uploading file: %v", err)))
