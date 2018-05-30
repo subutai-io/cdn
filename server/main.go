@@ -22,6 +22,14 @@ func main() {
 
 	log.Info("Server has started. " + "Listening at " + "127.0.0.1:8080")
 
+	http.HandleFunc("/kurjun/rest/auth/key", app.Key)
+	http.HandleFunc("/kurjun/rest/auth/keys", app.Keys)
+	http.HandleFunc("/kurjun/rest/auth/sign", app.Sign)
+	http.HandleFunc("/kurjun/rest/auth/owner", app.Owner)
+	http.HandleFunc("/kurjun/rest/auth/token", app.Token)
+	http.HandleFunc("/kurjun/rest/auth/register", app.Register)
+	http.HandleFunc("/kurjun/rest/auth/validate", app.Validate)
+
 	http.HandleFunc("/kurjun/rest/apt/info", app.FileSearch)
 	http.HandleFunc("/kurjun/rest/apt/list", app.FileSearch)
 	http.HandleFunc("/kurjun/rest/apt/upload", app.FileUpload)
