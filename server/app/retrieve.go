@@ -13,58 +13,34 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+type ValidateFunction func() error
+
 type SearchRequest struct {
-	FileID    string `json:"id,omitempty"`    // files' UUID (or MD5)
-	Owner     string `json:"owner,omitempty"`     // files' owner username
-	Name      string `json:"name,omitempty"`      // files' name within CDN
-	Repo      string `json:"type,omitempty"`      // files' repository - either "apt", "raw", or "template"
-	Version   string `json:"version,omitempty"`   // files' version
-	Tags      string `json:"tags,omitempty"`      // files' tags in format: "tag1,tag2,tag3"
-	Token     string `json:"token,omitempty"`     // user's token
-	Verified  string `json:"verified,omitempty"`  // flag for searching only among verified CDN users
-	Operation string `json:"operation,omitempty"` // operation type requested
+	FileID     string `json:"FileID,omitempty"`    // files' UUID (or MD5)
+	Owner      string `json:"Owner,omitempty"`     // files' owner username
+	Name       string `json:"Name,omitempty"`      // files' name within CDN
+	Repo       string `json:"Repo,omitempty"`      // files' repository - either "apt", "raw", or "template"
+	Version    string `json:"Version,omitempty"`   // files' version
+	Tags       string `json:"Tags,omitempty"`      // files' tags in format: "tag1,tag2,tag3"
+	Token      string `json:"Token,omitempty"`     // user's token
+	Verified   string `json:"Verified,omitempty"`  // flag for searching only among verified CDN users
+	Operation  string `json:"Operation,omitempty"` // operation type requested
+
+	validators map[string]ValidateFunction
 }
 
-type validateFunc func(SearchRequest) error
-
-var (
-	validators    = make(map[string]validateFunc)
-	verifiedUsers = []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}
-)
-
-func InitValidators() {
-	validators["info"] = ValidateInfo
-	validators["list"] = ValidateList
+func (request *SearchRequest) InitValidators() {
+	request.validators         = make(map[string]ValidateFunction)
+	request.validators["info"] = request.ValidateInfo
+	request.validators["list"] = request.ValidateList
 }
 
-func (request SearchRequest) ValidateRequest() error {
-	validator := validators[request.Operation]
-	return validator(request)
+func (request *SearchRequest) ValidateRequest() error {
+	validator := request.validators[request.Operation]
+	return validator()
 }
 
-func CheckOwner(owner string) bool {
-	exists := false
-	db.DB.View(func(tx *bolt.Tx) error {
-		exists = tx.Bucket(db.Users).Bucket([]byte(owner)) != nil
-		return nil
-	})
-	return exists
-}
-
-func CheckToken(token string) bool {
-	return db.TokenOwner(token) != ""
-}
-
-func In(item string, list []string) bool {
-	for _, v := range list {
-		if item == v {
-			return true
-		}
-	}
-	return false
-}
-
-func ValidateInfo(request SearchRequest) error {
+func (request *SearchRequest) ValidateInfo() error {
 	if request.FileID == "" && request.Name == "" {
 		return fmt.Errorf("both fileID and name weren't given")
 	}
@@ -83,7 +59,7 @@ func ValidateInfo(request SearchRequest) error {
 	return nil
 }
 
-func ValidateList(request SearchRequest) error {
+func (request *SearchRequest) ValidateList() error {
 	if !CheckOwner(request.Owner) {
 		request.Owner = ""
 	}
@@ -114,6 +90,9 @@ func (request *SearchRequest) ParseRequest(httpRequest *http.Request) error {
 func (request *SearchRequest) BuildQuery() (query map[string]string) {
 	m := structs.Map(request)
 	for k, v := range m {
+		if k == "validators" {
+			continue
+		}
 		query[k] = v.(string)
 		if query[k] == "latest" {
 			query[k] = ""
@@ -122,39 +101,39 @@ func (request *SearchRequest) BuildQuery() (query map[string]string) {
 	return
 }
 
-// SearchResult is a struct which return after search in db by parameters of SearchRequest
-type SearchResult struct {
-	FileID        string `json:"id,omitempty"`
-	Owner         string `json:"owner,omitempty"`
-	Name          string `json:"name,omitempty"`
-	Filename      string `json:"filename,omitempty"`
-	Repo          string `json:"type,omitempty"`
-	Version       string `json:"version,omitempty"`
-	Scope         string `json:"scope,omitempty"`
-	Md5           string `json:"md5,omitempty"`
-	Sha256        string `json:"sha256,omitempty"`
-	Size          int    `json:"size,omitempty"`
-	Tags          string `json:"tags,omitempty"`
-	Date          string `json:"date,omitempty"`
-	Timestamp     string `json:"timestamp,omitempty"`
-	Description   string `json:"description,omitempty"`
-	Architecture  string `json:"architecture,omitempty"`
-	Parent        string `json:"parent,omitempty"`
-	ParentVersion string `json:"parentVersion,omitempty"`
-	ParentOwner   string `json:"parentOwner,omitempty"`
-	PrefSize      string `json:"prefSize,omitempty"`
+// Result represents all file's attributes
+type Result struct {
+	FileID        string `json:"FileID,omitempty"`
+	Owner         string `json:"Owner,omitempty"`
+	Name          string `json:"Name,omitempty"`
+	Filename      string `json:"Filename,omitempty"`
+	Repo          string `json:"Repo,omitempty"`
+	Version       string `json:"Version,omitempty"`
+	Scope         string `json:"Scope,omitempty"`
+	Md5           string `json:"Md5,omitempty"`
+	Sha256        string `json:"Sha256,omitempty"`
+	Size          int    `json:"Size,omitempty"`
+	Tags          string `json:"Tags,omitempty"`
+	Date          string `json:"Date,omitempty"`
+	Timestamp     string `json:"Timestamp,omitempty"`
+	Description   string `json:"Description,omitempty"`
+	Architecture  string `json:"Architecture,omitempty"`
+	Parent        string `json:"Parent,omitempty"`
+	ParentVersion string `json:"ParentVersion,omitempty"`
+	ParentOwner   string `json:"ParentOwner,omitempty"`
+	PrefSize      string `json:"PrefSize,omitempty"`
 }
 
-// BuildResult makes SearchResult struct from map
-func BuildResult(info map[string]string) (result SearchResult) {
+// BuildResult makes Result struct from map
+func (result *Result) BuildResult(info map[string]string) {
 	mapstructure.Decode(info, &result)
 	return
 }
 
-type filterFunc func(map[string]string, []SearchResult) []SearchResult
+type FilterFunction func(map[string]string, []*Result) []*Result
 
 var (
-	filters = make(map[string]filterFunc)
+	filters = make(map[string]FilterFunction)
 )
 
 func InitFilters() {
@@ -162,35 +141,35 @@ func InitFilters() {
 	filters["list"] = FilterList
 }
 
-func FilterInfo(query map[string]string, files []SearchResult) (result []SearchResult) {
-	queryVersion, _ := semver.Make(query["version"])
+func FilterInfo(query map[string]string, files []*Result) (result []*Result) {
+	queryVersion, _ := semver.Make(query["Version"])
 	for _, file := range files {
 		fileVersion, _ := semver.Make(file.Version)
-		if query["version"] == "" {
+		if query["Version"] == "" {
 			if fileVersion.GTE(queryVersion) {
 				queryVersion = fileVersion
-				result = []SearchResult{file}
+				result = []*Result{file}
 			} else if fileVersion.EQ(queryVersion) && len(result) > 0 {
 				resultDate, _ := time.Parse(time.RFC3339, result[0].Date)
 				fileDate, _ := time.Parse(time.RFC3339, file.Date)
 				if resultDate.After(fileDate) {
-					result = []SearchResult{file}
+					result = []*Result{file}
 				}
 			}
 		} else {
 			if queryVersion.EQ(fileVersion) {
-				result = []SearchResult{file}
+				result = []*Result{file}
 			}
 		}
 	}
 	return
 }
 
-func FilterList(query map[string]string, files []SearchResult) (results []SearchResult) {
+func FilterList(query map[string]string, files []*Result) (results []*Result) {
 	return files
 }
 
-func Retrieve(request SearchRequest) []SearchResult {
+func (request *SearchRequest) Retrieve() []*Result {
 	query := request.BuildQuery()
 	files, err := Search(query)
 	if err != nil {
@@ -203,7 +182,7 @@ func Retrieve(request SearchRequest) []SearchResult {
 }
 
 func GetFileInfo(id string) (info map[string]string, err error) {
-	info["fileID"] = id
+	info["FileID"] = id
 	err = db.DB.View(func(tx *bolt.Tx) error {
 		file := tx.Bucket(db.MyBucket).Bucket([]byte(id))
 		if file == nil {
@@ -211,47 +190,47 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 		}
 		owner := file.Bucket([]byte("owner"))
 		key, _ := owner.Cursor().First()
-		info["owner"] = string(key)
-		info["name"] = string(file.Get([]byte("name")))
+		info["Owner"] = string(key)
+		info["Name"] = string(file.Get([]byte("name")))
 		repo := file.Bucket([]byte("type"))
 		if repo != nil {
 			key, _ = repo.Cursor().First()
-			info["repo"] = string(key)
+			info["Repo"] = string(key)
 		}
-		if len(info["repo"]) == 0 {
+		if len(info["Repo"]) == 0 {
 			return fmt.Errorf("couldn't find repo for file %s", id)
 		}
-		info["version"] = string(file.Get([]byte("version")))
-		info["tags"] = string(file.Get([]byte("tag")))
-		info["date"] = string(file.Get([]byte("date")))
+		info["Version"] = string(file.Get([]byte("version")))
+		info["Tags"] = string(file.Get([]byte("tag")))
+		info["Date"] = string(file.Get([]byte("date")))
 		if hash := tx.Bucket(db.MyBucket).Bucket([]byte(id)).Bucket([]byte("hash")); hash != nil {
 			hash.ForEach(func(k, v []byte) error {
 				if string(k) == "md5" {
-					info["md5"] = string(v)
+					info["Md5"] = string(v)
 				}
 				if string(k) == "sha256" {
-					info["sha256"] = string(v)
+					info["Sha256"] = string(v)
 				}
 				return nil
 			})
 		}
 		sz := file.Get([]byte("size"))
 		if sz != nil {
-			info["size"] = string(sz)
+			info["Size"] = string(sz)
 		} else {
-			info["size"] = string(file.Get([]byte("Size")))
+			info["Size"] = string(file.Get([]byte("Size")))
 		}
-		info["description"] = string(file.Get([]byte("Description")))
+		info["Description"] = string(file.Get([]byte("Description")))
 		arch := file.Get([]byte("Architecture"))
 		if arch != nil {
-			info["architecture"] = string(arch)
+			info["Architecture"] = string(arch)
 		} else {
-			info["architecture"] = string(file.Get([]byte("arch")))
+			info["Architecture"] = string(file.Get([]byte("arch")))
 		}
-		info["parent"] = string(file.Get([]byte("parent")))
-		info["parentVersion"] = string(file.Get([]byte("parent-version")))
-		info["parentOwner"] = string(file.Get([]byte("parent-owner")))
-		info["prefSize"] = string(file.Get([]byte("prefsize")))
+		info["Parent"] = string(file.Get([]byte("parent")))
+		info["ParentVersion"] = string(file.Get([]byte("parent-version")))
+		info["ParentOwner"] = string(file.Get([]byte("parent-owner")))
+		info["PrefSize"] = string(file.Get([]byte("prefsize")))
 		return nil
 	})
 	if err != nil {
@@ -262,25 +241,24 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 
 func MatchQuery(file, query map[string]string) bool {
 	for key, value := range query {
-		if key == "token" || key == "verified" {
+		if key == "Token" || key == "Verified" {
 			continue
 		}
 		if file[key] != value {
 			return false
 		}
 	}
-	if query["verified"] == "true" && !In(file["owner"], verifiedUsers) {
+	if query["Verified"] == "true" && !In(file["Owner"], verifiedUsers) {
 		return false
 	}
-	if !(query["verified"] == "true") && query["token"] != "" && !db.CheckShare(file["fileID"], db.TokenOwner(query["token"])) {
+	if !(query["Verified"] == "true") && query["Token"] != "" && !db.CheckShare(file["FileID"], db.TokenOwner(query["Token"])) {
 		return false
 	}
 	return true
 }
 
 // Search return list of files with parameters like query
-func Search(query map[string]string) (list []SearchResult, err error) {
-	var sr SearchResult
+func Search(query map[string]string) (list []*Result, err error) {
 	db.DB.View(func(tx *bolt.Tx) error {
 		files := tx.Bucket(db.MyBucket)
 		files.ForEach(func(k, v []byte) error {
@@ -289,7 +267,8 @@ func Search(query map[string]string) (list []SearchResult, err error) {
 				return err
 			}
 			if MatchQuery(file, query) {
-				sr = BuildResult(file)
+				sr := new(Result)
+				sr.BuildResult(file)
 				list = append(list, sr)
 			}
 			return nil
