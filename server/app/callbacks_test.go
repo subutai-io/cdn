@@ -8,8 +8,9 @@ import (
 	"net/http/httptest"
 	"github.com/subutai-io/cdn/libgorjun"
 	"io/ioutil"
-	"strings"
 	"github.com/subutai-io/agent/log"
+	"strings"
+	"fmt"
 )
 
 func Clean() {
@@ -31,33 +32,48 @@ func SetUp() {
 	log.Info("Testing environment and configuration are set up")
 }
 
+func PreUploadUser(user gorjun.GorjunUser) {
+	publicFiles, _ := ioutil.ReadDir("/tmp/data/public/" + user.Username + "/")
+	for _, file := range publicFiles {
+		path := "/tmp/data/public/" + user.Username + "/" + file.Name()
+		if strings.Contains(file.Name(), "-subutai-template") {
+			log.Info(fmt.Sprintf("Uploading public file %s of user %s to repo template", path, user.Username))
+			user.Upload(path, "template", "false")
+		} else if strings.HasSuffix(file.Name(), ".deb") {
+			log.Info(fmt.Sprintf("Uploading public file %s of user %s to repo apt", path, user.Username))
+			user.Upload(path, "apt", "false")
+		} else {
+			log.Info(fmt.Sprintf("Uploading public file %s of user %s to repo raw", path, user.Username))
+			user.Upload(path, "raw", "false")
+		}
+	}
+	log.Info(fmt.Sprintf("Public files of user %s are pre-uploaded to CDN", user.Username))
+	privateFiles, _ := ioutil.ReadDir("/tmp/data/private/" + user.Username + "/")
+	for _, file := range privateFiles {
+		path := "/tmp/data/private/" + user.Username + "/" + file.Name()
+		if strings.Contains(file.Name(), "-subutai-template") {
+			log.Info(fmt.Sprintf("Uploading private file %s of user %s to repo template", path, user.Username))
+			user.Upload(path, "template", "true")
+		} else if strings.HasSuffix(file.Name(), ".deb") {
+			log.Info(fmt.Sprintf("Uploading private file %s of user %s to repo apt", path, user.Username))
+			user.Upload(path, "apt", "true")
+		} else {
+			log.Info(fmt.Sprintf("Uploading private file %s of user %s to repo raw", path, user.Username))
+			user.Upload(path, "raw", "true")
+		}
+	}
+	log.Info(fmt.Sprintf("Private files of user %s are pre-uploaded to CDN", user.Username))
+}
+
 func PreUpload() {
 	log.Info("Pre-uploading files to CDN")
 	subutai := gorjun.VerifiedGorjunUser()
-	publicFiles, _ := ioutil.ReadDir("/tmp/data/public/")
-	for _, file := range publicFiles {
-		path := config.Storage.Path + file.Name()
-		if strings.Contains(file.Name(), "-subutai-template") {
-			subutai.Upload(path, "template", "false")
-		} else if strings.HasSuffix(file.Name(), ".deb") {
-			subutai.Upload(path, "apt", "false")
-		} else {
-			subutai.Upload(path, "raw", "false")
-		}
-	}
-	log.Info("Public files are pre-uploaded files to CDN")
-	privateFiles, _ := ioutil.ReadDir("/tmp/data/private/")
-	for _, file := range privateFiles {
-		path := config.Storage.Path + file.Name()
-		if strings.Contains(file.Name(), "-subutai-template") {
-			subutai.Upload(path, "template", "true")
-		} else if strings.HasSuffix(file.Name(), ".deb") {
-			subutai.Upload(path, "apt", "true")
-		} else {
-			subutai.Upload(path, "raw", "true")
-		}
-	}
-	log.Info("Private files are pre-uploaded files to CDN")
+	akenzhaliev := gorjun.FirstGorjunUser()
+	abaytulakova := gorjun.SecondGorjunUser()
+	PreUploadUser(subutai)
+	PreUploadUser(akenzhaliev)
+	PreUploadUser(abaytulakova)
+	log.Info("Pre-uploading files finished")
 }
 
 func TearDown() {
