@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
+	"github.com/subutai-io/agent/log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -83,11 +83,11 @@ func (g *GorjunUser) ListUserFiles() ([]GorjunFile, error) {
 	var rf []GorjunFile
 	err = json.Unmarshal(data, &rf)
 	if err != nil {
-		log.Printf("error decoding sakura response: %v", err)
+		log.Debug("error decoding sakura response: %v", err)
 		if e, ok := err.(*json.SyntaxError); ok {
-			log.Printf("syntax error at byte offset %d", e.Offset)
+			log.Debug("syntax error at byte offset %d", e.Offset)
 		}
-		log.Printf("sakura response: %q", data)
+		log.Debug("sakura response: %q", data)
 	}
 
 	if err != nil {
@@ -121,38 +121,48 @@ func (g *GorjunUser) GetFileByName(filename string, artifactType string) ([]Gorj
 
 // UploadFile will upload file and return it's ID after successful upload
 func (g *GorjunUser) Upload(filename string, artifactType string, private string) (string, error) {
+	log.Info("Sending Upload request")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		log.Warn(fmt.Sprintf("File %s not found", filename))
 		return "", fmt.Errorf("%s not found", filename)
 	}
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	f, err := os.Open(filename)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Failed to open file: %v", err))
 		return "", fmt.Errorf("Failed to open file: %v", err)
 	}
 	defer f.Close()
 	fw, err := w.CreateFormFile("file", filepath.Base(filename))
 	if err != nil {
+		log.Warn(fmt.Sprintf("Failed to create file form: %v", err))
 		return "", fmt.Errorf("Failed to create file form: %v", err)
 	}
 	if _, err = io.Copy(fw, f); err != nil {
+		log.Warn(fmt.Sprintf("Failed to copy file contents: %v", err))
 		return "", fmt.Errorf("Failed to copy file contents: %v", err)
 	}
 	if fw, err = w.CreateFormField("token"); err != nil {
+		log.Warn(fmt.Sprintf("Failed to create token form field: %v", err))
 		return "", fmt.Errorf("Failed to create token form field: %v", err)
 	}
 	if _, err = fw.Write([]byte(g.Token)); err != nil {
+		log.Warn(fmt.Sprintf("Failed to write token: %v", err))
 		return "", fmt.Errorf("Failed to write token: %v", err)
 	}
 	if fw, err = w.CreateFormField("private"); err != nil {
+		log.Warn(fmt.Sprintf("Failed to create private form field: %v", err))
 		return "", fmt.Errorf("Failed to create private form field: %v", err)
 	}
 	if _, err = fw.Write([]byte(private)); err != nil {
+		log.Warn(fmt.Sprintf("Failed to write private: %v", err))
 		return "", fmt.Errorf("Failed to write private: %v", err)
 	}
 	w.Close()
 	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/kurjun/rest/%s/upload", g.Hostname, artifactType), &b)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Failed to create HTTP request: %v", err))
 		return "", fmt.Errorf("Failed to create HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
@@ -160,13 +170,16 @@ func (g *GorjunUser) Upload(filename string, artifactType string, private string
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Failed to execute HTTP request: %v", err))
 		return "", fmt.Errorf("Failed to execute HTTP request: %v", err)
 	}
 	if res.StatusCode != http.StatusOK {
+		log.Warn(fmt.Sprintf("Upload failed. Server returned %s error", res.Status))
 		return "", fmt.Errorf("Upload failed. Server returned %s error", res.Status)
 	}
 	response, err := ioutil.ReadAll(res.Body)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Failed to read response body: %v", err))
 		return "", fmt.Errorf("Failed to read response body: %v", err)
 	}
 	return string(response), nil

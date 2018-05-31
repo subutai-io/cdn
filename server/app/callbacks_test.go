@@ -11,6 +11,8 @@ import (
 	"github.com/subutai-io/agent/log"
 	"strings"
 	"fmt"
+	"time"
+	"context"
 )
 
 func Clean() {
@@ -30,37 +32,42 @@ func SetUp() {
 	config.Storage.Path = "/tmp/data/files/"
 	config.Storage.Userquota = "2G"
 	log.Info("Testing environment and configuration are set up")
+	ListenAndServe()
 }
 
 func PreUploadUser(user gorjun.GorjunUser) {
 	publicFiles, _ := ioutil.ReadDir("/tmp/data/public/" + user.Username + "/")
 	for _, file := range publicFiles {
 		path := "/tmp/data/public/" + user.Username + "/" + file.Name()
+		repo := ""
 		if strings.Contains(file.Name(), "-subutai-template") {
-			log.Info(fmt.Sprintf("Uploading public file %s of user %s to repo template", path, user.Username))
+			repo = "template"
 			user.Upload(path, "template", "false")
 		} else if strings.HasSuffix(file.Name(), ".deb") {
-			log.Info(fmt.Sprintf("Uploading public file %s of user %s to repo apt", path, user.Username))
+			repo = "apt"
 			user.Upload(path, "apt", "false")
 		} else {
-			log.Info(fmt.Sprintf("Uploading public file %s of user %s to repo raw", path, user.Username))
+			repo = "raw"
 			user.Upload(path, "raw", "false")
 		}
+		log.Info(fmt.Sprintf("Uploading public file %s of user %s to repo %s", path, user.Username, repo))
 	}
 	log.Info(fmt.Sprintf("Public files of user %s are pre-uploaded to CDN", user.Username))
 	privateFiles, _ := ioutil.ReadDir("/tmp/data/private/" + user.Username + "/")
 	for _, file := range privateFiles {
 		path := "/tmp/data/private/" + user.Username + "/" + file.Name()
+		repo := ""
 		if strings.Contains(file.Name(), "-subutai-template") {
-			log.Info(fmt.Sprintf("Uploading private file %s of user %s to repo template", path, user.Username))
+			repo = "template"
 			user.Upload(path, "template", "true")
 		} else if strings.HasSuffix(file.Name(), ".deb") {
-			log.Info(fmt.Sprintf("Uploading private file %s of user %s to repo apt", path, user.Username))
+			repo = "apt"
 			user.Upload(path, "apt", "true")
 		} else {
-			log.Info(fmt.Sprintf("Uploading private file %s of user %s to repo raw", path, user.Username))
+			repo = "raw"
 			user.Upload(path, "raw", "true")
 		}
+		log.Info(fmt.Sprintf("Uploading private file %s of user %s to repo %s", path, user.Username, repo))
 	}
 	log.Info(fmt.Sprintf("Private files of user %s are pre-uploaded to CDN", user.Username))
 }
@@ -77,6 +84,8 @@ func PreUpload() {
 }
 
 func TearDown() {
+	ctx, _ := context.WithTimeout(context.Background(), 1 * time.Second)
+	Server.Shutdown(ctx)
 	log.Info("Destroying testing environment")
 	Clean()
 	log.Info("Testing environment destroyed")

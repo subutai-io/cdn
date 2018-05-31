@@ -66,24 +66,33 @@ func FileSearch(w http.ResponseWriter, r *http.Request) {
 }
 
 func FileUpload(w http.ResponseWriter, r *http.Request) {
+	log.Info("Received upload request")
+	log.Info(r)
 	if r.Method != "POST" {
+		log.Warn("Incorrect method for upload request")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(fmt.Sprintf("Incorrect method for upload request")))
 		return
 	}
 	request := new(UploadRequest)
 	request.InitUploaders()
+	log.Info("Successfully initialized request")
 	err := request.ParseRequest(r)
 	if err != nil {
+		log.Warn("Couldn't parse upload request")
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(fmt.Sprintf("Incorrect upload request: %v", err)))
 		return
 	}
+	log.Info("Successfully parsed request")
 	err = request.Upload()
 	if err != nil {
+		log.Warn("Couldn't upload file")
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while uploading file: %v", err)))
+		return
 	}
+	log.Info("Successfully uploaded a file: ", request.fileID)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(request.fileID))
 }
