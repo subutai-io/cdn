@@ -87,7 +87,7 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 	log.Info("Successfully parsed request")
 	err = request.Upload()
 	if err != nil {
-		log.Warn("Couldn't upload file")
+		log.Warn(fmt.Sprintf("Couldn't upload file: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while uploading file: %v", err)))
 		return

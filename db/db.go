@@ -619,9 +619,13 @@ func QuotaLeft(user string) int {
 				stored = CountTotal(user)
 				b.Put([]byte("stored"), []byte(strconv.Itoa(stored)))
 			}
+		} else {
+			log.Warn(fmt.Sprintf("User %s is not registered", user))
 		}
 		return nil
 	})
+	log.Info("Quota: ", quota)
+	log.Info("Stored: ", stored)
 	if quota == -1 {
 		return -1
 	} else if quota <= stored {

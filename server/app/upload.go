@@ -40,20 +40,6 @@ type UploadRequest struct {
 }
 
 func (request *UploadRequest) ParseRequest(r *http.Request) error {
-	r.ParseMultipartForm(32 << 20)
-	file, header, err := r.FormFile("file")
-	defer file.Close()
-	if err != nil {
-		log.Warn("Couldn't open file")
-		return err
-	}
-	request.File = io.Reader(file) // multipart.sectionReadCloser
-	limit := int64(db.QuotaLeft(request.Owner))
-	if limit != -1 {
-		request.File = io.LimitReader(file, limit)
-	}
-	request.Filename = header.Filename
-	request.Repo = strings.Split(r.RequestURI, "/")[3]
 	request.Token = r.Header.Get("token")
 	if len(request.Token) == 0 {
 		log.Warn("Token is empty")
@@ -64,6 +50,26 @@ func (request *UploadRequest) ParseRequest(r *http.Request) error {
 		log.Warn("Token is incorrect")
 		return fmt.Errorf("incorrect token provided")
 	}
+	escapedPath := strings.Split(r.URL.EscapedPath(), "/")
+	if len(escapedPath) < 4 {
+		log.Warn("url for upload is not correct")
+		return fmt.Errorf("incorrect Upload request")
+	}
+	request.Repo = escapedPath[3]
+	r.ParseMultipartForm(1 << 31)
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		log.Warn("Couldn't open file")
+		return err
+	}
+	defer file.Close()
+	request.Filename = header.Filename
+	request.File = io.Reader(file) // multipart.sectionReadCloser
+	limit := int64(db.QuotaLeft(request.Owner))
+	if limit != -1 {
+		request.File = io.LimitReader(file, limit)
+	}
+	log.Info(fmt.Sprintf("Printing io.Reader: %+v", request.File))
 	if len(r.MultipartForm.Value["private"]) > 0 {
 		request.Private = r.MultipartForm.Value["private"][0]
 	}
@@ -167,32 +173,38 @@ func (request *UploadRequest) UploadApt() error {
 	result.Architecture = info["Architecture"]
 	result.Description = info["Description"]
 	result.Version = info["Version"]
+	log.Info(fmt.Sprintf("Uploading apt file -> %+v", result))
 	WriteDB(result)
 	request.HandlePrivate()
 	return nil
 }
 
 func (request *UploadRequest) UploadRaw() error {
-	WriteDB(request.BuildResult())
+	result := request.BuildResult()
+	log.Info(fmt.Sprintf("Uploading raw file -> %+v", result))
+	WriteDB(result)
 	request.HandlePrivate()
 	return nil
 }
 
-func LoadConfiguration(md5Sum string) (configuration string, err error) {
+func LoadConfiguration(request *UploadRequest) (configuration string, err error) {
 	var configurationFile bytes.Buffer
-	f, err := os.Open(config.Storage.Path + md5Sum)
+	f, err := os.Open(config.Storage.Path + request.md5)
 	if err != nil {
+		log.Warn("Failed to open template to load configuration file")
 		return
 	}
 	defer f.Close()
 	gzFile, err := gzip.NewReader(f)
 	if err != nil {
+		log.Warn("Failed to open .gz to load configuration file")
 		return
 	}
 	tarFile := tar.NewReader(gzFile)
 	for file, fileErr := tarFile.Next(); fileErr != io.EOF; file, err = tarFile.Next() {
 		if file.Name == "config" {
 			if _, err = io.Copy(&configurationFile, tarFile); err != nil {
+				log.Warn("Failed to copy configuration file")
 				return
 			}
 			break
@@ -202,12 +214,8 @@ func LoadConfiguration(md5Sum string) (configuration string, err error) {
 	return
 }
 
-func FormatConfiguration(hash string, configuration string) (template *Result) {
-	my_uuid, _ := uuid.NewV4()
-	template = new(Result)
-	template.FileID = my_uuid.String()
-	template.Repo = "template"
-	template.Md5 = hash
+func FormatConfiguration(request *UploadRequest, configuration string) (template *Result) {
+	template = request.BuildResult()
 	for _, line := range strings.Split(configuration, "\n") {
 		if blocks := strings.Split(line, "="); len(blocks) > 1 {
 			blocks[0] = strings.ToLower(strings.TrimSpace(blocks[0]))
@@ -284,20 +292,16 @@ func (request *UploadRequest) TemplateCheckOwner(template *Result) error {
 
 func (request *UploadRequest) TemplateCheckDependencies(template *Result) error {
 	parentExists := false
-	list := db.SearchName(template.Parent)
-	for _, id := range list {
-		info, err := GetFileInfo(id)
-		if err != nil {
-			continue
-		}
-		item := new(Result)
-		item.BuildResult(info)
-		if len(item.Owner) == 0 {
-			continue
-		}
-		if item.Name == template.Parent &&
-			item.Owner == template.ParentOwner &&
-			item.Version == template.ParentVersion {
+	searchRequest := new(SearchRequest)
+	searchRequest.Name = template.Parent
+	searchRequest.Repo = request.Repo
+	searchRequest.Token = request.Token
+	searchRequest.Operation = "list"
+	list := searchRequest.Retrieve()
+	for _, result := range list {
+		if result.Name == template.Parent &&
+			result.Owner == template.ParentOwner &&
+			result.Version == template.ParentVersion {
 			parentExists = true
 			break
 		}
@@ -318,25 +322,31 @@ func (request *UploadRequest) TemplateCheckFormat(template *Result) error {
 }
 
 func (request *UploadRequest) UploadTemplate() error {
-	configuration, err := LoadConfiguration(request.md5)
+	configuration, err := LoadConfiguration(request)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Couldn't upload template: %v", err))
 		return err
 	}
-	result := FormatConfiguration(request.md5, configuration)
+	result := FormatConfiguration(request, configuration)
 	err = request.TemplateCheckValid(result)
 	if err != nil {
 		if err.Error() != "owner in config file is different" {
 			db.QuotaUsageSet(request.Owner, -int(request.size))
 			os.Remove(config.Storage.Path + request.md5)
 		}
+		log.Warn(fmt.Sprintf("Not valid template: %v", err))
 		return err
 	}
+	request.fileID = result.FileID
+	log.Info(fmt.Sprintf("Uploading template -> %+v", result))
+	WriteDB(result)
 	request.HandlePrivate()
 	return nil
 }
 
 func (request *UploadRequest) Upload() error {
 	filePath := config.Storage.Path + request.Filename
+	log.Info(fmt.Sprintf("Uploading file: %s", filePath))
 	file, err := os.Create(filePath)
 	if err != nil {
 		log.Warn("Couldn't create file for writing - %s", filePath)
@@ -344,7 +354,11 @@ func (request *UploadRequest) Upload() error {
 	}
 	defer file.Close()
 	limit := int64(db.QuotaLeft(request.Owner))
+	log.Info("file created for writing: ", filePath)
+	log.Info("space left for user ", request.Owner, " is ", limit)
+	log.Info(fmt.Sprintf("Copying file %+v to %+v", request.File, file))
 	request.size, err = io.Copy(file, request.File)
+	log.Info(fmt.Sprintf("request.size: %+v", request.size))
 	if limit != -1 && (request.size == limit || err != nil) {
 		log.Warn("User " + request.Owner + " exceeded storage quota, removing file")
 		os.Remove(filePath)
@@ -362,7 +376,8 @@ func (request *UploadRequest) Upload() error {
 	if request.Repo != "apt" {
 		md5Path := config.Storage.Path + request.md5
 		os.Rename(filePath, md5Path)
-		log.Debug(fmt.Sprintf("repo is not apt: renamed %s to %s", filePath, md5Path))
+		log.Info(fmt.Sprintf("repo is not apt: renamed %s to %s", filePath, md5Path))
 	}
+	log.Info("First Upload stage completed")
 	return request.ExecRequest()
 }

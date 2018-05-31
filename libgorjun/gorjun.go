@@ -129,6 +129,8 @@ func (g *GorjunUser) Upload(filename string, artifactType string, private string
 		log.Warn(fmt.Sprintf("File %s not found", filename))
 		return "", fmt.Errorf("%s not found", filename)
 	}
+	info, _ := os.Stat(filename)
+	log.Info(fmt.Sprintf("File's info: %+v", info))
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	f, err := os.Open(filename)
@@ -136,6 +138,8 @@ func (g *GorjunUser) Upload(filename string, artifactType string, private string
 		log.Warn(fmt.Sprintf("Failed to open file: %v", err))
 		return "", fmt.Errorf("Failed to open file: %v", err)
 	}
+	log.Info("Uploading file ", filename)
+	log.Info("filepath.Base(filename): ", filepath.Base(filename))
 	defer f.Close()
 	fw, err := w.CreateFormFile("file", filepath.Base(filename))
 	if err != nil {
