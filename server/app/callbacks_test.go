@@ -14,7 +14,10 @@ import (
 
 func Clean() {
 	os.Remove(config.DB.Path)
-	os.RemoveAll(config.Storage.Path)
+	files, _ := ioutil.ReadDir(config.Storage.Path)
+	for _, file := range files {
+		os.Remove(config.Storage.Path + file.Name())
+	}
 }
 
 func SetUp() {
