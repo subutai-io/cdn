@@ -114,9 +114,7 @@ func (request *UploadRequest) HandlePrivate() {
 func (request *UploadRequest) ReadDeb() (control bytes.Buffer, err error) {
 	file, err := os.Open(config.Storage.Path + request.Filename)
 	log.Check(log.WarnLevel, "Opening deb package", err)
-
 	defer file.Close()
-
 	library := ar.NewReader(file)
 	for header, err := library.Next(); err != io.EOF; header, err = library.Next() {
 		if err != nil {
@@ -127,9 +125,7 @@ func (request *UploadRequest) ReadDeb() (control bytes.Buffer, err error) {
 			if err != nil {
 				return control, err
 			}
-
 			defer ungzip.Close()
-
 			tr := tar.NewReader(ungzip)
 			for tarHeader, err := tr.Next(); err != io.EOF; tarHeader, err = tr.Next() {
 				if err != nil {
@@ -327,6 +323,7 @@ func (request *UploadRequest) UploadTemplate() error {
 	err = request.TemplateCheckValid(result)
 	if err != nil {
 		if err.Error() != "owner in config file is different" {
+			db.QuotaUsageSet(request.Owner, -int(request.size))
 			os.Remove(config.Storage.Path + request.md5)
 		}
 		return err
