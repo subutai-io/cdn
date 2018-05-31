@@ -34,28 +34,35 @@ type OldResult struct {
 
 // FileSearch handles the info and list HTTP requests
 func FileSearch(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	log.Info("Received FileSearch request")
+	log.Info(r)
+	if r.Body == nil || r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect method for info/list request"))
 		return
 	}
 	request := new(SearchRequest)
 	request.InitValidators()
+	log.Info("Successfully initialized request")
 	err := request.ParseRequest(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(fmt.Sprintf("Incorrect info/list request: %v", err)))
 		return
 	}
+	log.Info("Successfully parsed request")
 	files := request.Retrieve()
+	log.Info("Successfully retrieved files")
 	oldFiles := make([]*OldResult, 0)
 	for _, file := range files {
 		oldFiles = append(oldFiles, file.ConvertToOld())
 	}
-	log.Info("Retrieve: ", files)
+	log.Info("Retrieve: ", oldFiles)
+	log.Info("Successfully converted files to old format")
 	result, _ := json.Marshal(oldFiles)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(result))
+	log.Info("Successfully handled FileSearch request")
 }
 
 func FileUpload(w http.ResponseWriter, r *http.Request) {

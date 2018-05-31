@@ -54,16 +54,12 @@ var (
 
 func init() {
 	log.Level(log.InfoLevel)
-
 	err := gcfg.ReadStringInto(&config, defaultConfig)
 	log.Check(log.InfoLevel, "Loading default config ", err)
-
 	err = gcfg.ReadFileInto(&config, "/opt/gorjun/etc/gorjun.gcfg")
 	log.Check(log.WarnLevel, "Opening Gorjun config file /opt/gorjun/etc/gorjun.gcfg", err)
-
 	DB = config.DB
 	CDN = config.CDN
-	// CDN      = "https://cdn.subut.ai:8338"
 	Network = config.Network
 	Storage = config.Storage
 }

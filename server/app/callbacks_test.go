@@ -9,6 +9,7 @@ import (
 	"github.com/subutai-io/cdn/libgorjun"
 	"io/ioutil"
 	"strings"
+	"github.com/subutai-io/agent/log"
 )
 
 func Clean() {
@@ -71,7 +72,8 @@ func TestFileSearch(t *testing.T) {
 		{name: "TestFileSearch-3",},
 		// TODO: Add test cases.
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		if tt.name == "TestFileSearch-1" {
 			tt.args.r, _ = http.NewRequest("GET", "/kurjun/rest/apt/list", nil)
 		} else if tt.name == "TestFileSearch-2" {
@@ -84,6 +86,7 @@ func TestFileSearch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			handler := http.HandlerFunc(FileSearch)
+			log.Info(tt.args.r)
 			handler.ServeHTTP(recorder, tt.args.r)
 			if tt.name == "TestFileSearch-1" {
 			} else if tt.name == "TestFileSearch-2" {
