@@ -18,14 +18,18 @@ func Clean() {
 }
 
 func SetUp() {
+	log.Info("Setting up testing environment and configuration")
 	Clean()
+	InitFilters()
 	config.DB.Path = "/tmp/data/db/my.db"
 	config.Network.Port = "8080"
 	config.Storage.Path = "/tmp/data/files/"
 	config.Storage.Userquota = "2G"
+	log.Info("Testing environment and configuration are set up")
 }
 
 func PreUpload() {
+	log.Info("Pre-uploading files to CDN")
 	subutai := gorjun.VerifiedGorjunUser()
 	publicFiles, _ := ioutil.ReadDir("/tmp/data/public/")
 	for _, file := range publicFiles {
@@ -38,6 +42,7 @@ func PreUpload() {
 			subutai.Upload(path, "raw", "false")
 		}
 	}
+	log.Info("Public files are pre-uploaded files to CDN")
 	privateFiles, _ := ioutil.ReadDir("/tmp/data/private/")
 	for _, file := range privateFiles {
 		path := config.Storage.Path + file.Name()
@@ -49,11 +54,13 @@ func PreUpload() {
 			subutai.Upload(path, "raw", "true")
 		}
 	}
+	log.Info("Private files are pre-uploaded files to CDN")
 }
 
 func TearDown() {
+	log.Info("Destroying testing environment")
 	Clean()
-	os.Exit(0)
+	log.Info("Testing environment destroyed")
 }
 
 func TestFileSearch(t *testing.T) {
@@ -86,7 +93,6 @@ func TestFileSearch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			handler := http.HandlerFunc(FileSearch)
-			log.Info(tt.args.r)
 			handler.ServeHTTP(recorder, tt.args.r)
 			if tt.name == "TestFileSearch-1" {
 			} else if tt.name == "TestFileSearch-2" {
@@ -94,6 +100,7 @@ func TestFileSearch(t *testing.T) {
 			}
 		})
 	}
+	log.Info("TestFileSearch ended")
 	TearDown()
 }
 

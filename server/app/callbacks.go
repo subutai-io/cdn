@@ -36,7 +36,7 @@ type OldResult struct {
 func FileSearch(w http.ResponseWriter, r *http.Request) {
 	log.Info("Received FileSearch request")
 	log.Info(r)
-	if r.Body == nil || r.Method != "GET" {
+	if r.Method != "GET" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Incorrect method for info/list request"))
 		return

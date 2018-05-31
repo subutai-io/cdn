@@ -5,6 +5,7 @@ import (
 
 	"github.com/subutai-io/agent/log"
 	"gopkg.in/gcfg.v1"
+	"fmt"
 )
 
 type cdnConfig struct {
@@ -54,6 +55,7 @@ var (
 
 func init() {
 	log.Level(log.InfoLevel)
+	log.Info("Initialization started")
 	err := gcfg.ReadStringInto(&config, defaultConfig)
 	log.Check(log.InfoLevel, "Loading default config ", err)
 	err = gcfg.ReadFileInto(&config, "/opt/gorjun/etc/gorjun.gcfg")
@@ -62,6 +64,7 @@ func init() {
 	CDN = config.CDN
 	Network = config.Network
 	Storage = config.Storage
+	log.Info(fmt.Sprintf("Initialization completed: %s %s %s %s %s", DB.Path, CDN.Node, Network.Port, Storage.Path, Storage.Userquota))
 }
 
 func DefaultQuota() int {

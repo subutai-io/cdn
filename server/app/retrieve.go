@@ -79,12 +79,14 @@ func (request *SearchRequest) ParseRequest(httpRequest *http.Request) error {
 	request.FileID = httpRequest.URL.Query().Get("id")
 	request.Owner = httpRequest.URL.Query().Get("owner")
 	request.Name = httpRequest.URL.Query().Get("name")
-	request.Repo = strings.Split(httpRequest.RequestURI, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
+	rest := httpRequest.URL.String()
+	rest = rest[strings.Index(rest, "/kurjun/rest"):]
+	request.Repo = strings.Split(rest, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
 	request.Version = httpRequest.URL.Query().Get("version")
 	request.Tags = httpRequest.URL.Query().Get("tags")
 	request.Token = strings.ToLower(httpRequest.URL.Query().Get("token"))
 	request.Verified = strings.ToLower(httpRequest.URL.Query().Get("verified"))
-	request.Operation = strings.Split(strings.Split(httpRequest.RequestURI, "/")[4], "?")[0]
+	request.Operation = strings.Split(strings.Split(rest, "/")[4], "?")[0]
 	return request.ValidateRequest()
 }
 
@@ -169,9 +171,11 @@ func InitFilters() {
 	log.Info("Initializing filters")
 	filters["info"] = FilterInfo
 	filters["list"] = FilterList
+	log.Info("Initialization of filters finished")
 }
 
 func FilterInfo(query map[string]string, files []*Result) (result []*Result) {
+	log.Info(fmt.Sprintf("FilterInfo: %+v, files: %+v", query, files))
 	queryVersion, _ := semver.Make(query["Version"])
 	for _, file := range files {
 		fileVersion, _ := semver.Make(file.Version)
@@ -196,6 +200,7 @@ func FilterInfo(query map[string]string, files []*Result) (result []*Result) {
 }
 
 func FilterList(query map[string]string, files []*Result) (results []*Result) {
+	log.Info(fmt.Sprintf("FilterList: %+v, files: %+v", query, files))
 	return files
 }
 
@@ -209,7 +214,11 @@ func (request *SearchRequest) Retrieve() []*Result {
 		return nil
 	}
 	filter := filters[request.Operation]
+	log.Info(fmt.Sprintf("request.Operation = %s", request.Operation))
+	log.Info(fmt.Sprintf("query = %+v", query))
+	log.Info(fmt.Sprintf("files = %+v", files))
 	results := filter(query, files)
+	log.Info(fmt.Sprintf("results = %+v", results))
 	return results
 }
 
