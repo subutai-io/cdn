@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/server/app"
+	"github.com/subutai-io/cdn/config"
 )
 
 var (
