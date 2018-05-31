@@ -32,14 +32,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			log.Debug(fmt.Sprintf("Key == %+v", r.MultipartForm.Value["key"]))
 			if len(key) == 0 {
 				log.Debug(fmt.Sprintf("Key empty"))
-				w.Write([]byte("Signature check failed"))
 				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("Signature check failed"))
 				return
 			}
 			fingerprint := pgp.Fingerprint(key)
 			if len(fingerprint) == 0 {
-				w.Write([]byte("Filed to get key fingerprint"))
 				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Filed to get key fingerprint"))
 				return
 			}
 			if len(r.MultipartForm.Value["name"]) > 0 {

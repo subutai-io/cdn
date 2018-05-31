@@ -5,10 +5,12 @@ import (
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/agent/log"
+	"context"
 )
 
 var (
 	Server *http.Server
+	Stop   chan bool
 )
 
 func ListenAndServe() {
@@ -33,7 +35,25 @@ func ListenAndServe() {
 		Addr:    ":" + config.Network.Port,
 		Handler: nil,
 	}
-	log.Info("Starting server...")
-	go Server.ListenAndServe()
-	log.Info("Server has started. " + "Listening at " + "http://127.0.0.1:8080")
+	go func() {
+		log.Info("Server has started. " + "Listening at " + "http://127.0.0.1:8080")
+		Server.ListenAndServe()
+	}()
+	go func() {
+		Stop = make(chan bool)
+		log.Info("Waiting for shut down request...")
+		loop:
+		for {
+			select {
+				case <-Stop: {
+					log.Info("Received shut down request. Stopping server...")
+					ctx := context.Background()
+					Server.Shutdown(ctx)
+					break loop
+				}
+			}
+		}
+		log.Info("Server stopped successfully")
+		Stop <- true
+	}()
 }

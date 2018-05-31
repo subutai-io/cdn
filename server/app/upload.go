@@ -44,6 +44,7 @@ func (request *UploadRequest) ParseRequest(r *http.Request) error {
 	file, header, err := r.FormFile("file")
 	defer file.Close()
 	if err != nil {
+		log.Warn("Couldn't open file")
 		return err
 	}
 	request.File = io.Reader(file) // multipart.sectionReadCloser
@@ -55,10 +56,12 @@ func (request *UploadRequest) ParseRequest(r *http.Request) error {
 	request.Repo = strings.Split(r.RequestURI, "/")[3]
 	request.Token = r.Header.Get("token")
 	if len(request.Token) == 0 {
+		log.Warn("Token is empty")
 		return fmt.Errorf("token for upload wasn't provided")
 	}
 	request.Owner = db.TokenOwner(request.Token)
 	if request.Owner == "" {
+		log.Warn("Token is incorrect")
 		return fmt.Errorf("incorrect token provided")
 	}
 	if len(r.MultipartForm.Value["private"]) > 0 {

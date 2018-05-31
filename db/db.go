@@ -454,6 +454,7 @@ func Info(id string) map[string]string {
 }
 
 func InitDB() *bolt.DB {
+	log.Info(fmt.Sprintf("Initializing db: config.DB.Path = %s, config.Storage.Path = %s", config.DB.Path, config.Storage.Path))
 	os.MkdirAll(filepath.Dir(config.DB.Path), 0755)
 	os.MkdirAll(config.Storage.Path, 0755)
 	db, err := bolt.Open(config.DB.Path, 0600, &bolt.Options{Timeout: 3 * time.Second})
@@ -756,17 +757,21 @@ func RebuildShare(hash, owner string) {
 }
 
 func RegisterUser(name, key []byte) {
+	log.Info(fmt.Sprintf("Registering user %s with key %s", string(name), string(key)))
 	DB.Update(func(tx *bolt.Tx) error {
-		b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name))))
-		if !log.Check(log.WarnLevel, "Registering user "+strings.ToLower(string(name)), err) {
+		if b, err := tx.Bucket(Users).CreateBucketIfNotExists([]byte(strings.ToLower(string(name)))); err == nil {
+			log.Info("Putting user's keys in buckets")
 			b.Put([]byte("key"), key)
 			if b, err := b.CreateBucketIfNotExists([]byte("keys")); err == nil {
-				log.Debug(fmt.Sprintf("Created user %+v", name))
 				b.Put(key, nil)
 			}
+			return nil
+		} else {
+			log.Warn(fmt.Sprintf("Couldn't put user's keys in buckets: %+v", err))
+			return err
 		}
-		return err
 	})
+	log.Info("CDN User was registered successfully")
 }
 
 // RemoveShare removes user from share scope of file if the file was shared with him
@@ -1005,6 +1010,10 @@ func UserKeys(name string) (keys []string) {
 		}
 		return nil
 	})
+	log.Info(fmt.Sprintf("Keys of user %s: ", name))
+	for _, v := range keys {
+		log.Info(fmt.Sprintf("key: %s", v))
+	}
 	return
 }
 

@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/openpgp/packet"
 	"mime/multipart"
 	"os/exec"
+	"github.com/subutai-io/agent/log"
 )
 
 func (g *GorjunUser) RegisterUser(username string, publicKey string) (string, error) {
@@ -65,14 +66,18 @@ func (g *GorjunUser) Register(username string)  {
 func (g *GorjunUser) AuthenticateUser() error {
 	err := g.GetAuthTokenCode()
 	if err != nil {
+		log.Warn(fmt.Sprintf("Couldn't get AuthID for %s", g.Username))
 		return err
 	}
+	log.Info(fmt.Sprintf("Signing AuthID: %s", g.TokenCode))
 	sign, err := g.SignToken(g.TokenCode)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Couldn't sign AuthID for %s", g.Username))
 		return err
 	}
 	err = g.GetActiveToken(sign)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Couldn't get token for %s", g.Username))
 		return err
 	}
 	return nil
@@ -106,17 +111,20 @@ func (g *GorjunUser) GetActiveToken(signed string) error {
 	body := bytes.NewBufferString(form.Encode())
 	resp, err := http.Post(fmt.Sprintf("http://%s/kurjun/rest/auth/token", g.Hostname), "application/x-www-form-urlencoded", body)
 	if err != nil {
+		log.Warn(fmt.Sprintf("Failed to retrieve active token: %v", err))
 		return fmt.Errorf("Failed to retrieve active token: %v", err)
 	}
 	data, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
+		log.Warn(fmt.Sprintf("Failed to read body from %s: %v", g.Hostname, err))
 		return fmt.Errorf("Failed to read body from %s: %v", g.Hostname, err)
 	}
 	g.Token = string(data)
 	if len(g.Token) != 64 {
 		reason := g.Token
 		g.Token = ""
+		log.Warn(fmt.Sprintf("Failed to retrieve active token: %s", reason))
 		return fmt.Errorf("Failed to retrieve active token: %s", reason)
 	}
 	return nil

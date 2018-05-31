@@ -121,6 +121,9 @@ func (g *GorjunUser) GetFileByName(filename string, artifactType string) ([]Gorj
 
 // UploadFile will upload file and return it's ID after successful upload
 func (g *GorjunUser) Upload(filename string, artifactType string, private string) (string, error) {
+	g.Register(g.Username)
+	g.AuthenticateUser()
+	log.Info(fmt.Sprintf("Authenticated user %s: token %s", g.Username, g.Token))
 	log.Info("Sending Upload request")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		log.Warn(fmt.Sprintf("File %s not found", filename))

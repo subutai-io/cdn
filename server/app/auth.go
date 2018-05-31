@@ -68,6 +68,7 @@ func Token(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost {
 		name := r.FormValue("user")
 		message := r.FormValue("message")
+		log.Info(fmt.Sprintf("Received token POST: name: %+v, message: %+v", name, message))
 		if len(name) == 0 || len(message) == 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Please specify user name and auth message"))
@@ -75,13 +76,14 @@ func Token(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		authid := pgp.Verify(name, message)
-		if db.CheckAuthID(authid) == name {
+		log.Info(fmt.Sprintf("Checking AuthID %s", authid))
+		if authIDName := db.CheckAuthID(authid); authIDName == name {
 			token := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(time.Now().String(), name, rand.Float64()))))
 			db.SaveToken(name, fmt.Sprintf("%x", sha256.Sum256([]byte(token))))
 			w.Write([]byte(token))
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Signature verification failed"))
+			w.Write([]byte(fmt.Sprintf("Signature verification failed: %s", authIDName)))
 		}
 	}
 }

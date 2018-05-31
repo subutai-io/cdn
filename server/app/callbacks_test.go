@@ -11,8 +11,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"strings"
 	"fmt"
-	"time"
-	"context"
+	"github.com/subutai-io/cdn/db"
 )
 
 func Clean() {
@@ -33,6 +32,7 @@ func SetUp() {
 	config.Storage.Userquota = "2G"
 	log.Info("Testing environment and configuration are set up")
 	ListenAndServe()
+	db.DB = db.InitDB()
 }
 
 func PreUploadUser(user gorjun.GorjunUser) {
@@ -84,8 +84,9 @@ func PreUpload() {
 }
 
 func TearDown() {
-	ctx, _ := context.WithTimeout(context.Background(), 1 * time.Second)
-	Server.Shutdown(ctx)
+	Stop <- true
+	<-Stop
+	close(Stop)
 	log.Info("Destroying testing environment")
 	Clean()
 	log.Info("Testing environment destroyed")
