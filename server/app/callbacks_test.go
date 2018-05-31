@@ -29,7 +29,7 @@ func PreUpload() {
 	publicFiles, _ := ioutil.ReadDir("/tmp/data/public/")
 	for _, file := range publicFiles {
 		path := config.Storage.Path + file.Name()
-		if len(strings.Split(file.Name(), "-subutai-template")) > 0 {
+		if strings.Contains(file.Name(), "-subutai-template") {
 			subutai.Upload(path, "template", "false")
 		} else if strings.HasSuffix(file.Name(), ".deb") {
 			subutai.Upload(path, "apt", "false")
@@ -40,7 +40,7 @@ func PreUpload() {
 	privateFiles, _ := ioutil.ReadDir("/tmp/data/private/")
 	for _, file := range privateFiles {
 		path := config.Storage.Path + file.Name()
-		if len(strings.Split(file.Name(), "-subutai-template")) > 0 {
+		if strings.Contains(file.Name(), "-subutai-template") {
 			subutai.Upload(path, "template", "true")
 		} else if strings.HasSuffix(file.Name(), ".deb") {
 			subutai.Upload(path, "apt", "true")
