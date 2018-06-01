@@ -32,7 +32,7 @@ type SearchRequest struct {
 }
 
 func (request *SearchRequest) InitValidators() {
-	request.validators = make(map[string]ValidateFunction)
+	request.validators         = make(map[string]ValidateFunction)
 	request.validators["info"] = request.ValidateInfo
 	request.validators["list"] = request.ValidateList
 }
@@ -134,24 +134,27 @@ type Result struct {
 }
 
 func (result *Result) ConvertToOld() *OldResult {
-	oldResult := new(OldResult)
-	oldResult.FileID = result.FileID
-	oldResult.Owner = []string{result.Owner}
-	oldResult.Name = result.Name
-	oldResult.Filename = result.Filename
-	oldResult.Version = result.Version
-	oldResult.Hash.Md5 = result.Md5
-	oldResult.Hash.Sha256 = result.Sha256
-	oldResult.Size = result.Size
-	oldResult.Tags = strings.Split(result.Tags, ",")
-	oldResult.Date = result.Date
-	oldResult.Timestamp = result.Timestamp
-	oldResult.Description = result.Description
-	oldResult.Architecture = result.Architecture
-	oldResult.Parent = result.Parent
-	oldResult.ParentVersion = result.ParentVersion
-	oldResult.ParentOwner = result.ParentOwner
-	oldResult.PrefSize = result.PrefSize
+	oldResult := &OldResult{
+		FileID:        result.FileID,
+		Owner:         []string{result.Owner},
+		Name:          result.Name,
+		Filename:      result.Filename,
+		Version:       result.Version,
+		Hash: Hashes{
+			Md5:       result.Md5,
+			Sha256:    result.Sha256,
+		},
+		Size:          result.Size,
+		Tags:          strings.Split(result.Tags, ","),
+		Date:          result.Date,
+		Timestamp:     result.Timestamp,
+		Description:   result.Description,
+		Architecture:  result.Architecture,
+		Parent:        result.Parent,
+		ParentVersion: result.ParentVersion,
+		ParentOwner:   result.ParentOwner,
+		PrefSize:      result.PrefSize,
+	}
 	return oldResult
 }
 
@@ -159,6 +162,15 @@ func (result *Result) ConvertToOld() *OldResult {
 func (result *Result) BuildResult(info map[string]string) {
 	mapstructure.Decode(info, &result)
 	return
+}
+
+func (result *Result) GetResultByFileID(fileID string) {
+	info, err := GetFileInfo(fileID)
+	if err != nil {
+		log.Warn(fmt.Sprintf("Couldn't build result by fileID: %v", err))
+	} else {
+		result.BuildResult(info)
+	}
 }
 
 type FilterFunction func(map[string]string, []*Result) []*Result
@@ -222,13 +234,13 @@ func (request *SearchRequest) Retrieve() []*Result {
 	return results
 }
 
-func GetFileInfo(id string) (info map[string]string, err error) {
+func GetFileInfo(fileID string) (info map[string]string, err error) {
 	info = make(map[string]string)
-	info["FileID"] = id
+	info["FileID"] = fileID
 	err = db.DB.View(func(tx *bolt.Tx) error {
-		file := tx.Bucket(db.MyBucket).Bucket([]byte(id))
+		file := tx.Bucket(db.MyBucket).Bucket([]byte(fileID))
 		if file == nil {
-			return fmt.Errorf("file %s not found", id)
+			return fmt.Errorf("file %s not found", fileID)
 		}
 		owner := file.Bucket([]byte("owner"))
 		key, _ := owner.Cursor().First()
@@ -240,14 +252,14 @@ func GetFileInfo(id string) (info map[string]string, err error) {
 			info["Repo"] = string(key)
 		}
 		if len(info["Repo"]) == 0 {
-			return fmt.Errorf("couldn't find repo for file %s", id)
+			return fmt.Errorf("couldn't find repo for file %s", fileID)
 		}
 		info["Version"] = string(file.Get([]byte("version")))
 		info["Tags"] = string(file.Get([]byte("tag")))
 		info["Date"] = string(file.Get([]byte("date")))
 		date, _ := time.Parse(time.RFC3339Nano, info["Date"])
 		info["Timestamp"] = strconv.FormatInt(date.Unix(), 10)
-		if hash := tx.Bucket(db.MyBucket).Bucket([]byte(id)).Bucket([]byte("hash")); hash != nil {
+		if hash := tx.Bucket(db.MyBucket).Bucket([]byte(fileID)).Bucket([]byte("hash")); hash != nil {
 			hash.ForEach(func(k, v []byte) error {
 				if string(k) == "md5" {
 					info["Md5"] = string(v)

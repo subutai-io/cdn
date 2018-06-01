@@ -97,18 +97,19 @@ func (request *UploadRequest) ExecRequest() error {
 }
 
 func (request *UploadRequest) BuildResult() *Result {
-	result := new(Result)
 	myUUID, _ := uuid.NewV4()
 	request.fileID = myUUID.String()
-	result.FileID = request.fileID
-	result.Filename = request.Filename
-	result.Repo = request.Repo
-	result.Owner = request.Owner
-	result.Tags = request.Tags
-	result.Version = request.Version
-	result.Md5 = request.md5
-	result.Sha256 = request.sha256
-	result.Size = request.size
+	result := &Result{
+		FileID:   request.fileID,
+		Filename: request.Filename,
+		Repo:     request.Repo,
+		Owner:    request.Owner,
+		Tags:     request.Tags,
+		Version:  request.Version,
+		Md5:      request.md5,
+		Sha256:   request.sha256,
+		Size:     request.size,
+	}
 	return result
 }
 
@@ -250,18 +251,22 @@ func FormatConfiguration(request *UploadRequest, configuration string) (template
 func (request *UploadRequest) TemplateCheckValid(template *Result) error {
 	err := request.TemplateCheckFieldsPresent(template)
 	if err != nil {
+		log.Warn(fmt.Sprintf("TemplateCheckFieldsPresent failed: %v", err))
 		return err
 	}
 	err = request.TemplateCheckOwner(template)
 	if err != nil {
+		log.Warn(fmt.Sprintf("TemplateCheckOwner failed: %v", err))
 		return err
 	}
 	err = request.TemplateCheckDependencies(template)
 	if err != nil {
+		log.Warn(fmt.Sprintf("TemplateCheckDependencies failed: %v", err))
 		return err
 	}
 	err = request.TemplateCheckFormat(template)
 	if err != nil {
+		log.Warn(fmt.Sprintf("TemplateCheckFormat failed: %v", err))
 		return err
 	}
 	return nil
@@ -292,11 +297,12 @@ func (request *UploadRequest) TemplateCheckOwner(template *Result) error {
 
 func (request *UploadRequest) TemplateCheckDependencies(template *Result) error {
 	parentExists := false
-	searchRequest := new(SearchRequest)
-	searchRequest.Name = template.Parent
-	searchRequest.Repo = request.Repo
-	searchRequest.Token = request.Token
-	searchRequest.Operation = "list"
+	searchRequest := &SearchRequest{
+		Name:      template.Parent,
+		Repo:      request.Repo,
+		Token:     request.Token,
+		Operation: "list",
+	}
 	list := searchRequest.Retrieve()
 	for _, result := range list {
 		if result.Name == template.Parent &&
