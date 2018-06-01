@@ -23,7 +23,7 @@ func Clean() {
 	}
 }
 
-func SetUp() {
+func SetUp(integration bool) {
 	log.Info("Setting up testing environment and configuration")
 	Clean()
 	InitFilters()
@@ -32,7 +32,9 @@ func SetUp() {
 	config.Storage.Path = "/tmp/data/files/"
 	config.Storage.Userquota = "2G"
 	log.Info("Testing environment and configuration are set up")
-	ListenAndServe()
+	if integration {
+		ListenAndServe()
+	}
 	db.DB = db.InitDB()
 }
 
@@ -126,19 +128,21 @@ func PreUpload() {
 	log.Info("Pre-uploading files finished")
 }
 
-func TearDown() {
-	Stop <- true
-	<-Stop
-	close(Stop)
+func TearDown(integration bool) {
+	if integration {
+		Stop <- true
+		<-Stop
+		close(Stop)
+	}
 	log.Info("Destroying testing environment")
 	Clean()
 	log.Info("Testing environment destroyed")
 }
 
 func TestFileSearch(t *testing.T) {
-	SetUp()
+	SetUp(true)
 	PreUpload()
-	defer TearDown()
+	defer TearDown(true)
 	type args struct {
 		w http.ResponseWriter
 		r *http.Request
@@ -219,33 +223,4 @@ func TestFileSearch(t *testing.T) {
 		}
 	}
 	log.Info("TestFileSearch ended")
-}
-
-func TestFileUpload(t *testing.T) {
-	SetUp()
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{name: "TestFileUpload-1",},
-		{name: "TestFileUpload-2",},
-		{name: "TestFileUpload-3",},
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			recorder := httptest.NewRecorder()
-			handler := http.HandlerFunc(FileUpload)
-			handler.ServeHTTP(recorder, tt.args.r)
-			if tt.name == "TestFileUpload-1" {
-			} else if tt.name == "TestFileUpload-2" {
-			} else if tt.name == "TestFileUpload-3" {
-			}
-		})
-	}
-	TearDown()
 }
