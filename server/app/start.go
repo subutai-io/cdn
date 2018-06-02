@@ -10,8 +10,16 @@ import (
 
 var (
 	Server *http.Server
+	Start = make(chan bool)
 	Stop   chan bool
 )
+
+func RunServer() {
+	go ListenAndServe()
+	<-Start
+	close(Start)
+	go WaitShutdown()
+}
 
 func ListenAndServe() {
 	defer db.Close()
@@ -35,25 +43,26 @@ func ListenAndServe() {
 		Addr:    ":" + config.Network.Port,
 		Handler: nil,
 	}
-	go func() {
-		log.Info("Server has started. " + "Listening at " + "http://127.0.0.1:8080")
-		Server.ListenAndServe()
-	}()
-	go func() {
-		Stop = make(chan bool)
-		log.Info("Waiting for shut down request...")
-		loop:
-		for {
-			select {
-				case <-Stop: {
-					log.Info("Received shut down request. Stopping server...")
-					ctx := context.Background()
-					Server.Shutdown(ctx)
-					break loop
-				}
-			}
+	log.Info("Server has started. " + "Listening at " + "http://127.0.0.1:8080")
+	Start <- true
+	Server.ListenAndServe()
+	Server.Close()
+}
+
+func WaitShutdown() {
+	Stop = make(chan bool)
+	log.Info("Waiting for shut down request...")
+	loop:
+	for {
+		select {
+		case <-Stop: {
+			log.Info("Received shut down request. Stopping server...")
+			ctx := context.Background()
+			Server.Shutdown(ctx)
+			break loop
 		}
-		log.Info("Server stopped successfully")
-		Stop <- true
-	}()
+		}
+	}
+	log.Info("Server stopped successfully")
+	Stop <- true
 }

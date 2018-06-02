@@ -31,9 +31,9 @@ func SetUp(integration bool) {
 	config.Network.Port = "8080"
 	config.Storage.Path = "/tmp/data/files/"
 	config.Storage.Userquota = "2G"
-	log.Info("Testing environment and configuration are set up")
+	log.Info(fmt.Sprintf("Testing environment and configuration are set up: %+v %+v %+v", config.DB, config.Network, config.Storage))
 	if integration {
-		ListenAndServe()
+		RunServer()
 	}
 	db.DB = db.InitDB()
 }
@@ -130,7 +130,12 @@ func PreUpload() {
 
 func TearDown(integration bool) {
 	if integration {
-		Stop <- true
+		for {
+			if Stop != nil {
+				Stop <- true
+				break
+			}
+		}
 		<-Stop
 		close(Stop)
 	}
@@ -151,9 +156,9 @@ func TestFileSearch(t *testing.T) {
 		name string
 		args args
 	}{
-		{name: "TestFileSearch-1",},
-		{name: "TestFileSearch-2",},
-		{name: "TestFileSearch-3",},
+		{name: "TestFileSearch-0"},
+		{name: "TestFileSearch-1"},
+		{name: "TestFileSearch-2"},
 		// TODO: Add test cases.
 	}
 	for i := range tests {
