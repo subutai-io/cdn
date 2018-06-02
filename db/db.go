@@ -131,78 +131,78 @@ func CheckShare(hash, user string) (shared bool) {
 	return
 }
 
-//func CleanAuthID() {
-//	db.Update(func(tx *bolt.Tx) error {
-//		b := tx.Bucket(AuthID)
-//		b.ForEach(func(k, v []byte) error {
-//			b.Delete(k)
-//			return nil
-//		})
-//		return nil
-//	})
-//}
+func CleanAuthID() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(AuthID)
+		b.ForEach(func(k, v []byte) error {
+			b.Delete(k)
+			return nil
+		})
+		return nil
+	})
+}
 
-//func CleanSearchIndex() {
-//	db.Update(func(tx *bolt.Tx) error {
-//		list := make([]string, 0)
-//		b := tx.Bucket(SearchIndex)
-//		b.ForEach(func(k, v []byte) error {
-//			c := b.Bucket(k)
-//			key, _ := c.Cursor().First()
-//			if key == nil {
-//				list = append(list, string(k))
-//			} else {
-//				c.ForEach(func(kk, vv []byte) error {
-//					if tx.Bucket(MyBucket).Bucket(vv) == nil {
-//						list = append(list, string(k))
-//					}
-//					return nil
-//				})
-//			}
-//			return nil
-//		})
-//		for _, k := range list {
-//			tx.Bucket(SearchIndex).DeleteBucket([]byte(k))
-//		}
-//		return nil
-//	})
-//}
+func CleanSearchIndex() {
+	db.Update(func(tx *bolt.Tx) error {
+		list := make([]string, 0)
+		b := tx.Bucket(SearchIndex)
+		b.ForEach(func(k, v []byte) error {
+			c := b.Bucket(k)
+			key, _ := c.Cursor().First()
+			if key == nil {
+				list = append(list, string(k))
+			} else {
+				c.ForEach(func(kk, vv []byte) error {
+					if tx.Bucket(MyBucket).Bucket(vv) == nil {
+						list = append(list, string(k))
+					}
+					return nil
+				})
+			}
+			return nil
+		})
+		for _, k := range list {
+			tx.Bucket(SearchIndex).DeleteBucket([]byte(k))
+		}
+		return nil
+	})
+}
 
-//func CleanTokens() {
-//	db.Update(func(tx *bolt.Tx) error {
-//		b := tx.Bucket(Tokens)
-//		b.ForEach(func(k, v []byte) error {
-//			if TokenOwner(string(k)) == "" {
-//				b.DeleteBucket(k)
-//			}
-//			return nil
-//		})
-//		return nil
-//	})
-//}
+func CleanTokens() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(Tokens)
+		b.ForEach(func(k, v []byte) error {
+			if TokenOwner(string(k)) == "" {
+				b.DeleteBucket(k)
+			}
+			return nil
+		})
+		return nil
+	})
+}
 
-//func CleanUserFiles() {
-//	db.Update(func(tx *bolt.Tx) error {
-//		b := tx.Bucket(Users)
-//		b.ForEach(func(k, v []byte) error {
-//			c := b.Bucket(k)
-//			if d := c.Bucket([]byte("files")); d != nil {
-//				list := make([]string, 0)
-//				d.ForEach(func(kk, vv []byte) error {
-//					if tx.Bucket(MyBucket).Bucket(kk) == nil {
-//						list = append(list, string(kk))
-//					}
-//					return nil
-//				})
-//				for _, kk := range list {
-//					d.Delete([]byte(kk))
-//				}
-//			}
-//			return nil
-//		})
-//		return nil
-//	})
-//}
+func CleanUserFiles() {
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(Users)
+		b.ForEach(func(k, v []byte) error {
+			c := b.Bucket(k)
+			if d := c.Bucket([]byte("files")); d != nil {
+				list := make([]string, 0)
+				d.ForEach(func(kk, vv []byte) error {
+					if tx.Bucket(MyBucket).Bucket(kk) == nil {
+						list = append(list, string(kk))
+					}
+					return nil
+				})
+				for _, kk := range list {
+					d.Delete([]byte(kk))
+				}
+			}
+			return nil
+		})
+		return nil
+	})
+}
 
 func Close() {
 	db.Close()
