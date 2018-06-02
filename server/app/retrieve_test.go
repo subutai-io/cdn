@@ -4,120 +4,98 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/boltdb/bolt"
+
+	"github.com/subutai-io/cdn/db"
 )
 
-func TestSearchRequest_InitValidators(t *testing.T) {
+func WriteOwnerInDB(owner string) {
+	db.DB.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(db.Users); b != nil {
+			b.CreateBucket([]byte(owner))
+		}
+		return nil
+	})
+}
+
+func WriteFileInDB(fileID, fileName string) {
+	db.DB.Update(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(db.MyBucket); b != nil {
+			if c, _ := b.CreateBucket([]byte(fileID)); c != nil {
+				c.Put([]byte("name"), []byte(fileName))
+			}
+		}
+		return nil
+	})
+}
+
+func TestSearchRequest_ValidateInfo(t *testing.T) {
+	SetUp(false)
 	type fields struct {
-		FileID     string
-		Owner      string
-		Name       string
-		Repo       string
-		Version    string
-		Tags       string
-		Token      string
-		Verified   string
-		Operation  string
-		validators map[string]ValidateFunction
+		FileID   string
+		Owner    string
+		Name     string
+		Token    string
+		Verified string
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		// TODO: Add test cases.
+		{name: "t1", fields: fields{}},
+		{name: "t2", fields: fields{FileID: "id2", Name: "name2"}},
+		{name: "t3", fields: fields{FileID: "id3", Owner: "ExistingOwner", Name: "name3"}},
+		{name: "t4", fields: fields{FileID: "id4", Owner: "NotExistingOwner", Name: "name4"}},
+		{name: "t5", fields: fields{FileID: "id5", Owner: "Owner", Name: "name5", Token: "token1"}},
+		{name: "t6", fields: fields{FileID: "id6", Owner: "subutai", Name: "name6"}},
 	}
 	for _, tt := range tests {
+		errorred := false
 		request := &SearchRequest{
-			FileID:     tt.fields.FileID,
-			Owner:      tt.fields.Owner,
-			Name:       tt.fields.Name,
-			Repo:       tt.fields.Repo,
-			Version:    tt.fields.Version,
-			Tags:       tt.fields.Tags,
-			Token:      tt.fields.Token,
-			Verified:   tt.fields.Verified,
-			Operation:  tt.fields.Operation,
-			validators: tt.fields.validators,
+			FileID:   tt.fields.FileID,
+			Owner:    tt.fields.Owner,
+			Name:     tt.fields.Name,
+			Token:    tt.fields.Token,
+			Verified: tt.fields.Verified,
 		}
-		request.InitValidators()
-	}
-}
-
-func TestSearchRequest_ValidateRequest(t *testing.T) {
-	type fields struct {
-		FileID     string
-		Owner      string
-		Name       string
-		Repo       string
-		Version    string
-		Tags       string
-		Token      string
-		Verified   string
-		Operation  string
-		validators map[string]ValidateFunction
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		request := &SearchRequest{
-			FileID:     tt.fields.FileID,
-			Owner:      tt.fields.Owner,
-			Name:       tt.fields.Name,
-			Repo:       tt.fields.Repo,
-			Version:    tt.fields.Version,
-			Tags:       tt.fields.Tags,
-			Token:      tt.fields.Token,
-			Verified:   tt.fields.Verified,
-			Operation:  tt.fields.Operation,
-			validators: tt.fields.validators,
+		if tt.name == "t1" {
+			if err := request.ValidateInfo(); err == nil {
+				errorred = true
+				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
+			}
+		} else if tt.name == "t2" {
+			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
+			if err := request.ValidateInfo(); err != nil {
+				errorred = true
+				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
+			}
+		} else if tt.name == "t3" {
+			WriteOwnerInDB(tt.fields.Owner)
+			request.ValidateInfo()
+			if request.Owner != tt.fields.Owner {
+				errorred = true
+				t.Errorf("%q. SearchRequest.ValidateInfo. Owner is different. Wait: %v, got: %v", tt.name, tt.fields.Name, request.Owner)
+			}
+		} else if tt.name == "t4" {
+			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
+			request.ValidateInfo()
+			if request.Owner != "" {
+				t.Errorf("%q. SearchRequest.ValidateInfo. Owner is not exist and must be empty. Got: %v", tt.name, request.Owner)
+			}
+		} else if tt.name == "t6" {
+			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
+			WriteOwnerInDB(tt.fields.Owner)
+			if err := request.ValidateInfo(); err != nil {
+				errorred = true
+				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
+			}
 		}
-		if err := request.ValidateRequest(); (err != nil) != tt.wantErr {
-			t.Errorf("%q. SearchRequest.ValidateRequest() error = %v, wantErr %v", tt.name, err, tt.wantErr)
+		if errorred {
+			break
 		}
 	}
-}
-
-func TestSearchRequest_ValidateInfo(t *testing.T) {
-	type fields struct {
-		FileID     string
-		Owner      string
-		Name       string
-		Repo       string
-		Version    string
-		Tags       string
-		Token      string
-		Verified   string
-		Operation  string
-		validators map[string]ValidateFunction
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		request := &SearchRequest{
-			FileID:     tt.fields.FileID,
-			Owner:      tt.fields.Owner,
-			Name:       tt.fields.Name,
-			Repo:       tt.fields.Repo,
-			Version:    tt.fields.Version,
-			Tags:       tt.fields.Tags,
-			Token:      tt.fields.Token,
-			Verified:   tt.fields.Verified,
-			Operation:  tt.fields.Operation,
-			validators: tt.fields.validators,
-		}
-		if err := request.ValidateInfo(); (err != nil) != tt.wantErr {
-			t.Errorf("%q. SearchRequest.ValidateInfo() error = %v, wantErr %v", tt.name, err, tt.wantErr)
-		}
-	}
+	TearDown(false)
 }
 
 func TestSearchRequest_ValidateList(t *testing.T) {
@@ -175,16 +153,25 @@ func TestSearchRequest_ParseRequest(t *testing.T) {
 	type args struct {
 		httpRequest *http.Request
 	}
+
+	request1, _ := http.NewRequest("POST", "/kurjun/rest/raw/info?id=id1&owner=owner1&name=name1&version=version1&tags=tag1&token=token1&verified=false", nil)
+	request2, _ := http.NewRequest("POST", "/kurjun/rest/apt/info?id=id2&owner=owner2&name=name2&version=version2&tags=tag2&token=token2&verified=false", nil)
+	request3, _ := http.NewRequest("POST", "/kurjun/rest/template/info?id=id3&owner=owner2&name=name2", nil)
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name   string
+		fields fields
+		args   args
 	}{
-		// TODO: Add test cases.
+		{name: "t1", fields: fields{FileID: "id1", Owner: "owner1", Name: "name1", Repo: "repo1", Version: "version1", Tags: "tag1",
+			Token: "token1", Verified: "false", Operation: "list"}, args: args{httpRequest: request1}},
+		{name: "t2", fields: fields{FileID: "id2", Owner: "owner2", Name: "name2", Repo: "repo2", Version: "version2", Tags: "tag2",
+			Token: "token2", Verified: "false", Operation: "list"}, args: args{httpRequest: request2}},
+		{name: "t3", fields: fields{FileID: "id3", Owner: "owner3", Name: "name3", Repo: "", Version: "", Tags: "",
+			Token: "", Verified: "", Operation: ""}, args: args{httpRequest: request3}},
 	}
 	for _, tt := range tests {
-		request := &SearchRequest{
+		SRequest := &SearchRequest{
 			FileID:     tt.fields.FileID,
 			Owner:      tt.fields.Owner,
 			Name:       tt.fields.Name,
@@ -196,8 +183,10 @@ func TestSearchRequest_ParseRequest(t *testing.T) {
 			Operation:  tt.fields.Operation,
 			validators: tt.fields.validators,
 		}
-		if err := request.ParseRequest(tt.args.httpRequest); (err != nil) != tt.wantErr {
-			t.Errorf("%q. SearchRequest.ParseRequest() error = %v, wantErr %v", tt.name, err, tt.wantErr)
+		SRequest.InitValidators()
+		SRequest.ParseRequest(tt.args.httpRequest)
+		if reflect.DeepEqual(SRequest, tt.fields) {
+			t.Errorf("%q. Error. Wait %v, got %v", tt.name, tt.fields.FileID, SRequest.FileID)
 		}
 	}
 }
@@ -215,12 +204,15 @@ func TestSearchRequest_BuildQuery(t *testing.T) {
 		Operation  string
 		validators map[string]ValidateFunction
 	}
+
+	wantQuery1 := map[string]string{"FileID": "id1", "Owner": "owner1", "Name": "name1", "Repo": "repo1", "Version": "v1", "Tags": "tag1", "Verified": "true", "Operation": "info"}
+
 	tests := []struct {
 		name      string
 		fields    fields
 		wantQuery map[string]string
 	}{
-		// TODO: Add test cases.
+		{name: "t1", fields: fields{FileID: "id1", Owner: "owner1", Name: "name1", Repo: "repo1", Version: "v1", Tags: "tag1", Verified: "true", Operation: "info"}, wantQuery: wantQuery1},
 	}
 	for _, tt := range tests {
 		request := &SearchRequest{
@@ -263,12 +255,16 @@ func TestResult_ConvertToOld(t *testing.T) {
 		ParentOwner   string
 		PrefSize      string
 	}
+
+	//oldRes:=OldResult{FileID: "id1", Owner: "owner1", Name: "name1", Repo: "repo1", Version: "v1",Scope:"scope1", Tags: "tag1", Verified: "true", Operation: "info"}
+
+	o := new(OldResult)
 	tests := []struct {
 		name   string
 		fields fields
 		want   *OldResult
 	}{
-		// TODO: Add test cases.
+		{name: "t1", fields: fields{FileID: "id1", Owner: "owner1", Name: "name1", Repo: "repo1", Version: "v1", Scope: "scope1", Tags: "tag1", Description: "description", Architecture: "amd64"}, want: o},
 	}
 	for _, tt := range tests {
 		result := &Result{
