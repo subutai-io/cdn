@@ -51,24 +51,20 @@ func (request *UploadRequest) ParseRequest(r *http.Request) error {
 		return fmt.Errorf("incorrect token provided")
 	}
 	escapedPath := strings.Split(r.URL.EscapedPath(), "/")
-	if len(escapedPath) < 4 {
-		log.Warn("url for upload is not correct")
-		return fmt.Errorf("incorrect Upload request")
-	}
 	request.Repo = escapedPath[3]
 	r.ParseMultipartForm(1 << 31)
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		log.Warn("Couldn't open file")
+		log.Warn("Couldn't import file from http request")
 		return err
 	}
-	defer file.Close()
 	request.Filename = header.Filename
 	request.File = io.Reader(file) // multipart.sectionReadCloser
 	limit := int64(db.QuotaLeft(request.Owner))
 	if limit != -1 {
 		request.File = io.LimitReader(file, limit)
 	}
+	file.Close()
 	log.Info(fmt.Sprintf("Printing io.Reader: %+v", request.File))
 	if len(r.MultipartForm.Value["private"]) > 0 {
 		request.Private = r.MultipartForm.Value["private"][0]
@@ -123,32 +119,29 @@ func (request *UploadRequest) HandlePrivate() {
 
 func (request *UploadRequest) ReadDeb() (control bytes.Buffer, err error) {
 	file, err := os.Open(config.Storage.Path + request.Filename)
-	log.Check(log.WarnLevel, "Opening deb package", err)
+	if err != nil {
+		return
+	}
 	defer file.Close()
 	library := ar.NewReader(file)
-	for header, err := library.Next(); err != io.EOF; header, err = library.Next() {
-		if err != nil {
-			return control, err
-		}
+	for header, ferr := library.Next(); ferr != io.EOF; header, ferr = library.Next() {
 		if header.Name == "control.tar.gz" {
-			ungzip, err := gzip.NewReader(library)
-			if err != nil {
-				return control, err
-			}
+			ungzip, _ := gzip.NewReader(library)
 			defer ungzip.Close()
 			tr := tar.NewReader(ungzip)
-			for tarHeader, err := tr.Next(); err != io.EOF; tarHeader, err = tr.Next() {
-				if err != nil {
-					return control, err
-				}
+			for tarHeader, terr := tr.Next(); terr != io.EOF; tarHeader, terr = tr.Next() {
 				if tarHeader.Name == "./control" {
-					if _, err := io.Copy(&control, tr); err != nil {
-						return control, err
-					}
+					io.Copy(&control, tr)
 					break
 				}
 			}
 		}
+	}
+	if len(control.String()) == 0 {
+		err = fmt.Errorf("control is empty")
+	}
+	if err == nil {
+		log.Info(fmt.Sprintf("%s is valid", request.Filename))
 	}
 	return
 }
@@ -167,6 +160,7 @@ func GetControl(control bytes.Buffer) map[string]string {
 func (request *UploadRequest) UploadApt() error {
 	control, err := request.ReadDeb()
 	if err != nil {
+		log.Warn(fmt.Sprintf("ReadDeb failed: %v", err))
 		return err
 	}
 	info := GetControl(control)
@@ -189,11 +183,15 @@ func (request *UploadRequest) UploadRaw() error {
 }
 
 func LoadConfiguration(request *UploadRequest) (configuration string, err error) {
+	log.Info(fmt.Sprintf("Loading configuration for file %s", config.Storage.Path + request.md5))
 	var configurationFile bytes.Buffer
 	f, err := os.Open(config.Storage.Path + request.md5)
 	if err != nil {
 		log.Warn("Failed to open template to load configuration file")
 		return
+	} else {
+		stats, _ := f.Stat()
+		log.Info(fmt.Sprintf("File exists: %s, %+v", stats.Name(), stats.Size()))
 	}
 	defer f.Close()
 	gzFile, err := gzip.NewReader(f)
@@ -202,16 +200,16 @@ func LoadConfiguration(request *UploadRequest) (configuration string, err error)
 		return
 	}
 	tarFile := tar.NewReader(gzFile)
-	for file, fileErr := tarFile.Next(); fileErr != io.EOF; file, err = tarFile.Next() {
+	for file, fileErr := tarFile.Next(); fileErr != io.EOF; file, fileErr = tarFile.Next() {
 		if file.Name == "config" {
-			if _, err = io.Copy(&configurationFile, tarFile); err != nil {
-				log.Warn("Failed to copy configuration file")
-				return
-			}
+			io.Copy(&configurationFile, tarFile)
 			break
 		}
 	}
 	configuration = configurationFile.String()
+	if len(configuration) == 0 {
+		err = fmt.Errorf("configuration file doesn't exist or is empty")
+	}
 	return
 }
 
@@ -303,6 +301,8 @@ func (request *UploadRequest) TemplateCheckDependencies(template *Result) error 
 		Token:     request.Token,
 		Operation: "list",
 	}
+	searchRequest.InitValidators()
+	log.Info(fmt.Sprintf("searchRequest: %+v", searchRequest))
 	list := searchRequest.Retrieve()
 	for _, result := range list {
 		if result.Name == template.Parent &&

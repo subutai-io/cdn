@@ -250,6 +250,9 @@ func GetFileInfo(fileID string) (info map[string]string, err error) {
 		if repo != nil {
 			key, _ = repo.Cursor().First()
 			info["Repo"] = string(key)
+			if info["Repo"] == "template" {
+				info["Name"] = strings.Split(info["Name"], "-subutai-template")[0]
+			}
 		}
 		if len(info["Repo"]) == 0 {
 			return fmt.Errorf("couldn't find repo for file %s", fileID)
@@ -296,6 +299,7 @@ func GetFileInfo(fileID string) (info map[string]string, err error) {
 }
 
 func MatchQuery(file, query map[string]string) bool {
+	log.Info(fmt.Sprintf("\nfile: %+v\n\nquery: %+v", file, query))
 	for key, value := range query {
 		if key == "Token" || key == "Verified" || key == "Operation" {
 			continue
@@ -309,9 +313,11 @@ func MatchQuery(file, query map[string]string) bool {
 	log.Info(fmt.Sprintf("IsPublic: %v", db.IsPublic(file["FileID"])))
 	if (query["Token"] == "" && !db.IsPublic(file["FileID"])) ||
 		(query["Token"] != "" && !db.CheckShare(file["FileID"], db.TokenOwner(query["Token"]))) {
+		log.Warn("file unavailable to user")
 		return false
 	}
 	if query["Verified"] == "true" && !In(file["Owner"], verifiedUsers) {
+		log.Warn("file unavailable to user because user is not verified")
 		return false
 	}
 	if !(query["Verified"] == "true") && query["Token"] != "" && !db.CheckShare(file["FileID"], db.TokenOwner(query["Token"])) {

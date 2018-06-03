@@ -10,5 +10,5 @@ func init() {
 
 // main starts CDN server
 func main() {
-	app.ListenAndServe()
+	app.RunServer()
 }
