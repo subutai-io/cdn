@@ -13,6 +13,7 @@ import (
 	"strings"
 	"path/filepath"
 	"github.com/subutai-io/agent/log"
+	"os/exec"
 )
 
 var (
@@ -319,7 +320,7 @@ func TestUploadRequest_InitUploaders(t *testing.T) {
 		name   string
 		fields fields
 	}{
-		{name: "TestUploadRequest_InitUploaders-1"},
+		{name: "TestUploadRequest_InitUploaders-0"},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -492,6 +493,9 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		tests[3].wantErr = false
 	}
 	{
+		cmd := exec.Command("wget", "-O", "/tmp/data/public/abaytulakova/influxdb_1.2.2_amd64.deb", "https://cdn.subutai.io:8338/kurjun/rest/apt/influxdb_1.2.2_amd64.deb")
+		cmd.Run()
+		log.Info("Downloaded file")
 		actualFile, _ := os.Open("/tmp/data/public/abaytulakova/influxdb_1.2.2_amd64.deb")
 		auxFile, _ := os.Create("/tmp/data/files/influxdb_1.2.2_amd64.deb")
 		io.Copy(auxFile, actualFile)
@@ -506,7 +510,6 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 			Token:    AkenzhalievToken,
 			Private:  "false",
 			Tags:     "nobodyreadstags",
-//			Version:  "7.0.0",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
 			size:     auxFileStats.Size(),
@@ -514,6 +517,9 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		tests[4].wantErr = false
 	}
 	{
+		cmd := exec.Command("wget", "-O", "/tmp/data/public/subutai/debian-stretch-subutai-template_0.4.1_amd64.tar.gz", "https://cdn.subutai.io:8338/kurjun/rest/template/download?id=50778fae-f028-42ab-beff-437e4f34ee48")
+		cmd.Run()
+		log.Info("Downloaded file")
 		actualFile, _ := os.Open("/tmp/data/public/subutai/debian-stretch-subutai-template_0.4.1_amd64.tar.gz")
 		auxFile, _ := os.Create("/tmp/data/files/debian-stretch-subutai-template_0.4.1_amd64.tar.gz")
 		io.Copy(auxFile, actualFile)
@@ -529,7 +535,6 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 			Token:    SubutaiToken,
 			Private:  "false",
 			Tags:     "nobodyreadstags,haha",
-			//			Version:  "7.0.0",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
 			size:     auxFileStats.Size(),
@@ -537,6 +542,9 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		tests[5].wantErr = false
 	}
 	{
+		cmd := exec.Command("wget", "-O", "/tmp/data/public/akenzhaliev/generic-ansible-subutai-template_0.4.1_amd64.tar.gz", "https://cdn.subutai.io:8338/kurjun/rest/raw/download?id=cde85454-e6a9-42f6-8447-fc09ad96249b")
+		cmd.Run()
+		log.Info("Downloaded file")
 		actualFile, _ := os.Open("/tmp/data/public/akenzhaliev/generic-ansible-subutai-template_0.4.1_amd64.tar.gz")
 		auxFile, _ := os.Create("/tmp/data/files/generic-ansible-subutai-template_0.4.1_amd64.tar.gz")
 		io.Copy(auxFile, actualFile)
@@ -552,7 +560,6 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 			Token:    AkenzhalievToken,
 			Private:  "false",
 			Tags:     "nobodyreadstags",
-//			Version:  "7.0.0",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
 			size:     auxFileStats.Size(),
@@ -560,22 +567,24 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		tests[6].wantErr = false
 	}
 	{
-		actualFile, _ := os.Open("/tmp/data/public/akenzhaliev/php7-subutai-template_0.4.1_amd64.tar.gz")
-		auxFile, _ := os.Create("/tmp/data/files/php7-subutai-template_0.4.1_amd64.tar.gz")
+		cmd := exec.Command("wget", "-O", "/tmp/data/public/akenzhaliev/management-subutai-template_7.0.2_amd64.tar.gz", "https://cdn.subutai.io:8338/kurjun/rest/raw/download?id=14644624-4f09-41a7-8168-5a5b9668adab")
+		cmd.Run()
+		log.Info("Downloaded file")
+		actualFile, _ := os.Open("/tmp/data/public/akenzhaliev/management-subutai-template_7.0.2_amd64.tar.gz")
+		auxFile, _ := os.Create("/tmp/data/files/management-subutai-template_7.0.2_amd64.tar.gz")
 		io.Copy(auxFile, actualFile)
-		auxFileStats, _ := os.Stat("/tmp/data/files/php7-subutai-template_0.4.1_amd64.tar.gz")
-		md5Sum := Hash("/tmp/data/files/php7-subutai-template_0.4.1_amd64.tar.gz", "md5")
-		sha256Sum := Hash("/tmp/data/files/php7-subutai-template_0.4.1_amd64.tar.gz", "sha256")
-		os.Rename("/tmp/data/files/php7-subutai-template_0.4.1_amd64.tar.gz", "/tmp/data/files/" + md5Sum)
+		auxFileStats, _ := os.Stat("/tmp/data/files/management-subutai-template_7.0.2_amd64.tar.gz")
+		md5Sum := Hash("/tmp/data/files/management-subutai-template_7.0.2_amd64.tar.gz", "md5")
+		sha256Sum := Hash("/tmp/data/files/management-subutai-template_7.0.2_amd64.tar.gz", "sha256")
+		os.Rename("/tmp/data/files/management-subutai-template_7.0.2_amd64.tar.gz", "/tmp/data/files/" + md5Sum)
 		tests[7].fields = fields {
 			File:     io.Reader(auxFile),
-			Filename: "php7-subutai-template_0.4.1_amd64.tar.gz",
+			Filename: "management-subutai-template_7.0.2_amd64.tar.gz",
 			Repo:     "template",
 			Owner:    AkenzhalievName,
 			Token:    AkenzhalievToken,
 			Private:  "true",
 			Tags:     "nobodyreadstags",
-			//			Version:  "7.0.0",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
 			size:     auxFileStats.Size(),
@@ -583,25 +592,20 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		tests[7].wantErr = false
 	}
 	{
-		// actualFile, _ := os.Open("/tmp/data/public/akenzhaliev/nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz")
-		// auxFile, _ := os.Create("/tmp/data/files/nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz")
-		// io.Copy(auxFile, actualFile)
-		// auxFileStats, _ := os.Stat("/tmp/data/files/nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz.tar.gz")
+		cmd := exec.Command("wget", "-O", "/tmp/data/public/akenzhaliev/nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz", "https://cdn.subutai.io:8338/kurjun/rest/template/download?id=e135003f-fb13-47e7-8485-15f5ba7f1af4")
+		cmd.Run()
+		log.Info("Downloaded file")
 		md5Sum := Hash("/tmp/data/public/akenzhaliev/nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz", "md5")
 		sha256Sum := Hash("/tmp/data/public/akenzhaliev/nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz", "sha256")
-		// os.Rename("/tmp/data/files/nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz", "/tmp/data/files/" + md5Sum)
 		tests[8].fields = fields {
-			// File:     io.Reader(auxFile),
 			Filename: "nogeneric-ansible-subutai-template_0.4.1_amd64.tar.gz",
 			Repo:     "template",
 			Owner:    AkenzhalievName,
 			Token:    AkenzhalievToken,
 			Private:  "true",
 			Tags:     "nobodyreadstags",
-			//			Version:  "7.0.0",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
-			// size:     auxFileStats.Size(),
 		}
 		tests[8].wantErr = true
 	}
@@ -621,7 +625,6 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 			Token:    AkenzhalievToken,
 			Private:  "true",
 			Tags:     "nobodyreadstags",
-			// Version:  "7.0.0",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
 			size:     auxFileStats.Size(),
