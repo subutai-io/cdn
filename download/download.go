@@ -146,12 +146,16 @@ func Info(repo string, r *http.Request) []byte {
 	id := r.URL.Query().Get("id")
 	tag := r.URL.Query().Get("tag")
 	name := r.URL.Query().Get("name")
+	subname := r.URL.Query().Get("subname")
 	page := r.URL.Query().Get("page")
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
 	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
 	version = processVersion(version)
+	if name == "" {
+		name = subname
+	}
 	if id != "" && name != "" && db.NameByHash(id) != name {
 		return nil
 	}
@@ -161,7 +165,7 @@ func Info(repo string, r *http.Request) []byte {
 	}
 	list := make([]string, 0)
 	if id != "" {
-		//		log.Debug(fmt.Sprintf("id was provided"))
+		// log.Debug(fmt.Sprintf("id was provided"))
 		name = db.NameByHash(id)
 		if verified != "true" {
 			if owner == "" && token == "" {
@@ -266,7 +270,7 @@ func Info(repo string, r *http.Request) []byte {
 		}
 		item := FormatItem(db.Info(k), repo)
 		if (id == "" || id == item.ID) &&
-			(name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")) &&
+			((subname != "" && strings.Contains(item.Name, subname)) || name == item.Name || strings.HasPrefix(name, item.Name + "-subutai-template")) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = []ListItem{item}
 			itemVersion, _ := semver.Make(item.Version)
@@ -303,9 +307,13 @@ func List(repo string, r *http.Request) []byte {
 	tag := r.URL.Query().Get("tag")
 	name := r.URL.Query().Get("name")
 	page := r.URL.Query().Get("page")
+	subname := r.URL.Query().Get("subname")
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
 	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
+	if name == "" {
+		name = subname
+	}
 	if token != "" && db.TokenOwner(token) == "" {
 		token = ""
 		log.Debug(fmt.Sprintf("List: provided token is invalid"))
@@ -353,7 +361,7 @@ func List(repo string, r *http.Request) []byte {
 		}
 		item := FormatItem(db.Info(k), repo)
 		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
-		if (name == "" || (name != "" && (name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")))) &&
+		if (name == "" || (name != "" && ((subname != "" && strings.Contains(item.Name, subname)) || name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")))) &&
 			(version == "" || (version != "" && item.Version == version)) {
 			items = append(items, item)
 		}
