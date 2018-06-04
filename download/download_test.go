@@ -223,10 +223,7 @@ func Test_checkVersion(t *testing.T) {
 	tests[1].want = -1
 	tests[2].args.items = append(tests[2].args.items, ListItem{Name: "debian-stretch", Owner: []string{"somebody"}, Version: "0.4.1"})
 	tests[2].args.item = ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.5"}
-	tests[2].want = -1
-	tests[2].args.items = append(tests[2].args.items, ListItem{Name: "debian-stretch", Owner: []string{"somebody"}, Version: "0.4.1"})
-	tests[2].args.item = ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.5"}
-	tests[2].want = -1
+	tests[2].want = 1
 	tests[3].args.items = append(tests[3].args.items, ListItem{Name: "debian-stretch", Owner: []string{"somebody"}, Version: "0.4.1"})
 	tests[3].args.items = append(tests[3].args.items, ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.2"})
 	tests[3].args.item = ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.3"}
