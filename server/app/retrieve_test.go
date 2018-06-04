@@ -49,7 +49,7 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 		{name: "t2", fields: fields{FileID: "id2", Name: "name2"}},
 		{name: "t3", fields: fields{FileID: "id3", Owner: "ExistingOwner", Name: "name3"}},
 		{name: "t4", fields: fields{FileID: "id4", Owner: "NotExistingOwner", Name: "name4"}},
-		{name: "t5", fields: fields{FileID: "id5", Owner: "Owner", Name: "name5", Token: "token1"}},
+		{name: "t5", fields: fields{FileID: "id5", Owner: "Owner", Name: "name5", Verified: "true"}},
 		{name: "t6", fields: fields{FileID: "id6", Owner: "subutai", Name: "name6"}},
 	}
 	for _, tt := range tests {
@@ -114,11 +114,11 @@ func TestSearchRequest_ValidateList(t *testing.T) {
 		validators map[string]ValidateFunction
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
+		name   string
+		fields fields
 	}{
-		// TODO: Add test cases.
+		{name: "t1", fields: fields{Owner: "owner1", Token: "token1"}},
+		{name: "t2", fields: fields{Owner: "owner2", Token: "token2"}},
 	}
 	for _, tt := range tests {
 		request := &SearchRequest{
@@ -133,8 +133,17 @@ func TestSearchRequest_ValidateList(t *testing.T) {
 			Operation:  tt.fields.Operation,
 			validators: tt.fields.validators,
 		}
-		if err := request.ValidateList(); (err != nil) != tt.wantErr {
-			t.Errorf("%q. SearchRequest.ValidateList() error = %v, wantErr %v", tt.name, err, tt.wantErr)
+		if tt.name == "t1" {
+			request.ValidateList()
+			if request.Owner != "" && request.Token != "" {
+				t.Errorf("%q. SearchRequest.ValidateList().Owner must be empty. Got: %v", tt.name, request.Owner)
+			}
+		} else if tt.name == "t2" {
+			WriteOwnerInDB(tt.fields.Owner)
+			request.ValidateList()
+			if request.Owner != tt.fields.Owner {
+				t.Errorf("%q. SearchRequest.ValidateList().Wait: %v, Got: %v", tt.name, tt.fields.Owner, request.Owner)
+			}
 		}
 	}
 }
@@ -442,42 +451,4 @@ func TestResult_GetResultByFileID(t *testing.T) {
 		}
 	}
 	TearDown(false)
-}
-
-func TestFilterInfo(t *testing.T) {
-	type args struct {
-		query map[string]string
-		files []*Result
-	}
-	tests := []struct {
-		name       string
-		args       args
-		wantResult []*Result
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		if gotResult := FilterInfo(tt.args.query, tt.args.files); !reflect.DeepEqual(gotResult, tt.wantResult) {
-			t.Errorf("%q. FilterInfo() = %v, want %v", tt.name, gotResult, tt.wantResult)
-		}
-	}
-}
-
-func TestFilterList(t *testing.T) {
-	type args struct {
-		query map[string]string
-		files []*Result
-	}
-	tests := []struct {
-		name        string
-		args        args
-		wantResults []*Result
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		if gotResults := FilterList(tt.args.query, tt.args.files); !reflect.DeepEqual(gotResults, tt.wantResults) {
-			t.Errorf("%q. FilterList() = %v, want %v", tt.name, gotResults, tt.wantResults)
-		}
-	}
 }
