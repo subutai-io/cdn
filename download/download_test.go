@@ -198,3 +198,44 @@ func TestFormatItem(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkVersion(t *testing.T) {
+	type args struct {
+		items []ListItem
+		item  ListItem
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{name: "Test_checkVersion-0"},
+		{name: "Test_checkVersion-1"},
+		{name: "Test_checkVersion-2"},
+		{name: "Test_checkVersion-3"},
+		// TODO: Add test cases.
+	}
+	tests[0].args.items = append(tests[0].args.items, ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.1"})
+	tests[0].args.item = ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.5"}
+	tests[0].want = 0
+	tests[1].args.items = append(tests[1].args.items, ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.5"})
+	tests[1].args.item = ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.1"}
+	tests[1].want = -1
+	tests[2].args.items = append(tests[2].args.items, ListItem{Name: "debian-stretch", Owner: []string{"somebody"}, Version: "0.4.1"})
+	tests[2].args.item = ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.5"}
+	tests[2].want = 1
+	tests[3].args.items = append(tests[3].args.items, ListItem{Name: "debian-stretch", Owner: []string{"somebody"}, Version: "0.4.1"})
+	tests[3].args.items = append(tests[3].args.items, ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.2"})
+	tests[3].args.item = ListItem{Name: "debian-stretch", Owner: []string{"subutai"}, Version: "0.4.3"}
+	tests[3].want = 1
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log.Warn(fmt.Sprintf("Starting test"))
+			log.Warn(fmt.Sprintf("tt.args.items = %+v", tt.args.items))
+			log.Warn(fmt.Sprintf("tt.args.item = %+v", tt.args.item))
+			if got := checkVersion(tt.args.items, tt.args.item); got != tt.want {
+				t.Errorf("checkVersion() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
