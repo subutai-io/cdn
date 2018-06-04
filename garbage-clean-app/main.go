@@ -14,14 +14,9 @@ func CleanGarbage() {
 	list := db.SearchName("")
 	for _, k := range list {
 		info := db.Info(k)
-		if len(info["Description"]) > 0 {
-			whiteList = append(whiteList, info["name"])
-		} else {
-			whiteList = append(whiteList, info["md5"])
-		}
-		if info["md5"] == "" {
-			whiteList = append(whiteList, info["id"])
-		}
+		whiteList = append(whiteList, info["name"])
+		whiteList = append(whiteList, info["md5"])
+		whiteList = append(whiteList, info["id"])
 	}
 	files, _ := ioutil.ReadDir(config.Storage.Path)
 	for _, file := range files {

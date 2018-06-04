@@ -362,13 +362,20 @@ func List(repo string, r *http.Request) []byte {
 		item := FormatItem(db.Info(k), repo)
 		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
 		if (name == "" || (name != "" && ((subname != "" && strings.Contains(item.Name, subname)) || name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")))) &&
-			(version == "" || (version != "" && item.Version == version)) {
+			(version == "" || (version != "" && (item.Version == version || (version == "latest" && checkVersion(items, item) != -1)))) {
+			if version == "latest" {
+				positionOlderItem := checkVersion(items, item)
+				if positionOlderItem != len(items) {
+					items = append(items[:positionOlderItem], items[positionOlderItem+1:]...)
+				}
+			}
 			items = append(items, item)
 		}
 		if len(items) >= p[1] {
 			break
 		}
 	}
+
 	log.Info(fmt.Sprintf("list: final list: "))
 	for i, k := range items {
 		log.Info(fmt.Sprintf("list: item %d: %s (filename: %s)", i, k.ID, db.NameByHash(k.ID)))
@@ -381,6 +388,25 @@ func List(repo string, r *http.Request) []byte {
 		output = []byte("[]")
 	}
 	return output
+}
+
+func checkVersion(items []ListItem, item ListItem) int {
+	exists := false
+	for i, v := range items {
+		if v.Name == item.Name && (len(v.Owner) > 0 && len(item.Owner) > 0 && v.Owner[0] == item.Owner[0]) {
+			exists = true
+			vVersion, _ := semver.Make(v.Version)
+			itemVersion, _ := semver.Make(item.Version)
+			if itemVersion.GTE(vVersion) {
+				log.Info(fmt.Sprintf("i = %d, vVersion: %+v, itemVersion: %+v, v: %+v <---> item: %+v", i, vVersion, itemVersion, v, item))
+				return i
+			}
+		}
+	}
+	if !exists {
+		return len(items)
+	}
+	return -1
 }
 
 func processVersion(version string) string {
