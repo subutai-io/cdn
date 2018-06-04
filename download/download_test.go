@@ -10,7 +10,7 @@ import (
 
 func TestIn(t *testing.T) {
 	type args struct {
-		str  string
+		str  []string
 		list []string
 	}
 	tests := []struct {
@@ -18,10 +18,10 @@ func TestIn(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"TestIn-1", args{"in", []string{"string", "in", "slice"}}, true},
-		{"TestIn-2", args{"in", []string(nil)}, false},
-		{"TestIn-3", args{"", []string{"", "in", "slice"}}, true},
-		{"TestIn-4", args{"outside", []string{"", "in", "slice"}}, false},
+		{"TestIn-1", args{[]string{"in"}, []string{"string", "in", "slice"}}, true},
+		{"TestIn-2", args{[]string{"in"}, []string(nil)}, false},
+		{"TestIn-3", args{[]string{""}, []string{"", "in", "slice"}}, true},
+		{"TestIn-4", args{[]string{"outside"}, []string{"", "in", "slice"}}, false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {

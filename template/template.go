@@ -549,7 +549,7 @@ func allFieldsPresent(templateData *download.ListItem) (bool, string) {
 		fieldName := typeOfT.Field(i).Name
 		fieldValue := f.Interface()
 
-		if (download.In(fieldName, requiredFields) && fieldValue == "") ||
+		if (download.In([]string{fieldName}, requiredFields) && fieldValue == "") ||
 			(fieldName == "Owner" && len(templateData.Owner) == 0) {
 			message := fieldName + " field required"
 			return false, message
