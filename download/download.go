@@ -311,6 +311,7 @@ func List(repo string, r *http.Request) []byte {
 	owner := strings.ToLower(r.URL.Query().Get("owner"))
 	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
+	verified := r.URL.Query().Get("verified")
 	if name == "" {
 		name = subname
 	}
@@ -362,13 +363,21 @@ func List(repo string, r *http.Request) []byte {
 		item := FormatItem(db.Info(k), repo)
 		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
 		if (name == "" || (name != "" && ((subname != "" && strings.Contains(item.Name, subname)) || name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")))) &&
-			(version == "" || (version != "" && item.Version == version)) {
+			(version == "" || (version != "" && (item.Version == version || (version == "latest" && checkVersion(items, item) != -1)))) &&
+			(verified != "true" || In(item.Owner, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"})) {
+			if version == "latest" {
+				positionOlderItem := checkVersion(items, item)
+				if positionOlderItem != len(items) {
+					items = append(items[:positionOlderItem], items[positionOlderItem+1:]...)
+				}
+			}
 			items = append(items, item)
 		}
 		if len(items) >= p[1] {
 			break
 		}
 	}
+
 	log.Info(fmt.Sprintf("list: final list: "))
 	for i, k := range items {
 		log.Info(fmt.Sprintf("list: item %d: %s (filename: %s)", i, k.ID, db.NameByHash(k.ID)))
@@ -383,6 +392,25 @@ func List(repo string, r *http.Request) []byte {
 	return output
 }
 
+func checkVersion(items []ListItem, item ListItem) int {
+	exists := false
+	for i, v := range items {
+		if v.Name == item.Name && (len(v.Owner) > 0 && len(item.Owner) > 0 && v.Owner[0] == item.Owner[0]) {
+			exists = true
+			vVersion, _ := semver.Make(v.Version)
+			itemVersion, _ := semver.Make(item.Version)
+			if itemVersion.GTE(vVersion) {
+				log.Info(fmt.Sprintf("i = %d, vVersion: %+v, itemVersion: %+v, v: %+v <---> item: %+v", i, vVersion, itemVersion, v, item))
+				return i
+			}
+		}
+	}
+	if !exists {
+		return len(items)
+	}
+	return -1
+}
+
 func processVersion(version string) string {
 	if version == "latest" {
 		return ""
@@ -390,10 +418,12 @@ func processVersion(version string) string {
 	return version
 }
 
-func In(str string, list []string) bool {
+func In(str []string, list []string) bool {
 	for _, s := range list {
-		if s == str {
-			return true
+		for _, t := range str {
+			if s == t {
+				return true
+			}
 		}
 	}
 	return false
@@ -414,7 +444,7 @@ func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if In(owner, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}) {
+					if In([]string{owner}, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}) {
 						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
 							log.Debug(fmt.Sprintf("First if %+v", k))
 							latestVersion = itemVersion
