@@ -482,7 +482,7 @@ func TestSearch(t *testing.T) {
 	result1.Filename = "file1"
 	var results []*Result
 	results = append(results, result1)
-	query := map[string]string{"FileID": "id1", "Name": "file1", "Filename": "file1", "Repo": "raw", "Tags": "tag1", "Owner": "subutai", "Version": "v1", "Token": SubutaiToken}
+	query := map[string]string{"FileID": "id1", "Name": "file1", "Filename": "file1", "Repo": "raw", "Tags": "tag1", "Owner": "subutai", "Version": "v1", "Token": Subutai.Token}
 	tests := []struct {
 		name     string
 		args     args
