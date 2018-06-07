@@ -32,7 +32,7 @@ type SearchRequest struct {
 }
 
 func (request *SearchRequest) InitValidators() {
-	request.validators         = make(map[string]ValidateFunction)
+	request.validators = make(map[string]ValidateFunction)
 	request.validators["info"] = request.ValidateInfo
 	request.validators["list"] = request.ValidateList
 }
@@ -135,14 +135,14 @@ type Result struct {
 
 func (result *Result) ConvertToOld() *OldResult {
 	oldResult := &OldResult{
-		FileID:        result.FileID,
-		Owner:         []string{result.Owner},
-		Name:          result.Name,
-		Filename:      result.Filename,
-		Version:       result.Version,
+		FileID:   result.FileID,
+		Owner:    []string{result.Owner},
+		Name:     result.Name,
+		Filename: result.Filename,
+		Version:  result.Version,
 		Hash: Hashes{
-			Md5:       result.Md5,
-			Sha256:    result.Sha256,
+			Md5:    result.Md5,
+			Sha256: result.Sha256,
 		},
 		Size:          result.Size,
 		Tags:          strings.Split(result.Tags, ","),

@@ -3,9 +3,10 @@ package app
 import (
 	"testing"
 
+	"strconv"
+
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/cdn/db"
-	"strconv"
 )
 
 func TestCheckOwner(t *testing.T) {
