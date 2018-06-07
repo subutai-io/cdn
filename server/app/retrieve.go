@@ -176,11 +176,11 @@ func (result *Result) GetResultByFileID(fileID string) {
 type FilterFunction func(map[string]string, []*Result) []*Result
 
 var (
-	filters = make(map[string]FilterFunction)
+	filters map[string]FilterFunction
 )
 
 func InitFilters() {
-	log.Info("Initializing filters")
+	filters = make(map[string]FilterFunction)
 	filters["info"] = FilterInfo
 	filters["list"] = FilterList
 	log.Info("Initialization of filters finished")

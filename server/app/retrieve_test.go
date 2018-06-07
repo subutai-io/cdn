@@ -33,7 +33,9 @@ func WriteFileInDB(fileID, fileName string) {
 }
 
 func TestSearchRequest_ValidateInfo(t *testing.T) {
-	SetUp(false)
+	Integration = 0
+	SetUp()
+	defer TearDown()
 	type fields struct {
 		FileID   string
 		Owner    string
@@ -53,7 +55,7 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 		{name: "t6", fields: fields{FileID: "id6", Owner: "subutai", Name: "name6"}},
 	}
 	for _, tt := range tests {
-		errorred := false
+		errored := false
 		request := &SearchRequest{
 			FileID:   tt.fields.FileID,
 			Owner:    tt.fields.Owner,
@@ -63,20 +65,20 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 		}
 		if tt.name == "t1" {
 			if err := request.ValidateInfo(); err == nil {
-				errorred = true
+				errored = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
 			}
 		} else if tt.name == "t2" {
 			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
 			if err := request.ValidateInfo(); err != nil {
-				errorred = true
+				errored = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
 			}
 		} else if tt.name == "t3" {
 			WriteOwnerInDB(tt.fields.Owner)
 			request.ValidateInfo()
 			if request.Owner != tt.fields.Owner {
-				errorred = true
+				errored = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Owner is different. Wait: %v, got: %v", tt.name, tt.fields.Name, request.Owner)
 			}
 		} else if tt.name == "t4" {
@@ -89,18 +91,18 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
 			WriteOwnerInDB(tt.fields.Owner)
 			if err := request.ValidateInfo(); err != nil {
-				errorred = true
+				errored = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
 			}
 		}
-		if errorred {
+		if errored {
 			break
 		}
 	}
-	TearDown(false)
 }
 
 func TestSearchRequest_ValidateList(t *testing.T) {
+	Integration = 0
 	type fields struct {
 		FileID     string
 		Owner      string
@@ -140,6 +142,7 @@ func TestSearchRequest_ValidateList(t *testing.T) {
 }
 
 func TestSearchRequest_ParseRequest(t *testing.T) {
+	Integration = 0
 	type fields struct {
 		FileID     string
 		Owner      string
@@ -194,6 +197,7 @@ func TestSearchRequest_ParseRequest(t *testing.T) {
 }
 
 func TestSearchRequest_BuildQuery(t *testing.T) {
+	Integration = 0
 	type fields struct {
 		FileID     string
 		Owner      string
@@ -236,6 +240,7 @@ func TestSearchRequest_BuildQuery(t *testing.T) {
 }
 
 func TestResult_ConvertToOld(t *testing.T) {
+	Integration = 0
 	type fields struct {
 		FileID        string
 		Owner         string
@@ -261,7 +266,6 @@ func TestResult_ConvertToOld(t *testing.T) {
 	var owners, tags []string
 	owners = append(owners, "owner1")
 	tags = append(tags, "tag1")
-
 	oldRes := new(OldResult)
 	oldRes.FileID = "id1"
 	oldRes.Owner = owners
@@ -272,7 +276,6 @@ func TestResult_ConvertToOld(t *testing.T) {
 	oldRes.Architecture = "amd64"
 	oldRes.Hash.Md5 = "md5"
 	oldRes.Hash.Sha256 = "sha256"
-
 	tests := []struct {
 		name   string
 		fields fields
@@ -309,6 +312,7 @@ func TestResult_ConvertToOld(t *testing.T) {
 }
 
 func TestResult_BuildResult(t *testing.T) {
+	Integration = 0
 	type fields struct {
 		FileID        string
 		Owner         string
@@ -359,7 +363,9 @@ func TestResult_BuildResult(t *testing.T) {
 }
 
 func TestResult_GetResultByFileID(t *testing.T) {
-	SetUp(false)
+	Integration = 0
+	SetUp()
+	defer TearDown()
 	type fields struct {
 		FileID        string
 		Owner         string
@@ -423,7 +429,7 @@ func TestResult_GetResultByFileID(t *testing.T) {
 			result.GetResultByFileID(tt.args.fileID)
 		}
 		WriteOwnerInDB(result.Owner)
-		WriteDB(result)
+		FileWrite(result)
 		result.GetResultByFileID(tt.args.fileID)
 		if result.FileID != tt.fields.FileID &&
 			result.Owner != tt.fields.Owner && result.Name != tt.fields.Name &&
@@ -441,10 +447,10 @@ func TestResult_GetResultByFileID(t *testing.T) {
 			break
 		}
 	}
-	TearDown(false)
 }
 
 func TestFilterInfo(t *testing.T) {
+	Integration = 0
 	type args struct {
 		query map[string]string
 		files []*Result
@@ -464,6 +470,7 @@ func TestFilterInfo(t *testing.T) {
 }
 
 func TestFilterList(t *testing.T) {
+	Integration = 0
 	type args struct {
 		query map[string]string
 		files []*Result

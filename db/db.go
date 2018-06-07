@@ -41,6 +41,8 @@ func AddShare(hash, owner, user string) {
 					log.Debug(fmt.Sprintf("Adding %+v to tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", user, string(MyBucket), hash, "scope"))
 					b.Put([]byte(user), []byte("w"))
 				}
+			} else {
+				log.Warn("No bucket scope")
 			}
 			if e := tx.Bucket(Users).Bucket([]byte(user)); e != nil {
 				if f, _ := e.CreateBucketIfNotExists([]byte("files")); f != nil {
@@ -50,8 +52,14 @@ func AddShare(hash, owner, user string) {
 					} else {
 						log.Debug(fmt.Sprintf("File already put in files Bucket"))
 					}
+				} else {
+					log.Warn("Couldn't create bucket files")
 				}
+			} else {
+				log.Warn("No bucket ", user)
 			}
+		} else {
+			log.Warn("No bucket ", hash)
 		}
 		return nil
 	})
@@ -107,13 +115,18 @@ func CheckShare(hash, user string) (shared bool) {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if c := b.Bucket([]byte("scope")); c != nil {
 				if c.Get(publicScope) != nil {
+					log.Info("Public scope")
 					shared = true
 				} else if c.Get(privateScope) != nil {
-					//					log.Debug(fmt.Sprintf("Iterating through tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", string(MyBucket), hash, "scope"))
+					log.Info("Private scope")
+					log.Debug(fmt.Sprintf("Iterating through tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", string(MyBucket), hash, "scope"))
 					if c.Get([]byte(user)) != nil || b.Bucket([]byte("owner")).Get([]byte(user)) != nil {
 						shared = true
+					} else {
+						log.Warn("No access")
 					}
 				} else {
+					log.Warn("No public and private scopes")
 					log.Debug(fmt.Sprintf("Availability scopes are missing"))
 					if d := b.Bucket([]byte("owner")); d != nil {
 						owner, _ := d.Cursor().First()
@@ -123,7 +136,11 @@ func CheckShare(hash, user string) (shared bool) {
 						log.Panic(fmt.Sprintf("Cannot find compromise: line 123, info_test.go"))
 					}
 				}
+			} else {
+				log.Warn("No bucket with name scope")
 			}
+		} else {
+			log.Warn("No bucket with name ", hash)
 		}
 		return nil
 	})
@@ -879,6 +896,7 @@ func RegisterUser(name, key []byte) {
 
 // RemoveShare removes user from share scope of file if the file was shared with him
 func RemoveShare(hash, owner, user string) {
+	log.Info(fmt.Sprintf(""))
 	log.Debug(fmt.Sprintf("RemoveShare(%+v, %+v, %+v) started", hash, owner, user))
 	DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
@@ -891,9 +909,17 @@ func RemoveShare(hash, owner, user string) {
 						if f.Get([]byte(hash)) != nil {
 							f.Delete([]byte(hash))
 						}
+					} else {
+						log.Warn("No bucket named files")
 					}
+				} else {
+					log.Warn("No bucket named ", user)
 				}
+			} else {
+				log.Warn("No bucket named scope")
 			}
+		} else {
+			log.Warn("No bucket named ", hash)
 		}
 		return nil
 	})

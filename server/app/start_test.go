@@ -8,12 +8,16 @@ import (
 )
 
 func TestRunServer(t *testing.T) {
+	Integration = 0
+	SetUp()
+	defer TearDown()
 	tests := []struct {
 		name string
 	}{
-		{"TestRunServer-1"},
+		{"TestRunServer-"},
 		// TODO: Add test cases.
 	}
+	tests[0].name += "0"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			RunServer()

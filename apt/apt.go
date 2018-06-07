@@ -143,6 +143,8 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	}
 	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
 		defer f.Close()
+		stats, _ := f.Stat()
+		w.Header().Set("Content-Length", strconv.Itoa(int(stats.Size())))
 		io.Copy(w, f)
 	} else {
 		w.WriteHeader(http.StatusNotFound)

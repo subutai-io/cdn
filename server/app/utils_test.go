@@ -8,7 +8,8 @@ import (
 )
 
 func TestCheckOwner(t *testing.T) {
-	SetUp(false)
+	SetUp()
+	defer TearDown()
 	type args struct {
 		owner string
 	}
@@ -36,5 +37,4 @@ func TestCheckOwner(t *testing.T) {
 			}
 		}
 	}
-	TearDown(false)
 }
