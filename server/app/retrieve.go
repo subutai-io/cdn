@@ -246,6 +246,7 @@ func GetFileInfo(fileID string) (info map[string]string, err error) {
 		key, _ := owner.Cursor().First()
 		info["Owner"] = string(key)
 		info["Name"] = string(file.Get([]byte("name")))
+		info["Filename"] = string(file.Get([]byte("name")))
 		repo := file.Bucket([]byte("type"))
 		if repo != nil {
 			key, _ = repo.Cursor().First()
