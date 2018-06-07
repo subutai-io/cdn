@@ -1,11 +1,11 @@
-package auto
+package main
 
 import (
-	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/agent/log"
 	"io/ioutil"
+	"github.com/subutai-io/cdn/config"
 	"os"
+	"github.com/subutai-io/agent/log"
 	"fmt"
 )
 
@@ -14,14 +14,9 @@ func CleanGarbage() {
 	list := db.SearchName("")
 	for _, k := range list {
 		info := db.Info(k)
-		if len(info["Description"]) > 0 {
-			whiteList = append(whiteList, info["name"])
-		} else {
-			whiteList = append(whiteList, info["md5"])
-		}
-		if info["md5"] == "" {
-			whiteList = append(whiteList, info["id"])
-		}
+		whiteList = append(whiteList, info["name"])
+		whiteList = append(whiteList, info["md5"])
+		whiteList = append(whiteList, info["id"])
 	}
 	files, _ := ioutil.ReadDir(config.ConfigurationStorage.Path)
 	for _, file := range files {
@@ -62,4 +57,8 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func main() {
+	CleanGarbage()
 }
