@@ -1,13 +1,13 @@
 package app
 
 import (
-	"net/http"
 	"testing"
+	"net/http"
+	"strconv"
 	"net/http/httptest"
+	"encoding/json"
 	"github.com/subutai-io/agent/log"
 	"fmt"
-	"strconv"
-	"encoding/json"
 )
 
 func TestFileSearch(t *testing.T) {
