@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"github.com/subutai-io/agent/log"
 	"fmt"
+	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/config"
 )
 
 
@@ -130,6 +132,8 @@ func Test_processVersion(t *testing.T) {
 }
 
 func TestFormatItem(t *testing.T) {
+	config.InitConfig()
+	db.DB = db.InitDB()
 	type args struct {
 		info map[string]string
 		repo string

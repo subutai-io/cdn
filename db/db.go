@@ -412,18 +412,18 @@ func FileField(hash, field string) (list []string) {
 	DB.View(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(MyBucket).Bucket([]byte(hash)); b != nil {
 			if f := b.Bucket([]byte(field)); f != nil {
-				//				log.Debug(fmt.Sprintf("Iterating through MyBucket tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", string(MyBucket), NameByHash(hash), field))
+				log.Debug(fmt.Sprintf("Iterating through MyBucket tx.Bucket(%+v).Bucket(%+v).Bucket(%+v)", string(MyBucket), NameByHash(hash), field))
 				f.ForEach(func(k, v []byte) error {
-					//					log.Debug(fmt.Sprintf("Appending (key: %+v, value: %+v)", string(k), string(v)))
+					log.Debug(fmt.Sprintf("Appending (key: %+v, value: %+v)", string(k), string(v)))
 					list = append(list, string(k))
 					return nil
 				})
 			} else if b.Get([]byte(field)) != nil {
-				//				log.Debug(fmt.Sprintf("Bucket %+v does not exist. Executing tx.Bucket(%+v).Bucket(%+v).Get(%+v)", string(MyBucket), NameByHash(hash), field))
+				log.Debug(fmt.Sprintf("Bucket %+v does not exist. Executing tx.Bucket(%+v).Bucket(%+v).Get(%+v)", string(MyBucket), NameByHash(hash), field))
 				list = append(list, string(b.Get([]byte(field))))
 			}
 		} else {
-			//			log.Debug(fmt.Sprintf("File with hash %+v does not exist", hash))
+			log.Debug(fmt.Sprintf("File with hash %+v does not exist", hash))
 		}
 		return nil
 	})
