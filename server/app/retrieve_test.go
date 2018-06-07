@@ -21,11 +21,18 @@ func WriteOwnerInDB(owner string) {
 	})
 }
 
-func WriteFileInDB(fileID, fileName string) {
+func WriteFileInDB(fileID, fileName, owner, repo string) {
 	db.DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(db.MyBucket); b != nil {
 			if c, _ := b.CreateBucket([]byte(fileID)); c != nil {
 				c.Put([]byte("name"), []byte(fileName))
+				if d, _ := c.CreateBucket([]byte("owner")); d != nil {
+					d.Put([]byte(owner), []byte("w"))
+				}
+				if d, _ := c.CreateBucket([]byte("type")); d != nil {
+					d.Put([]byte(repo), []byte("w"))
+				}
+				c.CreateBucket([]byte("scope"))
 			}
 		}
 		return nil
@@ -47,7 +54,7 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 	}{
 		{name: "t1", fields: fields{}},
 		{name: "t2", fields: fields{FileID: "id2", Name: "name2"}},
-		{name: "t3", fields: fields{FileID: "id3", Owner: "ExistingOwner", Name: "name3"}},
+		{name: "t3", fields: fields{FileID: "id3", Owner: "subutai", Name: "name3"}},
 		{name: "t4", fields: fields{FileID: "id4", Owner: "NotExistingOwner", Name: "name4"}},
 		{name: "t5", fields: fields{FileID: "id5", Owner: "Owner", Name: "name5", Verified: "true"}},
 		{name: "t6", fields: fields{FileID: "id6", Owner: "subutai", Name: "name6"}},
@@ -67,26 +74,26 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
 			}
 		} else if tt.name == "t2" {
-			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
+			WriteFileInDB(tt.fields.FileID, tt.fields.Name, tt.fields.Owner, "raw")
 			if err := request.ValidateInfo(); err != nil {
 				errorred = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
 			}
 		} else if tt.name == "t3" {
-			WriteOwnerInDB(tt.fields.Owner)
+			PrepareUsersAndTokens()
 			request.ValidateInfo()
 			if request.Owner != tt.fields.Owner {
 				errorred = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Owner is different. Wait: %v, got: %v", tt.name, tt.fields.Name, request.Owner)
 			}
 		} else if tt.name == "t4" {
-			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
+			WriteFileInDB(tt.fields.FileID, tt.fields.Name, tt.fields.Owner, "raw")
 			request.ValidateInfo()
 			if request.Owner != "" {
 				t.Errorf("%q. SearchRequest.ValidateInfo. Owner is not exist and must be empty. Got: %v", tt.name, request.Owner)
 			}
 		} else if tt.name == "t6" {
-			WriteFileInDB(tt.fields.FileID, tt.fields.Name)
+			WriteFileInDB(tt.fields.FileID, tt.fields.Name, tt.fields.Owner, "raw")
 			WriteOwnerInDB(tt.fields.Owner)
 			if err := request.ValidateInfo(); err != nil {
 				errorred = true
@@ -445,6 +452,70 @@ func TestResult_GetResultByFileID(t *testing.T) {
 			result.PrefSize != tt.fields.PrefSize {
 			errorred = true
 			t.Errorf("%q. Result.GetResultByFileID() = %v, want %v", tt.name, result, tt.fields)
+		}
+		if errorred {
+			break
+		}
+	}
+	TearDown(false)
+}
+
+func TestSearch(t *testing.T) {
+	SetUp(false)
+	type args struct {
+		query map[string]string
+	}
+	PrepareUsersAndTokens()
+	result1 := new(Result)
+	result1.Name = "file1"
+	result1.Repo = "raw"
+	result1.Tags = "tag1"
+	result1.FileID = "id1"
+	result1.Owner = "subutai"
+	result1.Version = "v1"
+	result1.Filename = "file1"
+	var results []*Result
+	results = append(results, result1)
+	query := map[string]string{"FileID": "id1", "Name": "file1", "Filename": "file1", "Repo": "raw", "Tags": "tag1", "Owner": "subutai", "Version": "v1", "Token": SubutaiToken}
+	tests := []struct {
+		name     string
+		args     args
+		wantList []*Result
+	}{
+		{name: "t1", args: args{query: query}, wantList: results},
+	}
+	for _, tt := range tests {
+		errorred := false
+		WriteFileInDB("FileID", tt.args.query["Name"], "subutai", tt.args.query["Repo"])
+		WriteDB(result1)
+		gotList, err := Search(tt.args.query)
+		if err != nil {
+			errorred = true
+			t.Errorf("%q. Search() error = %v", tt.name, err)
+			continue
+		}
+		if len(gotList) == 0 {
+			log.Info("Got list is empty")
+		}
+		if len(gotList) != 0 {
+			if gotList[0].FileID != tt.wantList[0].FileID &&
+				gotList[0].Owner != tt.wantList[0].Owner &&
+				gotList[0].Name != tt.wantList[0].Name &&
+				gotList[0].Filename != tt.wantList[0].Filename &&
+				gotList[0].Repo != tt.wantList[0].Repo &&
+				gotList[0].Version != tt.wantList[0].Version &&
+				gotList[0].Scope != tt.wantList[0].Scope &&
+				gotList[0].Md5 != tt.wantList[0].Md5 &&
+				gotList[0].Sha256 != tt.wantList[0].Sha256 &&
+				gotList[0].Tags != tt.wantList[0].Tags &&
+				gotList[0].Description != tt.wantList[0].Description &&
+				gotList[0].Architecture != tt.wantList[0].Architecture &&
+				gotList[0].Parent != tt.wantList[0].Parent &&
+				gotList[0].ParentVersion != tt.wantList[0].ParentVersion &&
+				gotList[0].ParentOwner != tt.wantList[0].ParentOwner &&
+				gotList[0].PrefSize != tt.wantList[0].PrefSize {
+				t.Error("Error in Search. Results is not equal")
+			}
 		}
 		if errorred {
 			break
