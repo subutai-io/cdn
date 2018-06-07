@@ -33,11 +33,11 @@ func CheckToken(token string) bool {
 
 func Hash(file string, algo string) string {
 	f, err := os.Open(file)
-	defer f.Close()
 	if err != nil {
 		log.Warn(fmt.Sprintf("Failed to open file %s to calculate hash", file))
 		return ""
 	}
+	defer f.Close()
 	hash := md5.New()
 	switch algo {
 	case "md5":
@@ -49,9 +49,7 @@ func Hash(file string, algo string) string {
 	case "sha512":
 		hash = sha512.New()
 	}
-	if _, err := io.Copy(hash, f); err != nil {
-		return ""
-	}
+	io.Copy(hash, f)
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 

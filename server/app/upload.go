@@ -106,10 +106,12 @@ func (request *UploadRequest) BuildResult() *Result {
 		Sha256:   request.sha256,
 		Size:     request.size,
 	}
+	log.Info(fmt.Sprintf("Prepared UploadRequest: %+v", request))
 	return result
 }
 
 func (request *UploadRequest) HandlePrivate() {
+	log.Info(fmt.Sprintf("HandlePrivate: %+v", request))
 	if request.Private == "true" {
 		db.MakePrivate(request.fileID, request.Owner)
 	} else {
@@ -125,6 +127,9 @@ func (request *UploadRequest) ReadDeb() (control bytes.Buffer, err error) {
 	defer file.Close()
 	library := ar.NewReader(file)
 	for header, ferr := library.Next(); ferr != io.EOF; header, ferr = library.Next() {
+		if ferr != nil {
+			break
+		}
 		if header.Name == "control.tar.gz" {
 			ungzip, _ := gzip.NewReader(library)
 			defer ungzip.Close()
@@ -169,7 +174,7 @@ func (request *UploadRequest) UploadApt() error {
 	result.Description = info["Description"]
 	result.Version = info["Version"]
 	log.Info(fmt.Sprintf("Uploading apt file -> %+v", result))
-	WriteDB(result)
+	FileWrite(result)
 	request.HandlePrivate()
 	return nil
 }
@@ -177,7 +182,7 @@ func (request *UploadRequest) UploadApt() error {
 func (request *UploadRequest) UploadRaw() error {
 	result := request.BuildResult()
 	log.Info(fmt.Sprintf("Uploading raw file -> %+v", result))
-	WriteDB(result)
+	FileWrite(result)
 	request.HandlePrivate()
 	return nil
 }
@@ -345,7 +350,7 @@ func (request *UploadRequest) UploadTemplate() error {
 	}
 	request.fileID = result.FileID
 	log.Info(fmt.Sprintf("Uploading template -> %+v", result))
-	WriteDB(result)
+	FileWrite(result)
 	request.HandlePrivate()
 	return nil
 }
