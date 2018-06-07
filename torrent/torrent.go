@@ -26,10 +26,10 @@ var (
 )
 
 func initClient() *torrent.Client {
-	err := os.MkdirAll(config.Storage.Path, 0600)
+	err := os.MkdirAll(config.ConfigurationStorage.Path, 0600)
 	log.Check(log.ErrorLevel, "Creating storage path", err)
 	cl, err := torrent.NewClient(&torrent.Config{
-		DataDir:           config.Storage.Path,
+		DataDir:           config.ConfigurationStorage.Path,
 		Seed:              true,
 		DisableEncryption: true,
 		Debug:             false,
@@ -58,10 +58,10 @@ func Load(hash []byte) *bytes.Reader {
 		}}
 		metaInfo.SetDefaults()
 
-		err := metaInfo.Info.BuildFromFilePath(config.Storage.Path + string(hash))
-		if log.Check(log.DebugLevel, "Creating torrent from local file", err) && len(config.CDN.Node) > 0 {
+		err := metaInfo.Info.BuildFromFilePath(config.ConfigurationStorage.Path + string(hash))
+		if log.Check(log.DebugLevel, "Creating torrent from local file", err) && len(config.ConfigurationCDN.Node) > 0 {
 			httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-			resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/torrent?id=" + string(hash))
+			resp, err := httpclient.Get(config.ConfigurationCDN.Node + "/kurjun/rest/template/torrent?id=" + string(hash))
 			if !log.Check(log.WarnLevel, "Getting file from CDN", err) && resp.StatusCode == http.StatusOK {
 
 				_, err = io.Copy(tfile, resp.Body)

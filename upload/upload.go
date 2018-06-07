@@ -61,7 +61,7 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		log.Warn("User " + owner + " exceeded storage quota, rejecting upload")
 		return
 	}
-	out, err := os.Create(config.Storage.Path + header.Filename)
+	out, err := os.Create(config.ConfigurationStorage.Path + header.Filename)
 	log.Debug(fmt.Sprintf("Creating file for writing: %+v, %+v", out, err))
 	if log.Check(log.WarnLevel, "Unable to create the file for writing", err) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -80,14 +80,14 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to write file or storage quota exceeded"))
 		log.Warn("User " + owner + " exceeded storage quota, removing file")
-		os.Remove(config.Storage.Path + header.Filename)
+		os.Remove(config.ConfigurationStorage.Path + header.Filename)
 		return
 	} else {
 		db.QuotaUsageSet(owner, int(copied))
 		log.Info("User " + owner + ", quota usage +" + strconv.Itoa(int(copied)))
 	}
-	md5sum = Hash(config.Storage.Path + header.Filename)
-	sha256sum = Hash(config.Storage.Path + header.Filename, "sha256")
+	md5sum = Hash(config.ConfigurationStorage.Path + header.Filename)
+	sha256sum = Hash(config.ConfigurationStorage.Path + header.Filename, "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + header.Filename)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -95,8 +95,8 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 	if repo[3] != "apt" {
-		log.Debug(fmt.Sprintf("repo[3] is not apt. Renaming %+v to %+v", config.Storage.Path + header.Filename, config.Storage.Path + md5sum))
-		os.Rename(config.Storage.Path + header.Filename, config.Storage.Path + md5sum)
+		log.Debug(fmt.Sprintf("repo[3] is not apt. Renaming %+v to %+v", config.ConfigurationStorage.Path + header.Filename, config.ConfigurationStorage.Path + md5sum))
+		os.Rename(config.ConfigurationStorage.Path + header.Filename, config.ConfigurationStorage.Path + md5sum)
 	}
 	log.Info("File received: " + header.Filename + "(" + md5sum + ")")
 	return md5sum, sha256sum, owner
@@ -163,7 +163,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	user = db.FileField(id, "owner")[0]
 
 	md5, _ := db.Hash(id)
-	f, err := os.Stat(config.Storage.Path + md5)
+	f, err := os.Stat(config.ConfigurationStorage.Path + md5)
 	if !log.Check(log.WarnLevel, "Reading file stats", err) {
 		db.QuotaUsageSet(user, -int(f.Size()))
 		log.Info("User " + user + ", quota usage -" + strconv.Itoa(int(f.Size())))
@@ -172,7 +172,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	if db.CountMd5(md5) == 0 && repo[3] != "apt" {
 		log.Warn("Removing " + id + " from disk")
 		// torrent.Delete(id)
-		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+md5)) {
+		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.ConfigurationStorage.Path+md5)) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))
 			return ""
@@ -180,7 +180,7 @@ func Delete(w http.ResponseWriter, r *http.Request) string {
 	}
 
 	if repo[3] == "apt" && db.CountMd5(info["md5"]) == 0 {
-		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.Storage.Path+info["Filename"])) {
+		if log.Check(log.WarnLevel, "Removing "+info["name"]+"from disk", os.Remove(config.ConfigurationStorage.Path+info["Filename"])) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Failed to remove file"))
 			return ""

@@ -83,16 +83,16 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Not found"))
 		return
 	}
-	path := config.Storage.Path + id
+	path := config.ConfigurationStorage.Path + id
 	if md5, _ := db.Hash(id); len(md5) != 0 {
-		path = config.Storage.Path + md5
+		path = config.ConfigurationStorage.Path + md5
 	}
 	f, err := os.Open(path)
 	defer f.Close()
-	if log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+id, err) || len(id) == 0 {
-		if len(config.CDN.Node) > 0 {
+	if log.Check(log.WarnLevel, "Opening file " + config.ConfigurationStorage.Path+id, err) || len(id) == 0 {
+		if len(config.ConfigurationCDN.Node) > 0 {
 			client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-			resp, err := client.Get(config.CDN.Node + r.URL.RequestURI())
+			resp, err := client.Get(config.ConfigurationCDN.Node + r.URL.RequestURI())
 			if !log.Check(log.WarnLevel, "Getting file from CDN", err) {
 				w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
 				w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
@@ -115,9 +115,9 @@ func Handler(repo string, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 	w.Header().Set("Last-Modified", fi.ModTime().Format(http.TimeFormat))
-	if name = db.NameByHash(id); len(name) == 0 && len(config.CDN.Node) > 0 {
+	if name = db.NameByHash(id); len(name) == 0 && len(config.ConfigurationCDN.Node) > 0 {
 		httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-		resp, err := httpclient.Get(config.CDN.Node + "/kurjun/rest/template/info?id=" + id + "&token=" + token)
+		resp, err := httpclient.Get(config.ConfigurationCDN.Node + "/kurjun/rest/template/info?id=" + id + "&token=" + token)
 		if !log.Check(log.WarnLevel, "Getting info from CDN", err) {
 			var info ListItem
 			rsp, err := ioutil.ReadAll(resp.Body)

@@ -23,10 +23,10 @@ func CleanGarbage() {
 			whiteList = append(whiteList, info["id"])
 		}
 	}
-	files, _ := ioutil.ReadDir(config.Storage.Path)
+	files, _ := ioutil.ReadDir(config.ConfigurationStorage.Path)
 	for _, file := range files {
 		if !stringInSlice(file.Name(), whiteList) {
-			os.Remove(config.Storage.Path + file.Name())
+			os.Remove(config.ConfigurationStorage.Path + file.Name())
 		}
 	}
 	for _, k := range list {

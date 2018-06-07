@@ -8,25 +8,25 @@ import (
 	"fmt"
 )
 
-type cdnConfig struct {
+type cdnConfiguration struct {
 	Node string
 }
-type networkConfig struct {
+type networkConfiguration struct {
 	Port string
 }
-type dbConfig struct {
+type dbConfiguration struct {
 	Path string
 }
-type fileConfig struct {
+type fileConfiguration struct {
 	Path      string
 	Userquota string
 }
 
 type configFile struct {
-	DB      dbConfig
-	CDN     cdnConfig
-	Network networkConfig
-	Storage fileConfig
+	DB      dbConfiguration
+	CDN     cdnConfiguration
+	Network networkConfiguration
+	Storage fileConfiguration
 }
 
 const defaultConfig = `
@@ -45,31 +45,30 @@ const defaultConfig = `
 `
 
 var (
-	config configFile
+	ConfigurationFile configFile
 
-	DB      dbConfig
-	CDN     cdnConfig
-	Network networkConfig
-	Storage fileConfig
+	ConfigurationDB      dbConfiguration
+	ConfigurationCDN     cdnConfiguration
+	ConfigurationNetwork networkConfiguration
+	ConfigurationStorage fileConfiguration
 )
 
-func init() {
-	log.Level(log.InfoLevel)
+func InitConfig() {
 	log.Info("Initialization started")
-	err := gcfg.ReadStringInto(&config, defaultConfig)
+	err := gcfg.ReadStringInto(&ConfigurationFile, defaultConfig)
 	log.Check(log.InfoLevel, "Loading default config ", err)
-	err = gcfg.ReadFileInto(&config, "/opt/gorjun/etc/gorjun.gcfg")
+	err = gcfg.ReadFileInto(&ConfigurationFile, "/opt/gorjun/etc/gorjun.gcfg")
 	log.Check(log.WarnLevel, "Opening Gorjun config file /opt/gorjun/etc/gorjun.gcfg", err)
-	DB = config.DB
-	CDN = config.CDN
-	Network = config.Network
-	Storage = config.Storage
-	log.Info(fmt.Sprintf("Initialization completed: %s %s %s %s %s", DB.Path, CDN.Node, Network.Port, Storage.Path, Storage.Userquota))
+	ConfigurationDB = ConfigurationFile.DB
+	ConfigurationCDN = ConfigurationFile.CDN
+	ConfigurationNetwork = ConfigurationFile.Network
+	ConfigurationStorage = ConfigurationFile.Storage
+	log.Info(fmt.Sprintf("Initialization completed: %s %s %s %s %s", ConfigurationDB.Path, ConfigurationCDN.Node, ConfigurationNetwork.Port, ConfigurationStorage.Path, ConfigurationStorage.Userquota))
 }
 
 func DefaultQuota() int {
 	multiplier := 1
-	switch config.Storage.Userquota[len(config.Storage.Userquota)-1:] {
+	switch ConfigurationStorage.Userquota[len(ConfigurationStorage.Userquota)-1:] {
 	case "G":
 		multiplier = 1073741824
 	case "M":
@@ -77,7 +76,7 @@ func DefaultQuota() int {
 	case "K":
 		multiplier = 1024
 	}
-	v, err := strconv.Atoi(config.Storage.Userquota[:len(config.Storage.Userquota)-1])
+	v, err := strconv.Atoi(ConfigurationStorage.Userquota[:len(ConfigurationStorage.Userquota)-1])
 	if log.Check(log.WarnLevel, "Converting quota value to int", err) {
 		return 1073741824
 	}

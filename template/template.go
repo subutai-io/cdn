@@ -32,8 +32,8 @@ import (
 
 func readTempl(hash string) (configfile string, err error) {
 	var file bytes.Buffer
-	f, err := os.Open(config.Storage.Path + hash)
-	log.Check(log.WarnLevel, "Opening file "+config.Storage.Path+hash, err)
+	f, err := os.Open(config.ConfigurationStorage.Path + hash)
+	log.Check(log.WarnLevel, "Opening file "+config.ConfigurationStorage.Path+hash, err)
 	defer f.Close()
 	gzf, err := gzip.NewReader(f)
 	if err != nil {
@@ -154,9 +154,9 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			}
 			log.Info("Deleting uploaded template")
 			if db.Delete(owner, "template", md5) < 1 {
-				f, _ := os.Stat(config.Storage.Path + md5)
+				f, _ := os.Stat(config.ConfigurationStorage.Path + md5)
 				db.QuotaUsageSet(owner, -int(f.Size()))
-				os.Remove(config.Storage.Path + md5)
+				os.Remove(config.ConfigurationStorage.Path + md5)
 			}
 			return
 		}
@@ -190,12 +190,12 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 				}
 				item := download.FormatItem(db.Info(ID), "template")
 				if db.Delete(owner, "template", item.ID) < 1 {
-					f, _ := os.Stat(config.Storage.Path + item.Hash.Md5)
+					f, _ := os.Stat(config.ConfigurationStorage.Path + item.Hash.Md5)
 					if f != nil { // TODO : Understand what's the matter here
 						log.Debug(fmt.Sprintf("Printing f: %+v", f))
 						db.QuotaUsageSet(owner, -int(f.Size()))
 						if item.Hash.Md5 != t.Hash.Md5 {
-							os.Remove(config.Storage.Path + item.Hash.Md5)
+							os.Remove(config.ConfigurationStorage.Path + item.Hash.Md5)
 						}
 					}
 				}
@@ -367,12 +367,12 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 
 		item := download.FormatItem(db.Info(k), "template")
 		md5 := item.Hash.Md5
-		configPath := config.Storage.Path + "/tmp/foo/config"
+		configPath := config.ConfigurationStorage.Path + "/tmp/foo/config"
 
-		err := decompress(config.Storage.Path+md5, config.Storage.Path+"/tmp/foo")
+		err := decompress(config.ConfigurationStorage.Path+md5, config.ConfigurationStorage.Path+"/tmp/foo")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Can't decompress this template " + config.Storage.Path + md5))
+			w.Write([]byte("Can't decompress this template " + config.ConfigurationStorage.Path + md5))
 			return
 		}
 		err = appendConfig(configPath, item)
@@ -383,28 +383,28 @@ func ModifyConfig(w http.ResponseWriter, r *http.Request) {
 				"Parent =" + item.Parent + "\n"))
 			return
 		}
-		err = compress(config.Storage.Path+"/tmp/foo", config.Storage.Path+"/tmp/foo.tar.gz")
+		err = compress(config.ConfigurationStorage.Path+"/tmp/foo", config.ConfigurationStorage.Path+"/tmp/foo.tar.gz")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Can't compress this template " + config.Storage.Path + md5))
+			w.Write([]byte("Can't compress this template " + config.ConfigurationStorage.Path + md5))
 			return
 		}
 		err = updateMetaDB(item.ID, item.Owner[0], item.Hash.Md5, item.Filename, configPath)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Can't update metadate of template " + config.Storage.Path + md5))
+			w.Write([]byte("Can't update metadate of template " + config.ConfigurationStorage.Path + md5))
 			return
 		}
-		err = os.RemoveAll(config.Storage.Path + "/tmp/foo")
+		err = os.RemoveAll(config.ConfigurationStorage.Path + "/tmp/foo")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Can't remove this  " + config.Storage.Path + "/tmp/foo" + "directory"))
+			w.Write([]byte("Can't remove this  " + config.ConfigurationStorage.Path + "/tmp/foo" + "directory"))
 			return
 		}
-		os.RemoveAll(config.Storage.Path + md5)
+		os.RemoveAll(config.ConfigurationStorage.Path + md5)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Can't remove this  " + config.Storage.Path + md5 + "directory"))
+			w.Write([]byte("Can't remove this  " + config.ConfigurationStorage.Path + md5 + "directory"))
 			return
 		}
 	}
@@ -431,8 +431,8 @@ func appendConfig(confPath string, item download.ListItem) error {
 }
 
 func updateMetaDB(id, owner, hash, filename, configPath string) error {
-	md5sum := upload.Hash(config.Storage.Path + "/tmp/foo.tar.gz")
-	sha256sum := upload.Hash(config.Storage.Path+"/tmp/foo.tar.gz", "sha256")
+	md5sum := upload.Hash(config.ConfigurationStorage.Path + "/tmp/foo.tar.gz")
+	sha256sum := upload.Hash(config.ConfigurationStorage.Path+"/tmp/foo.tar.gz", "sha256")
 	if len(md5sum) == 0 || len(sha256sum) == 0 {
 		log.Warn("Failed to calculate hash for " + hash)
 		return errors.New("Failed to calculate")
@@ -456,7 +456,7 @@ func updateMetaDB(id, owner, hash, filename, configPath string) error {
 		"signature":      t.Signature[owner],
 	})
 
-	err := os.Rename(config.Storage.Path+"/tmp/foo.tar.gz", config.Storage.Path+md5sum)
+	err := os.Rename(config.ConfigurationStorage.Path+"/tmp/foo.tar.gz", config.ConfigurationStorage.Path+md5sum)
 
 	if err != nil {
 		return errors.New("Can't rename tar file")

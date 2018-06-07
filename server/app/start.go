@@ -2,10 +2,10 @@ package app
 
 import (
 	"net/http"
-	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/agent/log"
 	"context"
+	"github.com/subutai-io/cdn/config"
 )
 
 var (
@@ -46,7 +46,7 @@ func ListenAndServe() {
 		Registered = true
 	}
 	Server = &http.Server{
-		Addr:    ":" + config.Network.Port,
+		Addr:    ":" + config.ConfigurationNetwork.Port,
 		Handler: nil,
 	}
 	log.Info("Server has started. " + "Listening at " + "http://127.0.0.1:8080")
@@ -63,8 +63,7 @@ func WaitShutdown() {
 		select {
 		case <-Stop: {
 			log.Info("Received shut down request. Stopping server...")
-			ctx := context.Background()
-			Server.Shutdown(ctx)
+			Server.Shutdown(context.Background())
 			break loop
 		}
 		}

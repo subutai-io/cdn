@@ -23,7 +23,7 @@ var (
 	Tokens      = []byte("Tokens")
 	AuthID      = []byte("AuthID")
 	Tags        = []byte("Tags")
-	DB          = InitDB()
+	DB          *bolt.DB
 )
 
 var (
@@ -369,7 +369,7 @@ func Edit(owner, key, value string, options ...map[string]string) {
 						if c := b.Bucket([]byte("hash")); len(k) > 0 {
 							c.Put([]byte(k), []byte(v))
 							// Getting file size
-							if f, err := os.Open(config.Storage.Path + v); err == nil {
+							if f, err := os.Open(config.ConfigurationStorage.Path + v); err == nil {
 								fi, _ := f.Stat()
 								f.Close()
 								b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))
@@ -546,15 +546,15 @@ func Info(id string) map[string]string {
 }
 
 func InitDB() *bolt.DB {
-	log.Info(fmt.Sprintf("Initializing db: config.DB.Path = %s, config.Storage.Path = %s", config.DB.Path, config.Storage.Path))
-	os.MkdirAll(filepath.Dir(config.DB.Path), 0755)
-	os.MkdirAll(config.Storage.Path, 0755)
-	db, err := bolt.Open(config.DB.Path, 0600, &bolt.Options{Timeout: 3 * time.Second})
-	log.Check(log.FatalLevel, "Opening DB: "+config.DB.Path, err)
+	log.Info(fmt.Sprintf("Initializing db: config.ConfigurationDB.Path = %s, config.ConfigurationStorage.Path = %s", config.ConfigurationDB.Path, config.ConfigurationStorage.Path))
+	os.MkdirAll(filepath.Dir(config.ConfigurationDB.Path), 0755)
+	os.MkdirAll(config.ConfigurationStorage.Path, 0755)
+	db, err := bolt.Open(config.ConfigurationDB.Path, 0600, &bolt.Options{Timeout: 3 * time.Second})
+	log.Check(log.FatalLevel, "Opening DB: " + config.ConfigurationDB.Path, err)
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, b := range [][]byte{MyBucket, SearchIndex, Users, Tokens, AuthID, Tags} {
 			_, err := tx.CreateBucketIfNotExists(b)
-			log.Check(log.FatalLevel, "Creating bucket: "+string(b), err)
+			log.Check(log.FatalLevel, "Creating bucket: " + string(b), err)
 		}
 		return nil
 	})
@@ -1191,7 +1191,7 @@ func Write(owner, key, value string, options ...map[string]string) error {
 						if c, err := b.CreateBucketIfNotExists([]byte("hash")); err == nil {
 							c.Put([]byte(k), []byte(v))
 							// Getting file size
-							if f, err := os.Open(config.Storage.Path + v); err == nil {
+							if f, err := os.Open(config.ConfigurationStorage.Path + v); err == nil {
 								fi, _ := f.Stat()
 								f.Close()
 								b.Put([]byte("size"), []byte(fmt.Sprint(fi.Size())))

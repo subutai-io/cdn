@@ -13,6 +13,7 @@ import (
 func TestFileSearch(t *testing.T) {
 	Integration = 1
 	SetUp()
+	PrepareUsersAndTokens()
 	PreDownload()
 	PreUpload()
 	defer TearDown()
