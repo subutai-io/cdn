@@ -3,9 +3,10 @@ package app
 import (
 	"testing"
 
+	"strconv"
+
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/cdn/db"
-	"strconv"
 )
 
 func TestCheckOwner(t *testing.T) {
@@ -188,34 +189,5 @@ func TestIn(t *testing.T) {
 				t.Errorf("In() = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestIn(t *testing.T) {
-	type args struct {
-		item string
-		list []string
-	}
-	var list1 []string
-	list1 = append(list1, "item")
-	list1 = append(list1, "item2")
-	tests := []struct {
-		name string
-		args args
-	}{
-		{name: "t1", args: args{item: "item", list: list1}},
-		{name: "t2", args: args{item: "item3", list: list1}},
-	}
-	for _, tt := range tests {
-		if tt.name == "t1" {
-			exist := In(tt.args.item, tt.args.list)
-			if !exist {
-				t.Errorf("%q.In. Wait: %v, got: %v", tt.name, true, exist)
-			}
-		} else if tt.name == "t2" {
-			if got := In(tt.args.item, tt.args.list); got {
-				t.Errorf("%q. In() = %v", tt.name, got)
-			}
-		}
 	}
 }
