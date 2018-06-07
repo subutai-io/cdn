@@ -13,12 +13,11 @@ import (
 	"strconv"
 	"strings"
 
-	ar "github.com/mkrautz/goar"
-	uuid "github.com/satori/go.uuid"
+	"github.com/mkrautz/goar"
+	"github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/cdn/download"
 )
 
 type UploadRequest struct {
@@ -284,7 +283,7 @@ func (request *UploadRequest) TemplateCheckFieldsPresent(template *Result) error
 		f := s.Field(i)
 		fieldName := typeOfT.Field(i).Name
 		fieldValue := f.Interface()
-		if (download.In(fieldName, requiredFields) && fieldValue == "") ||
+		if (In(fieldName, requiredFields) && fieldValue == "") ||
 			(fieldName == "Owner" && len(template.Owner) == 0) {
 			return fmt.Errorf("%s field required", fieldName)
 		}
