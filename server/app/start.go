@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"net/http"
+
+	"github.com/subutai-io/agent/log"
+	"github.com/subutai-io/cdn/auth"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/agent/log"
-	"context"
 )
 
 var (
@@ -27,13 +29,13 @@ func RunServer() {
 func ListenAndServe() {
 	defer db.Close()
 	if !Registered {
-		http.HandleFunc("/kurjun/rest/auth/key", Key)
-		http.HandleFunc("/kurjun/rest/auth/keys", Keys)
-		http.HandleFunc("/kurjun/rest/auth/sign", Sign)
-		http.HandleFunc("/kurjun/rest/auth/owner", Owner)
-		http.HandleFunc("/kurjun/rest/auth/token", Token)
-		http.HandleFunc("/kurjun/rest/auth/register", Register)
-		http.HandleFunc("/kurjun/rest/auth/validate", Validate)
+		http.HandleFunc("/kurjun/rest/auth/key", auth.Key)
+		http.HandleFunc("/kurjun/rest/auth/keys", auth.Keys)
+		http.HandleFunc("/kurjun/rest/auth/sign", auth.Sign)
+		http.HandleFunc("/kurjun/rest/auth/owner", auth.Owner)
+		http.HandleFunc("/kurjun/rest/auth/token", auth.Token)
+		http.HandleFunc("/kurjun/rest/auth/register", auth.Register)
+		http.HandleFunc("/kurjun/rest/auth/validate", auth.Validate)
 		http.HandleFunc("/kurjun/rest/apt/info", FileSearch)
 		http.HandleFunc("/kurjun/rest/apt/list", FileSearch)
 		http.HandleFunc("/kurjun/rest/apt/upload", FileUpload)
@@ -58,15 +60,16 @@ func ListenAndServe() {
 func WaitShutdown() {
 	Stop = make(chan bool)
 	log.Info("Waiting for shut down request...")
-	loop:
+loop:
 	for {
 		select {
-		case <-Stop: {
-			log.Info("Received shut down request. Stopping server...")
-			ctx := context.Background()
-			Server.Shutdown(ctx)
-			break loop
-		}
+		case <-Stop:
+			{
+				log.Info("Received shut down request. Stopping server...")
+				ctx := context.Background()
+				Server.Shutdown(ctx)
+				break loop
+			}
 		}
 	}
 	log.Info("Server stopped successfully")
