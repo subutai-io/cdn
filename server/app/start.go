@@ -6,6 +6,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"context"
 	"github.com/subutai-io/cdn/config"
+	"fmt"
 )
 
 var (
@@ -45,6 +46,7 @@ func ListenAndServe() {
 		http.HandleFunc("/kurjun/rest/template/upload", FileUpload)
 		Registered = true
 	}
+	log.Info(fmt.Sprintf("Configuration before starting: %+v %+v %+v %+v", config.ConfigurationCDN, config.ConfigurationDB, config.ConfigurationNetwork, config.ConfigurationStorage))
 	Server = &http.Server{
 		Addr:    ":" + config.ConfigurationNetwork.Port,
 		Handler: nil,

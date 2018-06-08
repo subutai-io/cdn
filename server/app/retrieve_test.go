@@ -175,9 +175,9 @@ func TestSearchRequest_ParseRequest(t *testing.T) {
 		httpRequest *http.Request
 	}
 
-	request1, _ := http.NewRequest("POST", "/kurjun/rest/raw/info?id=id1&owner=owner1&name=name1&version=version1&tags=tag1&token=token1&verified=false", nil)
-	request2, _ := http.NewRequest("POST", "/kurjun/rest/apt/info?id=id2&owner=owner2&name=name2&version=version2&tags=tag2&token=token2&verified=false", nil)
-	request3, _ := http.NewRequest("POST", "/kurjun/rest/template/info?id=id3&owner=owner2&name=name2", nil)
+	request1, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/raw/info?id=id1&owner=owner1&name=name1&version=version1&tags=tag1&token=token1&verified=false", nil)
+	request2, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/apt/info?id=id2&owner=owner2&name=name2&version=version2&tags=tag2&token=token2&verified=false", nil)
+	request3, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/template/info?id=id3&owner=owner2&name=name2", nil)
 
 	tests := []struct {
 		name   string

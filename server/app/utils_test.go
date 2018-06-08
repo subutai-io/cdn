@@ -159,8 +159,8 @@ func TestIn(t *testing.T) {
 		test.name += strconv.Itoa(i)
 		tests = append(tests, test)
 	}
+	tests[0].name += "0"
 	{
-		tests[0].name += "0"
 		tests[0].args = args{
 			item: "ipsum",
 			list: []string{"Lorem", "ipsum", "dolor", "sit", "amet"},
@@ -168,7 +168,6 @@ func TestIn(t *testing.T) {
 		tests[0].want = true
 	}
 	{
-		tests[1].name += "0"
 		tests[1].args = args{
 			item: "",
 			list: []string{"Lorem", "ipsum", "dolor", "sit", "amet"},
@@ -176,7 +175,6 @@ func TestIn(t *testing.T) {
 		tests[1].want = false
 	}
 	{
-		tests[2].name += "0"
 		tests[2].args = args{
 			item: "",
 			list: []string{},
@@ -188,6 +186,34 @@ func TestIn(t *testing.T) {
 			if got := In(tt.args.item, tt.args.list); got != tt.want {
 				t.Errorf("In() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestSetLogLevel(t *testing.T) {
+	type args struct {
+		logLevel string
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{name: "TestSetLogLevel-"},
+		// TODO: Add test cases.
+	}
+	logLevels := []string{"", "panic", "fatal", "error", "warn", "info", "debug"}
+	for i := 1; i <= 6; i++ {
+		test := tests[0]
+		test.args = args{
+			logLevel: logLevels[i],
+		}
+		test.name += strconv.Itoa(i)
+		tests = append(tests, test)
+	}
+	tests[0].name += "0"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			SetLogLevel(tt.args.logLevel)
 		})
 	}
 }
