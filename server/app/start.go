@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/subutai-io/agent/log"
@@ -47,8 +48,9 @@ func ListenAndServe() {
 		http.HandleFunc("/kurjun/rest/template/upload", FileUpload)
 		Registered = true
 	}
+	log.Info(fmt.Sprintf("Configuration before starting: %+v %+v %+v %+v", config.ConfigurationCDN, config.ConfigurationDB, config.ConfigurationNetwork, config.ConfigurationStorage))
 	Server = &http.Server{
-		Addr:    ":" + config.Network.Port,
+		Addr:    ":" + config.ConfigurationNetwork.Port,
 		Handler: nil,
 	}
 	log.Info("Server has started. " + "Listening at " + "http://127.0.0.1:8080")
@@ -66,8 +68,7 @@ loop:
 		case <-Stop:
 			{
 				log.Info("Received shut down request. Stopping server...")
-				ctx := context.Background()
-				Server.Shutdown(ctx)
+				Server.Shutdown(context.Background())
 				break loop
 			}
 		}

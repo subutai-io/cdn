@@ -13,6 +13,7 @@ import (
 func TestFileSearch(t *testing.T) {
 	Integration = 1
 	SetUp()
+	PrepareUsersAndTokens()
 	PreDownload()
 	PreUpload()
 	defer TearDown()
@@ -33,9 +34,9 @@ func TestFileSearch(t *testing.T) {
 		tests = append(tests, test)
 	}
 	tests[0].name += "0"
-	tests[0].args.r, _ = http.NewRequest("GET", "/kurjun/rest/apt/list", nil)
-	tests[1].args.r, _ = http.NewRequest("GET", "/kurjun/rest/raw/list", nil)
-	tests[2].args.r, _ = http.NewRequest("GET", "/kurjun/rest/template/list", nil)
+	tests[0].args.r, _ = http.NewRequest("GET", "http://127.0.0.1:8080/kurjun/rest/apt/list", nil)
+	tests[1].args.r, _ = http.NewRequest("GET", "http://127.0.0.1:8080/kurjun/rest/raw/list", nil)
+	tests[2].args.r, _ = http.NewRequest("GET", "http://127.0.0.1:8080/kurjun/rest/template/list", nil)
 	for i, tt := range tests {
 		errored := false
 		t.Run(tt.name, func(t *testing.T) {

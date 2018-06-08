@@ -13,7 +13,6 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/subutai-io/cdn/apt"
 	"github.com/subutai-io/cdn/auth"
-	"github.com/subutai-io/cdn/auto"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/cdn/raw"
@@ -33,20 +32,22 @@ func RunTask() {
 	gocron.Every(6).Hours().Do(apt.GenerateReleaseFile)
 	<-gocron.Start()
 }
+
 func main() {
+	config.InitConfig()
+	db.DB = db.InitDB()
 	defer db.Close()
 	// defer torrent.Close()
 	// go torrent.SeedLocal()
 	go RunTask()
-	go auto.CleanGarbage()
-	if len(config.CDN.Node) > 0 {
-		target := url.URL{Scheme: "https", Host: config.CDN.Node}
+	if len(config.ConfigurationCDN.Node) > 0 {
+		target := url.URL{Scheme: "https", Host: config.ConfigurationCDN.Node}
 		proxy := httputil.NewSingleHostReverseProxy(&target)
 		targetQuery := target.RawQuery
 		proxy.Director = func(req *http.Request) {
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
-			req.Host = config.CDN.Node
+			req.Host = config.ConfigurationCDN.Node
 			req.URL.Path = singleJoiningSlash(target.Path, req.URL.Path)
 			if targetQuery == "" || req.URL.RawQuery == "" {
 				req.URL.RawQuery = targetQuery + req.URL.RawQuery
@@ -58,7 +59,7 @@ func main() {
 				req.Header.Set("User-Agent", "")
 			}
 		}
-		log.Check(log.ErrorLevel, "Starting to listen :"+config.Network.Port, http.ListenAndServe(":"+config.Network.Port, proxy))
+		log.Check(log.ErrorLevel, "Starting to listen :"+config.ConfigurationNetwork.Port, http.ListenAndServe(":"+config.ConfigurationNetwork.Port, proxy))
 		return
 	}
 
@@ -113,7 +114,7 @@ func main() {
 	}
 
 	srv = &http.Server{
-		Addr:    ":" + config.Network.Port,
+		Addr:    ":" + config.ConfigurationNetwork.Port,
 		Handler: nil,
 	}
 

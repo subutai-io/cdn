@@ -23,7 +23,7 @@ import (
 )
 
 func readDeb(hash string) (control bytes.Buffer, err error) {
-	file, err := os.Open(config.Storage.Path + hash)
+	file, err := os.Open(config.ConfigurationStorage.Path + hash)
 	log.Check(log.WarnLevel, "Opening deb package", err)
 
 	defer file.Close()
@@ -92,16 +92,16 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			w.Write([]byte(err.Error()))
 			if db.Delete(owner, "apt", md5) == 0 {
-				os.Remove(config.Storage.Path + md5)
+				os.Remove(config.ConfigurationStorage.Path + md5)
 			}
 			return
 		}
 		meta := getControl(control)
 		meta["Filename"] = header.Filename
-		meta["Size"] = strconv.Itoa(getSize(config.Storage.Path + header.Filename))
-		meta["SHA512"] = upload.Hash(config.Storage.Path+header.Filename, "sha512")
-		meta["SHA256"] = upload.Hash(config.Storage.Path+header.Filename, "sha256")
-		meta["SHA1"] = upload.Hash(config.Storage.Path+header.Filename, "sha1")
+		meta["Size"] = strconv.Itoa(getSize(config.ConfigurationStorage.Path + header.Filename))
+		meta["SHA512"] = upload.Hash(config.ConfigurationStorage.Path+header.Filename, "sha512")
+		meta["SHA256"] = upload.Hash(config.ConfigurationStorage.Path+header.Filename, "sha256")
+		meta["SHA1"] = upload.Hash(config.ConfigurationStorage.Path+header.Filename, "sha1")
 		meta["md5"] = md5
 		meta["type"] = "apt"
 		tags := r.FormValue("tag")
@@ -137,11 +137,11 @@ func Download(w http.ResponseWriter, r *http.Request) {
 	if len(file) == 0 {
 		file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
 	}
-	size := getSize(config.Storage.Path + "Packages")
+	size := getSize(config.ConfigurationStorage.Path + "Packages")
 	if file == "Packages" && size == 0 {
 		GenerateReleaseFile()
 	}
-	if f, err := os.Open(config.Storage.Path + file); err == nil && file != "" {
+	if f, err := os.Open(config.ConfigurationStorage.Path + file); err == nil && file != "" {
 		defer f.Close()
 		stats, _ := f.Stat()
 		w.Header().Set("Content-Length", strconv.Itoa(int(stats.Size())))
@@ -192,13 +192,13 @@ func renameOldDebFiles() {
 			continue
 		}
 		item := download.FormatItem(db.Info(k), "apt")
-		os.Rename(config.Storage.Path+item.Hash.Md5, config.Storage.Path+item.Name)
+		os.Rename(config.ConfigurationStorage.Path+item.Hash.Md5, config.ConfigurationStorage.Path+item.Name)
 	}
 }
 
 func GenerateReleaseFile() {
 	cmd := exec.Command("bash", "-c", "dpkg-scanpackages . /dev/null | tee Packages | gzip > Packages.gz")
-	cmd.Dir = config.Storage.Path
+	cmd.Dir = config.ConfigurationStorage.Path
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
@@ -206,14 +206,14 @@ func GenerateReleaseFile() {
 	}
 
 	cmd = exec.Command("bash", "-c", "apt-ftparchive release . > Release")
-	cmd.Dir = config.Storage.Path
+	cmd.Dir = config.ConfigurationStorage.Path
 	err = cmd.Run()
 	if err != nil {
 		log.Fatal(err)
 		log.Info("Can't run apt-ftparchive")
 	}
 	cmd = exec.Command("bash", "-c", "gpg --batch --yes --armor -u subutai-release@subutai.io -abs -o Release.gpg Release")
-	cmd.Dir = config.Storage.Path
+	cmd.Dir = config.ConfigurationStorage.Path
 	err = cmd.Run()
 	if err != nil {
 		log.Fatal(err)

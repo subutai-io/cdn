@@ -13,12 +13,11 @@ import (
 	"strconv"
 	"strings"
 
-	ar "github.com/mkrautz/goar"
-	uuid "github.com/satori/go.uuid"
+	"github.com/mkrautz/goar"
+	"github.com/satori/go.uuid"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/cdn/download"
 )
 
 type UploadRequest struct {
@@ -58,13 +57,13 @@ func (request *UploadRequest) ParseRequest(r *http.Request) error {
 		log.Warn("Couldn't import file from http request")
 		return err
 	}
+	defer file.Close()
 	request.Filename = header.Filename
 	request.File = io.Reader(file) // multipart.sectionReadCloser
 	limit := int64(db.QuotaLeft(request.Owner))
 	if limit != -1 {
 		request.File = io.LimitReader(file, limit)
 	}
-	file.Close()
 	log.Info(fmt.Sprintf("Printing io.Reader: %+v", request.File))
 	if len(r.MultipartForm.Value["private"]) > 0 {
 		request.Private = r.MultipartForm.Value["private"][0]
@@ -120,7 +119,7 @@ func (request *UploadRequest) HandlePrivate() {
 }
 
 func (request *UploadRequest) ReadDeb() (control bytes.Buffer, err error) {
-	file, err := os.Open(config.Storage.Path + request.Filename)
+	file, err := os.Open(config.ConfigurationStorage.Path + request.Filename)
 	if err != nil {
 		return
 	}
@@ -188,9 +187,9 @@ func (request *UploadRequest) UploadRaw() error {
 }
 
 func LoadConfiguration(request *UploadRequest) (configuration string, err error) {
-	log.Info(fmt.Sprintf("Loading configuration for file %s", config.Storage.Path + request.md5))
+	log.Info(fmt.Sprintf("Loading configuration for file %s", config.ConfigurationStorage.Path + request.md5))
 	var configurationFile bytes.Buffer
-	f, err := os.Open(config.Storage.Path + request.md5)
+	f, err := os.Open(config.ConfigurationStorage.Path + request.md5)
 	if err != nil {
 		log.Warn("Failed to open template to load configuration file")
 		return
@@ -201,9 +200,10 @@ func LoadConfiguration(request *UploadRequest) (configuration string, err error)
 	defer f.Close()
 	gzFile, err := gzip.NewReader(f)
 	if err != nil {
-		log.Warn("Failed to open .gz to load configuration file")
+		log.Warn(fmt.Sprintf("Failed to open .gz to load configuration file: %v", err))
 		return
 	}
+	defer gzFile.Close()
 	tarFile := tar.NewReader(gzFile)
 	for file, fileErr := tarFile.Next(); fileErr != io.EOF; file, fileErr = tarFile.Next() {
 		if file.Name == "config" {
@@ -283,7 +283,7 @@ func (request *UploadRequest) TemplateCheckFieldsPresent(template *Result) error
 		f := s.Field(i)
 		fieldName := typeOfT.Field(i).Name
 		fieldValue := f.Interface()
-		if (download.In(fieldName, requiredFields) && fieldValue == "") ||
+		if (In(fieldName, requiredFields) && fieldValue == "") ||
 			(fieldName == "Owner" && len(template.Owner) == 0) {
 			return fmt.Errorf("%s field required", fieldName)
 		}
@@ -343,7 +343,7 @@ func (request *UploadRequest) UploadTemplate() error {
 	if err != nil {
 		if err.Error() != "owner in config file is different" {
 			db.QuotaUsageSet(request.Owner, -int(request.size))
-			os.Remove(config.Storage.Path + request.md5)
+			os.Remove(config.ConfigurationStorage.Path + request.md5)
 		}
 		log.Warn(fmt.Sprintf("Not valid template: %v", err))
 		return err
@@ -356,8 +356,8 @@ func (request *UploadRequest) UploadTemplate() error {
 }
 
 func (request *UploadRequest) Upload() error {
-	filePath := config.Storage.Path + request.Filename
-	log.Info(fmt.Sprintf("Uploading file: %s", filePath))
+	filePath := config.ConfigurationStorage.Path + request.Filename
+	log.Info(fmt.Sprintf("Uploading file %s: md5: %+v", filePath, Hash(filePath, "md5")))
 	file, err := os.Create(filePath)
 	if err != nil {
 		log.Warn("Couldn't create file for writing - %s", filePath)
@@ -371,7 +371,7 @@ func (request *UploadRequest) Upload() error {
 	request.size, err = io.Copy(file, request.File)
 	log.Info(fmt.Sprintf("request.size: %+v", request.size))
 	if limit != -1 && (request.size == limit || err != nil) {
-		log.Warn("User " + request.Owner + " exceeded storage quota, removing file")
+		log.Warn(fmt.Sprintf("User " + request.Owner + " exceeded storage quota, removing file: %v", err))
 		os.Remove(filePath)
 		return fmt.Errorf("failed to write file or storage quota exceeded")
 	} else {
@@ -383,9 +383,11 @@ func (request *UploadRequest) Upload() error {
 	if len(request.md5) == 0 || len(request.sha256) == 0 {
 		log.Warn("Failed to calculate hash for " + request.Filename)
 		return fmt.Errorf("failed to calculate hash")
+	} else {
+		log.Info(fmt.Sprintf("md5: %+v; sha256: %+v", request.md5, request.sha256))
 	}
 	if request.Repo != "apt" {
-		md5Path := config.Storage.Path + request.md5
+		md5Path := config.ConfigurationStorage.Path + request.md5
 		os.Rename(filePath, md5Path)
 		log.Info(fmt.Sprintf("repo is not apt: renamed %s to %s", filePath, md5Path))
 	}

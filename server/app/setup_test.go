@@ -52,12 +52,12 @@ func SetUp() {
 	os.MkdirAll("/tmp/cdn-test-data/private/akenzhaliev/", 0755)
 	os.MkdirAll("/tmp/cdn-test-data/private/abaytulakova/", 0755)
 	os.MkdirAll("/tmp/cdn-test-data/private/subutai/", 0755)
-	config.DB.Path = "/tmp/cdn-test-data/db/my.db"
-	config.Network.Port = "8080"
-	config.Storage.Path = "/tmp/cdn-test-data/files/"
-	config.Storage.Userquota = "2G"
+	config.ConfigurationDB.Path = "/tmp/cdn-test-data/db/my.db"
+	config.ConfigurationNetwork.Port = "8080"
+	config.ConfigurationStorage.Path = "/tmp/cdn-test-data/files/"
+	config.ConfigurationStorage.Userquota = "2G"
 	db.DB = db.InitDB()
-	log.Info(fmt.Sprintf("Testing environment and configuration are set up: %+v %+v %+v", config.DB, config.Network, config.Storage))
+	log.Info(fmt.Sprintf("Testing environment and configuration are set up: %+v %+v %+v", config.ConfigurationDB, config.ConfigurationNetwork, config.ConfigurationStorage))
 	if Integration == 1 {
 		RunServer()
 	}
@@ -78,4 +78,3 @@ func TearDown() {
 	Clean()
 	log.Info("Testing environment destroyed")
 }
-

@@ -12,6 +12,8 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/db"
+	"strings"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -60,4 +62,27 @@ func In(item string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func SetLogLevel(logLevel string) {
+	logLevel = strings.ToLower(logLevel)
+	logLevels := map[string]logrus.Level{
+		"panic": log.PanicLevel,
+		"fatal": log.FatalLevel,
+		"error": log.ErrorLevel,
+		"warn":  log.WarnLevel,
+		"info":  log.InfoLevel,
+		"debug": log.DebugLevel,
+	}
+	set := false
+	for k, v := range logLevels {
+		if k == logLevel {
+			set = true
+			log.Level(v)
+			break
+		}
+	}
+	if !set {
+		log.Level(log.InfoLevel)
+	}
 }

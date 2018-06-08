@@ -29,8 +29,8 @@ func PrepareRequest(token, filePath, repo, version, tags, private string) *http.
 	} else {
 		formWriter, _ := writer.CreateFormFile("file", filepath.Base(filePath))
 		file, _ := os.Create(filePath)
-		io.Copy(formWriter, file)
-		file.Close()
+		io.Copy(formWriter, io.Reader(file))
+//		file.Close()
 	}
 	if version != "" {
 		formWriter, _ := writer.CreateFormField("version")
@@ -230,15 +230,17 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		for i := 0; i <= 3; i++ {
 			testNumber := strconv.Itoa(i)
 			file := "auxiliaryFile-" + testNumber
+			filePath, _ := os.Open(Dirs[PublicScope][Akenzhaliev.Username] + file)
 			path := FilesDir + file
-			auxFile, _ := os.Create(path)
-			auxFile.Close()
-			auxFileStats, _ := os.Stat(path)
+			auxiliaryFile, _ := os.Create(path)
+			io.Copy(auxiliaryFile, io.Reader(filePath))
+			auxiliaryFile.Close()
+			auxiliaryFileStats, _ := os.Stat(path)
 			md5Sum := Hash(path, "md5")
 			sha256Sum := Hash(path, "sha256")
 			os.Rename(path, FilesDir + md5Sum)
 			tests[i].fields = fields {
-				File:     io.Reader(auxFile),
+				File:     io.Reader(filePath),
 				Filename: file,
 				Repo:     repos[i],
 				Owner:    Akenzhaliev.Username,
@@ -248,8 +250,9 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 				Version:  "7.0." + testNumber,
 				md5:      md5Sum,
 				sha256:   sha256Sum,
-				size:     auxFileStats.Size(),
+				size:     auxiliaryFileStats.Size(),
 			}
+//			filePath.Close()
 			tests[i].wantErr = wantErrs[i]
 		}
 	}
@@ -259,15 +262,15 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		for i := 4; i <= 15; i++ {
 			user := users[(i - 4) / 2 % 3]
 			scope := (i - 4) / 6
+			repo := repos[i & 1]
 			testNumber := strconv.Itoa(i)
+			request := PrepareUploadRequest(scope, user, repo, i & 1)
 			file := Files[scope][user.Username][NamesLayer][i & 1]
-			filePath, _ := os.Open(Dirs[scope][user.Username] + file)
 			path := FilesDir + file
-			auxFile, _ := os.Create(path)
-			io.Copy(auxFile, filePath)
-			auxFile.Close()
-			filePath.Close()
-			auxFileStats, _ := os.Stat(path)
+			auxiliaryFile, _ := os.Create(path)
+			io.Copy(auxiliaryFile, request.File)
+			auxiliaryFile.Close()
+			auxiliaryFileStats, _ := os.Stat(path)
 			md5Sum := Hash(path, "md5")
 			sha256Sum := Hash(path, "sha256")
 			os.Rename(path, FilesDir + md5Sum)
@@ -276,43 +279,42 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 				version = "7.0." + testNumber
 			}
 			tests[i].fields = fields {
-				File:     io.Reader(auxFile),
-				Filename: file,
-				Repo:     repos[i & 1],
-				Owner:    user.Username,
-				Token:    user.Token,
-				Private:  "false",
+				File:     request.File,
+				Filename: request.Filename,
+				Repo:     request.Repo,
+				Owner:    request.Owner,
+				Token:    request.Token,
+				Private:  request.Private,
 				Tags:     "tag-" + testNumber,
 				Version:  version,
 				md5:      md5Sum,
 				sha256:   sha256Sum,
-				size:     auxFileStats.Size(),
+				size:     auxiliaryFileStats.Size(),
 			}
 			tests[i].wantErr = false
 		}
 	}
 	{
+		request := PrepareUploadRequest(PublicScope, Akenzhaliev, "apt", 2)
 		file := Files[PublicScope][Akenzhaliev.Username][NamesLayer][2]
-		filePath, _ := os.Open(Dirs[PublicScope][Akenzhaliev.Username] + file)
 		path := FilesDir + file
-		auxFile, _ := os.Create(path)
-		io.Copy(auxFile, filePath)
-		auxFile.Close()
-		filePath.Close()
-		auxFileStats, _ := os.Stat(path)
+		auxiliaryFile, _ := os.Create(path)
+		io.Copy(auxiliaryFile, request.File)
+		auxiliaryFile.Close()
+		auxiliaryFileStats, _ := os.Stat(path)
 		md5Sum := Hash(path, "md5")
 		sha256Sum := Hash(path, "sha256")
 		tests[16].fields = fields {
-			File:     io.Reader(auxFile),
-			Filename: file,
+			File:     request.File,
+			Filename: request.Filename,
 			Repo:     "apt",
-			Owner:    Akenzhaliev.Username,
-			Token:    Akenzhaliev.Token,
-			Private:  "false",
+			Owner:    request.Owner,
+			Token:    request.Token,
+			Private:  request.Private,
 			Tags:     "tag-16",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
-			size:     auxFileStats.Size(),
+			size:     auxiliaryFileStats.Size(),
 		}
 		tests[16].wantErr = false
 	}
@@ -502,6 +504,7 @@ func TestUploadRequest_HandlePrivate(t *testing.T) {
 func TestUploadRequest_ReadDeb(t *testing.T) {
 	Integration = 0
 	SetUp()
+	PrepareUsersAndTokens()
 	PreDownload()
 	defer TearDown()
 	type fields struct {
@@ -528,25 +531,24 @@ func TestUploadRequest_ReadDeb(t *testing.T) {
 		{name: "TestUploadRequest_ReadDeb-"},
 		// TODO: Add test cases.
 	}
-	for i := 1; i <= 2; i++ {
+	for i := 1; i <= 1; i++ {
 		test := tests[0]
 		test.name += strconv.Itoa(i)
 		tests = append(tests, test)
 	}
 	tests[0].name += "0"
 	{
-		file := Files[0][Akenzhaliev.Username][1][2]
-		filePath, _ := os.Open(Dirs[0][Akenzhaliev.Username] + file)
+		file := Files[PublicScope][Akenzhaliev.Username][NamesLayer][2]
+		filePath, _ := os.Open(Dirs[PublicScope][Akenzhaliev.Username] + file)
 		path := FilesDir + file
-		auxFile, _ := os.Create(path)
-		io.Copy(auxFile, filePath)
-		auxFile.Close()
-		filePath.Close()
-		auxFileStats, _ := os.Stat(path)
+		auxiliaryFile, _ := os.Create(path)
+		io.Copy(auxiliaryFile, io.Reader(filePath))
+		auxiliaryFile.Close()
+		auxiliaryFileStats, _ := os.Stat(path)
 		md5Sum := Hash(path, "md5")
 		sha256Sum := Hash(path, "sha256")
 		tests[0].fields = fields{
-			File:     io.Reader(auxFile),
+			File:     io.Reader(filePath),
 			Filename: file,
 			Repo:     "apt",
 			Owner:    Akenzhaliev.Username,
@@ -555,12 +557,12 @@ func TestUploadRequest_ReadDeb(t *testing.T) {
 			Tags:     "tag-0",
 			md5:      md5Sum,
 			sha256:   sha256Sum,
-			size:     auxFileStats.Size(),
+			size:     auxiliaryFileStats.Size(),
 		}
+//		filePath.Close()
 		tests[0].wantErr = false
 	}
 	tests[1].wantErr = true
-	tests[2].wantErr = true
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := &UploadRequest{
@@ -992,7 +994,25 @@ func TestUploadRequest_TemplateCheckFormat(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
+		{name: "TestUploadRequest_TemplateCheckFormat-"},
 		// TODO: Add test cases.
+	}
+	for i := 1; i <= 3; i++ {
+		test := tests[0]
+		test.name += strconv.Itoa(i)
+		tests = append(tests, test)
+	}
+	tests[0].name += "0"
+	names := []string{"name", "!"}
+	versions:= []string{"7.0.0", "!"}
+	for i := 0; i < 4; i++ {
+		tests[i].args.template = &Result{
+			Name: names[i & 1],
+			Version: versions[(i >> 1) & 1],
+		}
+		if i > 0 {
+			tests[i].wantErr = true
+		}
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1068,6 +1088,10 @@ func TestUploadRequest_UploadTemplate(t *testing.T) {
 
 func TestUploadRequest_Upload(t *testing.T) {
 	Integration = 0
+	SetUp()
+	PrepareUsersAndTokens()
+	PreDownload()
+	defer TearDown()
 	type fields struct {
 		File      io.Reader
 		Filename  string
@@ -1088,7 +1112,76 @@ func TestUploadRequest_Upload(t *testing.T) {
 		fields  fields
 		wantErr bool
 	}{
+		{name: "TestUploadRequest_Upload-"},
 		// TODO: Add test cases.
+	}
+	for i := 1; i <= 16; i++ {
+		test := tests[0]
+		test.name += strconv.Itoa(i)
+		tests = append(tests, test)
+	}
+	tests[0].name += "0"
+	{
+		repos := []string{"raw", "apt", "template", "raw"}
+		privates := []string{"false", "false", "false", "true"}
+		wantErrs := []bool{false, true, true, false}
+		for i := 0; i <= 3; i++ {
+			testNumber := strconv.Itoa(i)
+			file := "auxiliaryFile-" + testNumber
+			filePath, _ := os.Create(Dirs[PublicScope][Akenzhaliev.Username] + file)
+			tests[i].fields = fields {
+				File:     io.Reader(filePath),
+				Filename: file,
+				Repo:     repos[i],
+				Owner:    Akenzhaliev.Username,
+				Token:    Akenzhaliev.Token,
+				Private:  privates[i],
+				Tags:     "tag-" + testNumber,
+				Version:  "7.0." + testNumber,
+			}
+//			filePath.Close()
+			tests[i].wantErr = wantErrs[i]
+		}
+	}
+	{
+		repos := []string{"raw", "template"}
+		users := []gorjun.GorjunUser{Abaytulakova, Akenzhaliev, Subutai}
+		for i := 4; i <= 15; i++ {
+			user := users[(i - 4) / 2 % 3]
+			scope := (i - 4) / 6
+			repo := repos[i & 1]
+			testNumber := strconv.Itoa(i)
+			request := PrepareUploadRequest(scope, user, repo, i & 1)
+			version := ""
+			if (i & 1) == 0 {
+				version = "7.0." + testNumber
+			}
+			log.Info(fmt.Sprintf("request.File: %+v", request.File))
+			tests[i].fields = fields {
+				File:     request.File,
+				Filename: request.Filename,
+				Repo:     request.Repo,
+				Owner:    request.Owner,
+				Token:    request.Token,
+				Private:  request.Private,
+				Tags:     "tag-" + testNumber,
+				Version:  version,
+			}
+			tests[i].wantErr = false
+		}
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Akenzhaliev, "apt", 2)
+		tests[16].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "apt",
+			Owner:    request.Owner,
+			Token:    request.Token,
+			Private:  request.Private,
+			Tags:     "tag-16",
+		}
+		tests[16].wantErr = false
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1107,6 +1200,7 @@ func TestUploadRequest_Upload(t *testing.T) {
 				size:      tt.fields.size,
 				uploaders: tt.fields.uploaders,
 			}
+			request.InitUploaders()
 			if err := request.Upload(); (err != nil) != tt.wantErr {
 				t.Errorf("UploadRequest.Upload() error = %v, wantErr %v", err, tt.wantErr)
 			}
