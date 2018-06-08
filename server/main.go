@@ -44,6 +44,22 @@ func main() {
 		},
 	}
 	application.Copyright = "Copyright 2018 Subutai.io"
+	application.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:        "log",
+			Usage:       "Specify log level",
+			Value:       "",
+			Destination: &Log,
+		},
+
+	}
+	application.Action = func(c *cli.Context) error {
+		Init()
+		app.RunServer()
+		<-app.Stop
+		close(app.Stop)
+		return nil
+	}
 	application.Commands = []cli.Command{
 		{
 			Name:  "start",
