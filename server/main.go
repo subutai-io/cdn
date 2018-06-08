@@ -3,11 +3,7 @@ package main
 import (
 	"github.com/subutai-io/cdn/server/app"
 	"github.com/urfave/cli"
-	"github.com/subutai-io/agent/log"
 	"os"
-	"net/http"
-	"fmt"
-	"context"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
 )
@@ -21,10 +17,12 @@ var (
 	Log string
 )
 
+/*
 var (
 	stopServer *http.Server
 	stopped    chan bool
 )
+*/
 
 func Init() {
 	app.SetLogLevel(Log)
@@ -36,7 +34,7 @@ func Init() {
 // main starts/stops CDN server
 func main() {
 	application := cli.NewApp()
-	application.Name = "cdn"
+	application.Name = "CDN"
 	application.Version = AppVersion
 	application.Authors = []cli.Author{
 		{
@@ -60,6 +58,7 @@ func main() {
 		close(app.Stop)
 		return nil
 	}
+	/*
 	application.Commands = []cli.Command{
 		{
 			Name:  "start",
@@ -111,9 +110,11 @@ func main() {
 			},
 		},
 	}
+	*/
 	application.Run(os.Args)
 }
 
+/*
 func StopServer(w http.ResponseWriter, r *http.Request) {
 	if app.Stop != nil {
 		log.Info("Handling stop server request")
@@ -129,3 +130,4 @@ func StopServer(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Server is not running"))
 	}
 }
+*/
