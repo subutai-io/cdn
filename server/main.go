@@ -45,7 +45,7 @@ func main() {
 	application.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "log",
-			Usage:       "Specify log level",
+			Usage:       "Specify log level. Possible options: panic, fatal, error, warn, info, debug",
 			Value:       "",
 			Destination: &Log,
 		},
