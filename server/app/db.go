@@ -11,6 +11,35 @@ import (
 	"github.com/subutai-io/cdn/db"
 )
 
+func CountDB(result *Result) int {
+	answer := 0
+	db.DB.View(func(tx *bolt.Tx) error {
+		myBucket := tx.Bucket(db.MyBucket)
+		myBucket.ForEach(func(k, v []byte) error {
+			file := myBucket.Bucket(k)
+			repo := RepoDB(GetResultByFileID(string(k)))
+			if result.Repo == "raw" || result.Repo == "template" {
+				if repo == "raw" || repo == "template" {
+					if hash := file.Bucket([]byte("hash")); hash != nil {
+						md5Hash := string(hash.Get([]byte("md5")))
+						if md5Hash == result.Md5 {
+							answer++
+						}
+					}
+				}
+			} else if result.Repo == "apt" {
+				filename := string(file.Get([]byte("name")))
+				if repo == "apt" && filename == result.Filename {
+					answer++
+				}
+			}
+			return nil
+		})
+		return nil
+	})
+	return answer
+}
+
 func DeleteDB(result *Result) {
 	db.DB.Update(func(tx *bolt.Tx) error {
 		tx.Bucket(db.MyBucket).DeleteBucket([]byte(result.FileID))
@@ -46,6 +75,19 @@ func DeleteDB(result *Result) {
 		}
 		return nil
 	})
+}
+
+func RepoDB(result *Result) (repo string) {
+	db.DB.View(func(tx *bolt.Tx) error {
+		if file := tx.Bucket(db.MyBucket).Bucket([]byte(result.FileID)); file != nil {
+			if repos := file.Bucket([]byte("type")); repos != nil {
+				key, _ := repos.Cursor().First()
+				repo = string(key)
+			}
+		}
+		return nil
+	})
+	return
 }
 
 func WriteDB(result *Result) (err error) {

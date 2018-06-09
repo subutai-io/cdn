@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"github.com/boltdb/bolt"
 	"os"
 	"github.com/subutai-io/cdn/config"
 )
@@ -55,27 +54,12 @@ func (request *DeleteRequest) Delete() error {
 	return nil
 }
 
-func CountFile(md5 string) int {
-	answer := 0
-	db.DB.View(func(tx *bolt.Tx) error {
-		myBucket := tx.Bucket(db.MyBucket)
-		myBucket.ForEach(func(k, v []byte) error {
-			file := myBucket.Bucket(k)
-			if hash := file.Bucket([]byte("hash")); hash != nil {
-				md5Hash := string(hash.Get([]byte("md5")))
-				if md5Hash == md5 {
-					answer++
-				}
-			}
-			return nil
-		})
-		return nil
-	})
-	return answer
-}
-
 func DeleteFS(result *Result) {
-	if CountFile(result.Md5) == 1 {
-		os.Remove(config.ConfigurationStorage.Path + result.Filename)
+	if CountDB(result) == 0 {
+		if result.Repo != "apt" {
+			os.Remove(config.ConfigurationStorage.Path + result.Md5)
+		} else {
+			os.Remove(config.ConfigurationStorage.Path + result.Filename)
+		}
 	}
 }
