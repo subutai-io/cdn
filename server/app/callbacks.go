@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/db"
 )
 
 type Hashes struct {
@@ -100,7 +99,6 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 
 func FileDelete(w http.ResponseWriter, r *http.Request) {
 	request := new(DeleteRequest)
-	request.InitValidators()
 	err := request.ParseRequest(r)
 	if err != nil {
 		log.Warn("Couldn't parse delete request")

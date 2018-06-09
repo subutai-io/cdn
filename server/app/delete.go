@@ -21,6 +21,7 @@ func (request *DeleteRequest) ValidateRequest() error {
 	if request.Token == "" || db.TokenOwner(request.Token) == "" {
 		return fmt.Errorf("provided invalid token")
 	}
+	request.Owner = db.TokenOwner(request.Token)
 	return nil
 }
 
