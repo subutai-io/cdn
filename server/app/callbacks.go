@@ -100,3 +100,25 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 func FileDelete(w http.ResponseWriter, r *http.Request) {
 
 }
+
+func FileDownload(w http.ResponseWriter, r *http.Request) {
+	log.Info("Received download request")
+	log.Info(r)
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Incorrect method for download request"))
+		return
+	}
+	request := new(DownloadRequest)
+	request.InitDownloaders()
+	log.Info("Successfully initialized request")
+	err := request.ParseRequest(r)
+	if err != nil {
+		log.Warn("Couldn't parse download request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("Incorrect download request: %v", err)))
+		return
+	}
+	log.Info("Successfully parsed request")
+	request.ExecRequest()
+}
