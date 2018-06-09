@@ -83,14 +83,16 @@ func (request *SearchRequest) ParseRequest(httpRequest *http.Request) error {
 	request.FileID = httpRequest.URL.Query().Get("id")
 	request.Owner = httpRequest.URL.Query().Get("owner")
 	request.Name = httpRequest.URL.Query().Get("name")
-	rest := httpRequest.URL.String()
-	rest = rest[strings.Index(rest, "/kurjun/rest"):]
+	rest := httpRequest.URL.EscapedPath()
 	request.Repo = strings.Split(rest, "/")[3] // Splitting /kurjun/rest/repo/func into ["", "kurjun", "rest", "repo" (index: 3), "func?..."]
 	request.Version = httpRequest.URL.Query().Get("version")
 	request.Tags = httpRequest.URL.Query().Get("tags")
 	request.Token = strings.ToLower(httpRequest.URL.Query().Get("token"))
 	request.Verified = strings.ToLower(httpRequest.URL.Query().Get("verified"))
 	request.Operation = strings.Split(strings.Split(rest, "/")[4], "?")[0]
+	if db.TokenOwner(request.Token) == "subutai" {
+		request.admin = "true"
+	}
 	return request.ValidateRequest()
 }
 

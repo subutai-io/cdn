@@ -87,18 +87,14 @@ func FileUpload(w http.ResponseWriter, r *http.Request) {
 	log.Info("Successfully parsed request")
 	err = request.Upload()
 	if err != nil {
-		log.Warn(fmt.Sprintf("Couldn't upload file: %v", err))
+		log.Warn(fmt.Sprintf("Couldn't upload the file: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while uploading file: %v", err)))
+		w.Write([]byte(fmt.Sprintf("Error while uploading the file: %v", err)))
 		return
 	}
 	log.Info("Successfully uploaded a file: ", request.fileID)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(request.fileID))
-}
-
-func FileDelete(w http.ResponseWriter, r *http.Request) {
-
 }
 
 func FileDownload(w http.ResponseWriter, r *http.Request) {
@@ -121,4 +117,26 @@ func FileDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Info("Successfully parsed request")
 	request.ExecRequest()
+}
+
+func FileDelete(w http.ResponseWriter, r *http.Request) {
+	request := new(DeleteRequest)
+	err := request.ParseRequest(r)
+	if err != nil {
+		log.Warn("Couldn't parse delete request")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("Incorrect delete request: %v", err)))
+		return
+	}
+	log.Info("Successfully parsed request")
+	err = request.Delete()
+	if err != nil {
+		log.Warn(fmt.Sprintf("Couldn't delete the file: %v", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Error while deleting the file: %v", err)))
+		return
+	}
+	log.Info("Successfully uploaded a file: ", request.FileID)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(request.FileID))
 }
