@@ -58,7 +58,7 @@ func TestCheckToken(t *testing.T) {
 		{name: "TestCheckToken-"},
 		// TODO: Add test cases.
 	}
-	tokens := []string{"RandomStuff", Abaytulakova.Token, Akenzhaliev.Token, Subutai.Token}
+	tokens := []string{"RandomStuff", Ipsum.Token, Lorem.Token, Subutai.Token}
 	for i := 1; i <= 3; i++ {
 		test := tests[0]
 		test.name += strconv.Itoa(i)
@@ -85,7 +85,7 @@ func TestCheckToken(t *testing.T) {
 func TestHash(t *testing.T) {
 	Integration = 0
 	SetUp()
-	PreDownloadFiles(0, Akenzhaliev)
+	PreDownloadFiles(0, Lorem)
 	defer TearDown()
 	type args struct {
 		file string
@@ -101,18 +101,18 @@ func TestHash(t *testing.T) {
 	}
 	algos := []string{"", "md5", "sha1", "sha256", "sha512", ""}
 	wants := []string{
-		"a315ae66e49e95ccfb832f3852bd3827",
-		"a315ae66e49e95ccfb832f3852bd3827",
-		"f24f260763d351b0f3249574a9437ad6b15d100d",
-		"2a8f000dc3c2e86174c98d721c652b9b2fdc6784931ca4b0a1dd2c7fbcffb851",
-		"0dae80b90a1c82a90257772a78407b41132a40ebc8f84eb956222f636ca6cae1188438c9c9a2a5262b77b6543cf893b6a6ffd75433c262d99770ed27107bd153",
+		"99b79c3764cee9740583d14b377dc393",
+		"99b79c3764cee9740583d14b377dc393",
+		"d2fb80e1629180f0788056967beced556bcd9a24",
+		"8a74dec550a12658beafa1a92be38888b78016566e2683632e647582935e6a2b",
+		"c4fd87ee78740529e792ae6541a54084805e79a19176901c39ad33ec5aec78b63b14eec8c5ca66d74fe4754070e9531d572e7e1f048b8417994138872fa1c5b0",
 		"",
 	}
 	for i := 1; i <= 5; i++ {
 		test := tests[0]
 		test.name += strconv.Itoa(i)
 		test.args = args{
-			file: Dirs[PublicScope][Akenzhaliev.Username] + Files[PublicScope][Akenzhaliev.Username][NamesLayer][0],
+			file: Dirs[PublicScope][Lorem.Username] + Files[PublicScope][Lorem.Username][NamesLayer][0],
 			algo: algos[i],
 		}
 		test.want = wants[i]
@@ -126,7 +126,7 @@ func TestHash(t *testing.T) {
 	{
 		tests[0].name += "0"
 		tests[0].args = args{
-			file: Dirs[PublicScope][Akenzhaliev.Username] + Files[PublicScope][Akenzhaliev.Username][NamesLayer][0],
+			file: Dirs[PublicScope][Lorem.Username] + Files[PublicScope][Lorem.Username][NamesLayer][0],
 			algo: algos[0],
 		}
 		tests[0].want = wants[0]
@@ -163,14 +163,14 @@ func TestIn(t *testing.T) {
 	{
 		tests[0].args = args{
 			item: "ipsum",
-			list: []string{"Lorem", "ipsum", "dolor", "sit", "amet"},
+			list: []string{"Lorem", "ipsum", "ipsum", "sit", "amet"},
 		}
 		tests[0].want = true
 	}
 	{
 		tests[1].args = args{
 			item: "",
-			list: []string{"Lorem", "ipsum", "dolor", "sit", "amet"},
+			list: []string{"Lorem", "ipsum", "ipsum", "sit", "amet"},
 		}
 		tests[1].want = false
 	}

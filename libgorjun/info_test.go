@@ -291,21 +291,21 @@ func TestListPriority(t *testing.T) {
 	f.Register(f.Username)
 	f.AuthenticateUser()
 	fmt.Printf("Token for user %+v = %+v\n", f.Username, f.Token)
-	str, err = f.Upload("data/akenzhaliev/debian-stretch-subutai-template_0.4.1_amd64.tar.gz", "template", "true")
+	str, err = f.Upload("data/lorem/debian-stretch-subutai-template_0.4.1_amd64.tar.gz", "template", "true")
 	if err != nil {
-		fmt.Printf("Could not upload data/akenzhaliev/debian-stretch-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
+		fmt.Printf("Could not upload data/lorem/debian-stretch-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
 	}
-	str, err = f.Upload("data/akenzhaliev/mysql-subutai-template_0.3.9_amd64.tar.gz", "template", "false")
+	str, err = f.Upload("data/lorem/mysql-subutai-template_0.3.9_amd64.tar.gz", "template", "false")
 	if err != nil {
-		fmt.Printf("Could not upload data/akenzhaliev/mysql-subutai-template_0.3.9_amd64.tar.gz: %+v, %+v\n", str, err)
+		fmt.Printf("Could not upload data/lorem/mysql-subutai-template_0.3.9_amd64.tar.gz: %+v, %+v\n", str, err)
 	}
-	str, err = f.Upload("data/akenzhaliev/mysql-subutai-template_0.4.0_amd64.tar.gz", "raw", "true")
+	str, err = f.Upload("data/lorem/mysql-subutai-template_0.4.0_amd64.tar.gz", "raw", "true")
 	if err != nil {
-		fmt.Printf("Could not upload data/akenzhaliev/mysql-subutai-template_0.4.0_amd64.tar.gz: %+v, %+v\n", str, err)
+		fmt.Printf("Could not upload data/lorem/mysql-subutai-template_0.4.0_amd64.tar.gz: %+v, %+v\n", str, err)
 	}
-	str, err = f.Upload("data/akenzhaliev/mysql-subutai-template_0.4.1_amd64.tar.gz", "raw", "false")
+	str, err = f.Upload("data/lorem/mysql-subutai-template_0.4.1_amd64.tar.gz", "raw", "false")
 	if err != nil {
-		fmt.Printf("Could not upload data/akenzhaliev/mysql-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
+		fmt.Printf("Could not upload data/lorem/mysql-subutai-template_0.4.1_amd64.tar.gz: %+v, %+v\n", str, err)
 	}
 	{
 		fileList, _ := v.GetFileByName("mysql-subutai-template_0.3.9_amd64.tar.gz", "template")

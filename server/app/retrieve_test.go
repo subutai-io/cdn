@@ -262,17 +262,18 @@ func TestSearchRequest_BuildQuery(t *testing.T) {
 		Token      string
 		Verified   string
 		Operation  string
+		admin      string
 		validators map[string]ValidateFunction
 	}
 
-	wantQuery1 := map[string]string{"FileID": "id1", "Owner": "owner1", "Name": "name1", "Repo": "repo1", "Version": "v1", "Tags": "tag1", "Verified": "true", "Operation": "info"}
+	wantQuery1 := map[string]string{"FileID": "id1", "Owner": "owner1", "Name": "name1", "Repo": "repo1", "Version": "", "Tags": "tag1", "Verified": "true", "Operation": "info", "admin": "true"}
 
 	tests := []struct {
 		name      string
 		fields    fields
 		wantQuery map[string]string
 	}{
-		{name: "t1", fields: fields{FileID: "id1", Owner: "owner1", Name: "name1", Repo: "repo1", Version: "v1", Tags: "tag1", Verified: "true", Operation: "info"}, wantQuery: wantQuery1},
+		{name: "t1", fields: fields{FileID: "id1", Owner: "owner1", Name: "name1", Repo: "repo1", Version: "latest", Tags: "tag1", Verified: "true", Operation: "info", admin: "true"}, wantQuery: wantQuery1},
 	}
 	for _, tt := range tests {
 		request := &SearchRequest{
@@ -285,6 +286,7 @@ func TestSearchRequest_BuildQuery(t *testing.T) {
 			Token:      tt.fields.Token,
 			Verified:   tt.fields.Verified,
 			Operation:  tt.fields.Operation,
+			admin:      tt.fields.admin,
 			validators: tt.fields.validators,
 		}
 		if gotQuery := request.BuildQuery(); !reflect.DeepEqual(gotQuery, tt.wantQuery) {

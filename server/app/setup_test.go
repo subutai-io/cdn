@@ -10,24 +10,24 @@ import (
 
 func PrepareUsersAndTokens() {
 	db.RegisterUser([]byte(Subutai.Username), []byte(SubutaiKey))
-	db.RegisterUser([]byte(Akenzhaliev.Username), []byte(AkenzhalievKey))
-	db.RegisterUser([]byte(Abaytulakova.Username), []byte(AbaytulakovaKey))
+	db.RegisterUser([]byte(Lorem.Username), []byte(LoremKey))
+	db.RegisterUser([]byte(Ipsum.Username), []byte(IpsumKey))
 	Subutai.Token = "15a5237ee5314282e52156cfad72e86b53ef0ad47baecc31233dbb1c06f4327c"
-	Akenzhaliev.Token = "7327753f12b67d440f481c27e461925513d30cf2d56b6ac16060aad1021c293d"
-	Abaytulakova.Token = "37fc4c3ef862c079ea44da0b7863948d10e8493c514d83e751a6253363f564cf"
+	Lorem.Token = "7327753f12b67d440f481c27e461925513d30cf2d56b6ac16060aad1021c293d"
+	Ipsum.Token = "37fc4c3ef862c079ea44da0b7863948d10e8493c514d83e751a6253363f564cf"
 	db.SaveToken(Subutai.Username, Subutai.Token)
-	db.SaveToken(Akenzhaliev.Username, Akenzhaliev.Token)
-	db.SaveToken(Abaytulakova.Username, Abaytulakova.Token)
+	db.SaveToken(Lorem.Username, Lorem.Token)
+	db.SaveToken(Ipsum.Username, Ipsum.Token)
 }
 
 func Clean() {
 	log.Info("Cleaning working directories")
-	os.RemoveAll("/tmp/cdn-test-data/public/akenzhaliev/")
-	os.RemoveAll("/tmp/cdn-test-data/public/abaytulakova/")
+	os.RemoveAll("/tmp/cdn-test-data/public/lorem/")
+	os.RemoveAll("/tmp/cdn-test-data/public/ipsum/")
 	os.RemoveAll("/tmp/cdn-test-data/public/subutai/")
 	os.RemoveAll("/tmp/cdn-test-data/public/")
-	os.RemoveAll("/tmp/cdn-test-data/private/akenzhaliev/")
-	os.RemoveAll("/tmp/cdn-test-data/private/abaytulakova/")
+	os.RemoveAll("/tmp/cdn-test-data/private/lorem/")
+	os.RemoveAll("/tmp/cdn-test-data/private/ipsum/")
 	os.RemoveAll("/tmp/cdn-test-data/private/subutai/")
 	os.RemoveAll("/tmp/cdn-test-data/private/")
 	os.RemoveAll("/tmp/cdn-test-data/files/")
@@ -45,12 +45,12 @@ func SetUp() {
 	os.MkdirAll("/tmp/cdn-test-data/db/", 0755)
 	os.MkdirAll("/tmp/cdn-test-data/files/", 0755)
 	os.MkdirAll("/tmp/cdn-test-data/public/", 0755)
-	os.MkdirAll("/tmp/cdn-test-data/public/akenzhaliev/", 0755)
-	os.MkdirAll("/tmp/cdn-test-data/public/abaytulakova/", 0755)
+	os.MkdirAll("/tmp/cdn-test-data/public/lorem/", 0755)
+	os.MkdirAll("/tmp/cdn-test-data/public/ipsum/", 0755)
 	os.MkdirAll("/tmp/cdn-test-data/public/subutai/", 0755)
 	os.MkdirAll("/tmp/cdn-test-data/private/", 0755)
-	os.MkdirAll("/tmp/cdn-test-data/private/akenzhaliev/", 0755)
-	os.MkdirAll("/tmp/cdn-test-data/private/abaytulakova/", 0755)
+	os.MkdirAll("/tmp/cdn-test-data/private/lorem/", 0755)
+	os.MkdirAll("/tmp/cdn-test-data/private/ipsum/", 0755)
 	os.MkdirAll("/tmp/cdn-test-data/private/subutai/", 0755)
 	config.ConfigurationDB.Path = "/tmp/cdn-test-data/db/my.db"
 	config.ConfigurationNetwork.Port = "8080"

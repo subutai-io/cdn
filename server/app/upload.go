@@ -18,6 +18,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
+	"path/filepath"
 )
 
 type UploadRequest struct {
@@ -58,7 +59,7 @@ func (request *UploadRequest) ParseRequest(r *http.Request) error {
 		return err
 	}
 	defer file.Close()
-	request.Filename = header.Filename
+	request.Filename = filepath.Base(header.Filename)
 	request.File = io.Reader(file) // multipart.sectionReadCloser
 	limit := int64(db.QuotaLeft(request.Owner))
 	if limit != -1 {
@@ -299,25 +300,18 @@ func (request *UploadRequest) TemplateCheckOwner(template *Result) error {
 }
 
 func (request *UploadRequest) TemplateCheckDependencies(template *Result) error {
-	parentExists := false
 	searchRequest := &SearchRequest{
 		Name:      template.Parent,
+		Owner:     template.Owner,
 		Repo:      request.Repo,
 		Token:     request.Token,
+		Version:   template.ParentVersion,
 		Operation: "list",
 	}
 	searchRequest.InitValidators()
 	log.Info(fmt.Sprintf("searchRequest: %+v", searchRequest))
 	list := searchRequest.Retrieve()
-	for _, result := range list {
-		if result.Name == template.Parent &&
-			result.Owner == template.ParentOwner &&
-			result.Version == template.ParentVersion {
-			parentExists = true
-			break
-		}
-	}
-	if parentExists || template.Name == template.Parent {
+	if len(list) > 0 || (template.Name == template.Parent && template.Version == template.ParentVersion) {
 		return nil
 	}
 	return fmt.Errorf("dependencies are not correct")
@@ -339,11 +333,27 @@ func (request *UploadRequest) UploadTemplate() error {
 		return err
 	}
 	result := FormatConfiguration(request, configuration)
+	if !strings.HasPrefix(result.Filename, result.Name + "-subutai-template") {
+		err = fmt.Errorf("file has invalid name - prefix of filename must be in format: lxc.utsname-subutai-template")
+		return err
+	}
 	err = request.TemplateCheckValid(result)
 	if err != nil {
-		if err.Error() != "owner in config file is different" {
-			db.QuotaUsageSet(request.Owner, -int(request.size))
-			os.Remove(config.ConfigurationStorage.Path + request.md5)
+		if err.Error() == "owner in config file is different" {
+			searchRequest := &SearchRequest{
+				Name:       result.Name,
+				Repo:       "template",
+				Operation:  "list",
+			}
+			searchRequest.admin = "true"
+			results := searchRequest.Retrieve()
+			if len(results) == 0 {
+				db.QuotaUsageSet(request.Owner, -int(request.size))
+				os.Remove(config.ConfigurationStorage.Path + request.md5)
+				log.Warn(fmt.Sprintf("Removed %s because it doesn't belong to %s and anyone else", config.ConfigurationStorage.Path + request.md5, request.Owner))
+			} else {
+				log.Warn(fmt.Sprintf("Didn't delete %s because it is some user's file", config.ConfigurationStorage.Path + request.md5))
+			}
 		}
 		log.Warn(fmt.Sprintf("Not valid template: %v", err))
 		return err
@@ -357,7 +367,7 @@ func (request *UploadRequest) UploadTemplate() error {
 
 func (request *UploadRequest) Upload() error {
 	filePath := config.ConfigurationStorage.Path + request.Filename
-	log.Info(fmt.Sprintf("Uploading file %s: md5: %+v", filePath, Hash(filePath, "md5")))
+	log.Info(fmt.Sprintf("Uploading file %s", filePath))
 	file, err := os.Create(filePath)
 	if err != nil {
 		log.Warn("Couldn't create file for writing - %s", filePath)
@@ -380,12 +390,6 @@ func (request *UploadRequest) Upload() error {
 	}
 	request.md5 = Hash(filePath, "md5")
 	request.sha256 = Hash(filePath, "sha256")
-	if len(request.md5) == 0 || len(request.sha256) == 0 {
-		log.Warn("Failed to calculate hash for " + request.Filename)
-		return fmt.Errorf("failed to calculate hash")
-	} else {
-		log.Info(fmt.Sprintf("md5: %+v; sha256: %+v", request.md5, request.sha256))
-	}
 	if request.Repo != "apt" {
 		md5Path := config.ConfigurationStorage.Path + request.md5
 		os.Rename(filePath, md5Path)

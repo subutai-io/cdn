@@ -15,7 +15,7 @@ func FileWrite(result *Result) (err error) {
 	log.Info(fmt.Sprintf("Writing to DB: %+v", result))
 	if result.Owner == "" {
 		err = fmt.Errorf("owner wasn't provided")
-		log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+		log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 		return err
 	}
 	err = db.DB.Update(func(tx *bolt.Tx) error {
@@ -26,7 +26,7 @@ func FileWrite(result *Result) (err error) {
 					b.Put([]byte(result.FileID), []byte(result.Filename))
 				}
 			} else {
-				log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+				log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 				return err
 			}
 		} else {

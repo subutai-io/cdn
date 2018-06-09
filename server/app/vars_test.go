@@ -15,9 +15,9 @@ var (
 )
 
 var (
-	Subutai      = gorjun.VerifiedGorjunUser()
-	Akenzhaliev  = gorjun.FirstGorjunUser()
-	Abaytulakova = gorjun.SecondGorjunUser()
+	Subutai = gorjun.VerifiedGorjunUser()
+	Lorem   = gorjun.FirstGorjunUser()
+	Ipsum   = gorjun.SecondGorjunUser()
 )
 
 var (
@@ -36,14 +36,14 @@ var (
 	// 1-layer stands for IDs of private files
 	UserFiles = []map[string][]string {
 		{
-			"subutai":      {},
-			"akenzhaliev":  {},
-			"abaytulakova": {},
+			"subutai": {},
+			"lorem":   {},
+			"ipsum":   {},
 		},
 		{
-			"subutai":      {},
-			"akenzhaliev":  {},
-			"abaytulakova": {},
+			"subutai": {},
+			"lorem":   {},
+			"ipsum":   {},
 		},
 	}
 )
@@ -53,15 +53,15 @@ var (
 	Dirs = []map[string]string{
 		// 0-layer stands for public directories
 		{
-			"subutai":      "/tmp/cdn-test-data/public/" + Subutai.Username + "/",
-			"akenzhaliev":  "/tmp/cdn-test-data/public/" + Akenzhaliev.Username + "/",
-			"abaytulakova": "/tmp/cdn-test-data/public/" + Abaytulakova.Username + "/",
+			"subutai": "/tmp/cdn-test-data/public/" + Subutai.Username + "/",
+			"lorem":   "/tmp/cdn-test-data/public/" + Lorem.Username + "/",
+			"ipsum":   "/tmp/cdn-test-data/public/" + Ipsum.Username + "/",
 		},
 		// 1-layer stands for private directories
 		{
 			"subutai": "/tmp/cdn-test-data/private/" + Subutai.Username + "/",
-			"akenzhaliev": "/tmp/cdn-test-data/private/" + Akenzhaliev.Username + "/",
-			"abaytulakova": "/tmp/cdn-test-data/private/" + Abaytulakova.Username + "/",
+			"lorem":   "/tmp/cdn-test-data/private/" + Lorem.Username + "/",
+			"ipsum":   "/tmp/cdn-test-data/private/" + Ipsum.Username + "/",
 		},
 	}
 )
@@ -74,16 +74,50 @@ var (
 			// 0-layer stands for IDs
 			// 1-layer stands for filenames
 			"subutai": {
-				{"adcafddc-71a4-4c28-87f2-d0cff672c85c", "205cfd3d-3a50-458a-96af-f65f1244e27c"},
-				{"subutai-generic-ansible-subutai-template_0.4.5_amd64.tar.gz", "subutai-ubuntu-xenial-subutai-template_0.4.5_amd64.tar.gz"},
+				{
+					"adcafddc-71a4-4c28-87f2-d0cff672c85c",
+					"205cfd3d-3a50-458a-96af-f65f1244e27c",
+				},
+				{
+					"generic-ansible-subutai-template_0.4.5_amd64.tar.gz",
+					"ubuntu-xenial-subutai-template_0.4.5_amd64.tar.gz",
+				},
 			},
-			"akenzhaliev": {
-				{"b6d6dc1e-fc34-47dc-8b08-8d127163a9cb", "09c3bcef-7070-49ee-9bfa-3d4a40c0edcc", "542d34f8-5146-49b4-acbe-35953b5f2f7c"},
-				{"akenzhaliev-generic-ansible-subutai-template_0.4.5_amd64.tar.gz", "akenzhaliev-ubuntu-xenial-subutai-template_0.4.5_amd64.tar.gz", "python_2.7.11-1_amd64.deb"},
+			"lorem": {
+				{
+					"f32dd7d5-0c9a-4b1a-bfcf-35909310d6b9", // 0
+					"d674228c-fe0f-4849-b104-467872944058", // 1
+					"542d34f8-5146-49b4-acbe-35953b5f2f7c", // 2
+					"f32dd7d5-0c9a-4b1a-bfcf-35909310d6b9", // 3 - incorrect filename
+					"5eab3bc3-1d4c-4252-a066-58ffe98d023e", // 4 - full template config
+					"0c531e2f-10d0-4bbb-99be-c7154d33a77d", // 5 - no config
+					"8ee172da-5c36-4c9a-9194-3ff295890776", // 6 - borked name & version
+					"dae96500-d5d6-4878-8fe0-1a09c416e4e5", // 7 - dependent template
+					"98236816-0392-4db8-96a6-4d835180098a", // 8 - semi-empty config
+					"be10ba49-bb9c-409d-9182-0a13896b32d8", // 9 - template with bad dependencies
+				},
+				{
+					"generic-ansible-subutai-template_0.4.5_amd64.tar.gz",
+					"ubuntu-xenial-subutai-template_0.4.5_amd64.tar.gz",
+					"python_2.7.11-1_amd64.deb",
+					"lorem-generic-ansible-subutai-template_0.4.5_amd64.tar.gz",
+					"generic-ansible-subutai-template_0.4.5_amd64-full.tar.gz",
+					"generic-ansible-subutai-template_0.4.5_amd64-empty.tar.gz",
+					"generic-ansible^-subutai-template_0.4.5_amd64-name-version.tar.gz",
+					"generic-ansible-subutai-template_0.4.7_amd64-dependent.tar.gz",
+					"generic-ansible-subutai-template_0.4.5_amd64-semi-empty.tar.gz",
+					"generic-ansible-subutai-template_0.4.9_amd64-bad-dependencies.tar.gz",
+				},
 			},
-			"abaytulakova": {
-				{"759f7cb2-f953-42bd-9566-7e31d2907805", "eb86fb81-9a33-4970-85d9-3c38c57e0c6c"},
-				{"abaytulakova-generic-ansible-subutai-template_0.4.5_amd64.tar.gz", "abaytulakova-ubuntu-xenial-subutai-template_0.4.5_amd64.tar.gz"},
+			"ipsum": {
+				{
+					"a7471dfa-8c36-40af-82f8-0de1f0ad36c8",
+					"93cac025-beba-434e-9dc4-27abeea3e57b",
+				},
+				{
+					"generic-ansible-subutai-template_0.4.5_amd64.tar.gz",
+					"ubuntu-xenial-subutai-template_0.4.5_amd64.tar.gz",
+				},
 			},
 		},
 		// 1-layer stands for private files for download
@@ -91,16 +125,34 @@ var (
 			// 0-layer stands for IDs
 			// 1-layer stands for filenames
 			"subutai": {
-				{"dab2ed9a-6823-44a3-9b94-e013c89401ce", "037e395b-9754-4c41-8c57-ebdd91a68717"},
-				{"subutai-generic-ansible-subutai-template_0.4.6_amd64.tar.gz", "subutai-ubuntu-xenial-subutai-template_0.4.6_amd64.tar.gz"},
+				{
+					"dab2ed9a-6823-44a3-9b94-e013c89401ce",
+					"037e395b-9754-4c41-8c57-ebdd91a68717",
+				},
+				{
+					"generic-ansible-subutai-template_0.4.6_amd64.tar.gz",
+					"ubuntu-xenial-subutai-template_0.4.6_amd64.tar.gz",
+				},
 			},
-			"akenzhaliev": {
-				{"d22d9c36-7176-4370-8e42-61312a1ccb7e", "bef11f5d-21f0-44b7-8f6e-85e33d275e9d"},
-				{"akenzhaliev-generic-ansible-subutai-template_0.4.6_amd64.tar.gz", "akenzhaliev-ubuntu-xenial-subutai-template_0.4.6_amd64.tar.gz"},
+			"lorem": {
+				{
+					"2e1807cd-20eb-4afb-bebb-febe5ba9c0d1",
+					"aad0c38d-2da7-4b16-9791-44cc37a27f84",
+				},
+				{
+					"generic-ansible-subutai-template_0.4.6_amd64.tar.gz",
+					"ubuntu-xenial-subutai-template_0.4.6_amd64.tar.gz",
+				},
 			},
-			"abaytulakova": {
-				{"35d19adc-bb84-4c25-924e-d19febb40573", "22eac30d-c8bf-4e8a-a079-da950e0fa9f8"},
-				{"abaytulakova-generic-ansible-subutai-template_0.4.6_amd64.tar.gz", "abaytulakova-ubuntu-xenial-subutai-template_0.4.6_amd64.tar.gz"},
+			"ipsum": {
+				{
+					"c27443da-593b-4d1f-8d1a-db9e460c8d99",
+					"d96926e4-2d8d-4fda-a0e8-3271e2abb797",
+				},
+				{
+					"generic-ansible-subutai-template_0.4.6_amd64.tar.gz",
+					"ubuntu-xenial-subutai-template_0.4.6_amd64.tar.gz",
+				},
 			},
 		},
 	}
@@ -109,8 +161,8 @@ var (
 var (
 	PublicKeys = map[string]string {
 		"subutai": SubutaiKey,
-		"akenzhaliev": AkenzhalievKey,
-		"abaytulakova": AbaytulakovaKey,
+		"lorem":   LoremKey,
+		"ipsum":   IpsumKey,
 	}
 )
 
@@ -170,7 +222,7 @@ iONEm7eWMpyy71YL2WrfHNwL4UfuXjOpmWyBc3NcBcjDdKW+pw8=
 )
 
 var (
-	AkenzhalievKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+	LoremKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1
 
 mQINBFroSVEBEACrbKrT2LL4DJL9Wt26VHcVfgFHVzr4bZpnLYTdoapEh0TiyYZJ
@@ -226,7 +278,7 @@ iTL3bcFog5Zf+w==
 )
 
 var (
-	AbaytulakovaKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+	IpsumKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1
 
 mQENBFr5Z7wBCACv7AytUuenUbXTs8jd9Pvd3j832vWGHwX9Kf4v6iW4INftGguQ

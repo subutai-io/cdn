@@ -101,11 +101,11 @@ func TestUploadRequest_ParseRequest(t *testing.T) {
 	tests[4].wantErr = false
 	tests[5].args.r = PrepareRequest("", Dirs[PublicScope][Subutai.Username] + "auxiliaryFile-5", "template", "7.0.0", "Park", "true")
 	tests[5].wantErr = true
-	tests[6].args.r = PrepareRequest(Akenzhaliev.Token, Dirs[PublicScope][Akenzhaliev.Username] + "auxiliaryFile-6", "apt", "2.2.3", "nobodyreadstags", "false")
+	tests[6].args.r = PrepareRequest(Lorem.Token, Dirs[PublicScope][Lorem.Username] + "auxiliaryFile-6", "apt", "2.2.3", "nobodyreadstags", "false")
 	tests[6].wantErr = false
-	tests[7].args.r = PrepareRequest("incorrectToken", Dirs[PublicScope][Akenzhaliev.Username] + "auxiliaryFile-7-nothing", "raw", "5.0.2", "whoreadstagsanyway,nothing", "true")
+	tests[7].args.r = PrepareRequest("incorrectToken", Dirs[PublicScope][Lorem.Username] + "auxiliaryFile-7-nothing", "raw", "5.0.2", "whoreadstagsanyway,nothing", "true")
 	tests[7].wantErr = true
-	tests[8].args.r = PrepareRequest(Akenzhaliev.Token, Dirs[PublicScope][Akenzhaliev.Username] + "auxiliaryFile-8-nothing", "template", "3.1.2", "unitTest", "false")
+	tests[8].args.r = PrepareRequest(Lorem.Token, Dirs[PublicScope][Lorem.Username] + "auxiliaryFile-8-nothing", "template", "3.1.2", "unitTest", "false")
 	tests[8].wantErr = true
 	for _, tt := range tests {
 		errored := false
@@ -230,7 +230,7 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		for i := 0; i <= 3; i++ {
 			testNumber := strconv.Itoa(i)
 			file := "auxiliaryFile-" + testNumber
-			filePath, _ := os.Open(Dirs[PublicScope][Akenzhaliev.Username] + file)
+			filePath, _ := os.Open(Dirs[PublicScope][Lorem.Username] + file)
 			path := FilesDir + file
 			auxiliaryFile, _ := os.Create(path)
 			io.Copy(auxiliaryFile, io.Reader(filePath))
@@ -241,10 +241,10 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 			os.Rename(path, FilesDir + md5Sum)
 			tests[i].fields = fields {
 				File:     io.Reader(filePath),
-				Filename: file,
+				Filename: filepath.Base(file),
 				Repo:     repos[i],
-				Owner:    Akenzhaliev.Username,
-				Token:    Akenzhaliev.Token,
+				Owner:    Lorem.Username,
+				Token:    Lorem.Token,
 				Private:  privates[i],
 				Tags:     "tag-" + testNumber,
 				Version:  "7.0." + testNumber,
@@ -258,7 +258,7 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 	}
 	{
 		repos := []string{"raw", "template"}
-		users := []gorjun.GorjunUser{Abaytulakova, Akenzhaliev, Subutai}
+		users := []gorjun.GorjunUser{Ipsum, Lorem, Subutai}
 		for i := 4; i <= 15; i++ {
 			user := users[(i - 4) / 2 % 3]
 			scope := (i - 4) / 6
@@ -295,8 +295,8 @@ func TestUploadRequest_ExecRequest(t *testing.T) {
 		}
 	}
 	{
-		request := PrepareUploadRequest(PublicScope, Akenzhaliev, "apt", 2)
-		file := Files[PublicScope][Akenzhaliev.Username][NamesLayer][2]
+		request := PrepareUploadRequest(PublicScope, Lorem, "apt", 2)
+		file := Files[PublicScope][Lorem.Username][NamesLayer][2]
 		path := FilesDir + file
 		auxiliaryFile, _ := os.Create(path)
 		io.Copy(auxiliaryFile, request.File)
@@ -461,7 +461,7 @@ func TestUploadRequest_HandlePrivate(t *testing.T) {
 	}
 	tests[1].fields = fields{
 		fileID:   tests[1].name,
-		Owner:    Akenzhaliev.Username,
+		Owner:    Lorem.Username,
 		Filename: tests[1].name,
 		Private:  "true",
 	}
@@ -538,8 +538,8 @@ func TestUploadRequest_ReadDeb(t *testing.T) {
 	}
 	tests[0].name += "0"
 	{
-		file := Files[PublicScope][Akenzhaliev.Username][NamesLayer][2]
-		filePath, _ := os.Open(Dirs[PublicScope][Akenzhaliev.Username] + file)
+		file := Files[PublicScope][Lorem.Username][NamesLayer][2]
+		filePath, _ := os.Open(Dirs[PublicScope][Lorem.Username] + file)
 		path := FilesDir + file
 		auxiliaryFile, _ := os.Create(path)
 		io.Copy(auxiliaryFile, io.Reader(filePath))
@@ -549,10 +549,10 @@ func TestUploadRequest_ReadDeb(t *testing.T) {
 		sha256Sum := Hash(path, "sha256")
 		tests[0].fields = fields{
 			File:     io.Reader(filePath),
-			Filename: file,
+			Filename: filepath.Base(file),
 			Repo:     "apt",
-			Owner:    Akenzhaliev.Username,
-			Token:    Akenzhaliev.Token,
+			Owner:    Lorem.Username,
+			Token:    Lorem.Token,
 			Private:  "false",
 			Tags:     "tag-0",
 			md5:      md5Sum,
@@ -1115,7 +1115,7 @@ func TestUploadRequest_Upload(t *testing.T) {
 		{name: "TestUploadRequest_Upload-"},
 		// TODO: Add test cases.
 	}
-	for i := 1; i <= 16; i++ {
+	for i := 1; i <= 25; i++ {
 		test := tests[0]
 		test.name += strconv.Itoa(i)
 		tests = append(tests, test)
@@ -1128,13 +1128,13 @@ func TestUploadRequest_Upload(t *testing.T) {
 		for i := 0; i <= 3; i++ {
 			testNumber := strconv.Itoa(i)
 			file := "auxiliaryFile-" + testNumber
-			filePath, _ := os.Create(Dirs[PublicScope][Akenzhaliev.Username] + file)
+			filePath, _ := os.Create(Dirs[PublicScope][Lorem.Username] + file)
 			tests[i].fields = fields {
 				File:     io.Reader(filePath),
-				Filename: file,
+				Filename: filepath.Base(file),
 				Repo:     repos[i],
-				Owner:    Akenzhaliev.Username,
-				Token:    Akenzhaliev.Token,
+				Owner:    Lorem.Username,
+				Token:    Lorem.Token,
 				Private:  privates[i],
 				Tags:     "tag-" + testNumber,
 				Version:  "7.0." + testNumber,
@@ -1145,7 +1145,7 @@ func TestUploadRequest_Upload(t *testing.T) {
 	}
 	{
 		repos := []string{"raw", "template"}
-		users := []gorjun.GorjunUser{Abaytulakova, Akenzhaliev, Subutai}
+		users := []gorjun.GorjunUser{Ipsum, Lorem, Subutai}
 		for i := 4; i <= 15; i++ {
 			user := users[(i - 4) / 2 % 3]
 			scope := (i - 4) / 6
@@ -1159,7 +1159,7 @@ func TestUploadRequest_Upload(t *testing.T) {
 			log.Info(fmt.Sprintf("request.File: %+v", request.File))
 			tests[i].fields = fields {
 				File:     request.File,
-				Filename: request.Filename,
+				Filename: filepath.Base(request.Filename),
 				Repo:     request.Repo,
 				Owner:    request.Owner,
 				Token:    request.Token,
@@ -1171,7 +1171,7 @@ func TestUploadRequest_Upload(t *testing.T) {
 		}
 	}
 	{
-		request := PrepareUploadRequest(PublicScope, Akenzhaliev, "apt", 2)
+		request := PrepareUploadRequest(PublicScope, Lorem, "apt", 2)
 		tests[16].fields = fields {
 			File:     request.File,
 			Filename: request.Filename,
@@ -1182,6 +1182,123 @@ func TestUploadRequest_Upload(t *testing.T) {
 			Tags:     "tag-16",
 		}
 		tests[16].wantErr = false
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 1)
+		tests[17].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Ipsum.Username,
+			Token:    Ipsum.Token,
+			Private:  request.Private,
+			Tags:     "tag-17",
+		}
+		tests[17].wantErr = true
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 3)
+		tests[18].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Ipsum.Username,
+			Token:    Ipsum.Token,
+			Private:  request.Private,
+			Tags:     "tag-18",
+		}
+		tests[18].wantErr = true
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 0)
+		tests[19].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Ipsum.Username,
+			Token:    Ipsum.Token,
+			Private:  request.Private,
+			Tags:     "tag-19",
+		}
+		tests[19].wantErr = true
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 4)
+		tests[20].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Lorem.Username,
+			Token:    Lorem.Token,
+			Private:  request.Private,
+			Tags:     "tag-20",
+		}
+		tests[20].wantErr = false
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 5)
+		tests[21].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Lorem.Username,
+			Token:    Lorem.Token,
+			Private:  request.Private,
+			Tags:     "tag-21",
+		}
+		tests[21].wantErr = true
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 6)
+		tests[22].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Lorem.Username,
+			Token:    Lorem.Token,
+			Private:  request.Private,
+			Tags:     "tag-22",
+		}
+		tests[22].wantErr = true
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 7)
+		tests[23].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Lorem.Username,
+			Token:    Lorem.Token,
+			Private:  request.Private,
+			Tags:     "tag-23",
+		}
+		tests[23].wantErr = false
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 8)
+		tests[24].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Lorem.Username,
+			Token:    Lorem.Token,
+			Private:  request.Private,
+			Tags:     "tag-24",
+		}
+		tests[24].wantErr = true
+	}
+	{
+		request := PrepareUploadRequest(PublicScope, Lorem, "template", 9)
+		tests[25].fields = fields {
+			File:     request.File,
+			Filename: request.Filename,
+			Repo:     "template",
+			Owner:    Lorem.Username,
+			Token:    Lorem.Token,
+			Private:  request.Private,
+			Tags:     "tag-25",
+		}
+		tests[25].wantErr = true
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1203,7 +1320,122 @@ func TestUploadRequest_Upload(t *testing.T) {
 			request.InitUploaders()
 			if err := request.Upload(); (err != nil) != tt.wantErr {
 				t.Errorf("UploadRequest.Upload() error = %v, wantErr %v", err, tt.wantErr)
+			} else {
+				log.Info(fmt.Sprintf("%s correct: %v", tt.name, err))
 			}
 		})
 	}
 }
+
+func TestUploadRequest_UploadStress(t *testing.T) {
+	Integration = 0
+	SetUp()
+	PrepareUsersAndTokens()
+	defer TearDown()
+	type fields struct {
+		File      io.Reader
+		Filename  string
+		Repo      string
+		Owner     string
+		Token     string
+		Private   string
+		Tags      string
+		Version   string
+		fileID    string
+		md5       string
+		sha256    string
+		size      int64
+		uploaders map[string]UploadFunction
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{name: "TestUploadRequest_UploadStress-"},
+		// TODO: Add test cases.
+	}
+	tests[0].name += "0"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+		})
+	}
+}
+
+/*
+func TestUploadRequest_UploadStress(t *testing.T) {
+	Integration = 0
+	SetUp()
+	PrepareUsersAndTokens()
+	defer TearDown()
+	type fields struct {
+		File      io.Reader
+		Filename  string
+		Repo      string
+		Owner     string
+		Token     string
+		Private   string
+		Tags      string
+		Version   string
+		fileID    string
+		md5       string
+		sha256    string
+		size      int64
+		uploaders map[string]UploadFunction
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantErr bool
+	}{
+		{name: "TestUploadRequest_UploadStress-"},
+		// TODO: Add test cases.
+	}
+	tests[0].name += "0"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			i := 0
+			stop := false
+			for !stop {
+				finished := make(chan bool, 100)
+				j := i
+				for k := 0; k < 100; k++ {
+					go func() {
+						j++
+						file := Dirs[PublicScope][Lorem.Username] + strconv.Itoa(j) + ".txt"
+						log.Info(fmt.Sprintf("File: %+v", file))
+						ioutil.WriteFile(file, []byte(file), 0755)
+//						cmd := exec.Command("wget", "-O", file, Raw + Files[PublicScope][Lorem.Username][IDsLayer][4])
+//						cmd.Run()
+						filePath, _ := os.Open(file)
+						request := &UploadRequest{
+							File:     io.Reader(filePath),
+							Filename: filepath.Base(file),
+							Repo:     "raw",
+							Owner:    Lorem.Username,
+							Token:    Lorem.Token,
+							Private:  ScopeType(PublicScope),
+							Tags:     "tag-" + strconv.Itoa(j),
+						}
+						tt.wantErr = true
+						request.InitUploaders()
+						if err := request.Upload(); err != nil {
+							stop = true
+							log.Info(fmt.Sprintf("Stress test successfull"))
+						} else {
+							log.Warn(fmt.Sprintf("Still not enough files, starting next attempt"))
+						}
+						finished <- true
+					}()
+				}
+				for j := 0; j < 100; j++ {
+					<-finished
+				}
+				close(finished)
+				i += 100
+			}
+		})
+	}
+}
+*/
