@@ -20,6 +20,7 @@ script:
   - go test -coverprofile=template.out -covermode=atomic github.com/subutai-io/cdn/template
   - go test -coverprofile=torrent.out -covermode=atomic github.com/subutai-io/cdn/torrent
   - go test -coverprofile=upload.out -covermode=atomic github.com/subutai-io/cdn/upload
+  - go test -coverprofile=utils.out -covermode=atomic github.com/subutai-io/cdn/utils
   - touch main.out cdn.out apt.out auth.out config.out db.out download.out pgp.out raw.out template.out torrent.out upload.out
     #- go test -coverprofile=libgorjun.out -covermode=atomic github.com/subutai-io/cdn/libgorjun
     #- cd /home/travis/gopath/src/github.com/subutai-io/cdn/libgorjun/; ./register.sh
@@ -39,6 +40,7 @@ after_success:
   - cat template.out >> coverage.txt
   - cat torrent.out >> coverage.txt
   - cat upload.out >> coverage.txt
+  - cat utils.out >> utils.txt
   - bash <(curl -s https://codecov.io/bash)
   - sudo systemctl start gorjun.service
   - sudo systemctl status gorjun.service
