@@ -1,11 +1,21 @@
 package app
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/subutai-io/agent/log"
+	"github.com/subutai-io/cdn/apt"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
 )
 
 type Hashes struct {
@@ -116,7 +126,81 @@ func FileDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Info("Successfully parsed request")
-	request.ExecRequest()
+	result, token, err := request.ExecRequest()
+	if result.Repo == "raw" || result.Repo == "template" {
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Error: %v", err)))
+		}
+		path := config.ConfigurationStorage.Path + result.FileID
+		if md5, _ := db.Hash(result.FileID); len(md5) != 0 {
+			path = config.ConfigurationStorage.Path + md5
+		}
+		file, err := os.Open(path)
+		defer file.Close()
+		if log.Check(log.WarnLevel, "Opening file "+config.ConfigurationStorage.Path+result.FileID, err) || len(result.FileID) == 0 {
+			if len(config.ConfigurationCDN.Node) > 0 {
+				client := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+				resp, err := client.Get(config.ConfigurationCDN.Node + r.URL.RequestURI())
+				if !log.Check(log.WarnLevel, "Getting file from CDN", err) {
+					w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+					w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+					w.Header().Set("Last-Modified", resp.Header.Get("Last-Modified"))
+					w.Header().Set("Content-Disposition", resp.Header.Get("Content-Disposition"))
+					io.Copy(w, resp.Body)
+					resp.Body.Close()
+					return
+				}
+			}
+			w.WriteHeader(http.StatusNotFound)
+			io.WriteString(w, "File not found")
+			return
+		}
+		fileInfo, _ := file.Stat()
+		if t, err := time.Parse(http.TimeFormat, r.Header.Get("If-Modified-Since")); err == nil && fileInfo.ModTime().Unix() <= t.Unix() {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		w.Header().Set("Content-Length", fmt.Sprint(fileInfo.Size()))
+		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+		w.Header().Set("Last-Modified", fileInfo.ModTime().Format(http.TimeFormat))
+		if name := db.NameByHash(result.FileID); len(name) == 0 && len(config.ConfigurationCDN.Node) > 0 {
+			httpclient := &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+			resp, err := httpclient.Get(config.ConfigurationCDN.Node + "/kurjun/rest/template/info?id=" + result.FileID + "&token=" + token)
+			if !log.Check(log.WarnLevel, "Getting info from CDN", err) {
+				info := new(Result)
+				rsp, err := ioutil.ReadAll(resp.Body)
+				if log.Check(log.WarnLevel, "Reading from CDN response", err) {
+					w.WriteHeader(http.StatusNotFound)
+					io.WriteString(w, "File not found")
+					return
+				}
+				if !log.Check(log.WarnLevel, "Decrypting request", json.Unmarshal([]byte(rsp), &info)) {
+					w.Header().Set("Content-Disposition", "attachment; filename=\""+info.Filename+"\"")
+				}
+				resp.Body.Close()
+			}
+		} else {
+			w.Header().Set("Content-Disposition", "attachment; filename=\""+db.NameByHash(result.FileID)+"\"")
+		}
+		io.Copy(w, file)
+	} else if result.Repo == "apt" {
+		file := result.Filename
+		if len(file) == 0 {
+			file = strings.TrimPrefix(r.RequestURI, "/kurjun/rest/apt/")
+		}
+		size := GetSize(config.ConfigurationStorage.Path + "Packages")
+		if file == "Packages" && size == 0 {
+			apt.GenerateReleaseFile()
+		}
+		if f, err := os.Open(config.ConfigurationStorage.Path + file); err == nil && file != "" {
+			defer f.Close()
+			stats, _ := f.Stat()
+			w.Header().Set("Content-Length", strconv.Itoa(int(stats.Size())))
+			io.Copy(w, f)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
 }
 
 func FileDelete(w http.ResponseWriter, r *http.Request) {
