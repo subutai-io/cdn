@@ -174,7 +174,7 @@ func (request *UploadRequest) UploadApt() error {
 	result.Description = info["Description"]
 	result.Version = info["Version"]
 	log.Info(fmt.Sprintf("Uploading apt file -> %+v", result))
-	FileWrite(result)
+	WriteDB(result)
 	request.HandlePrivate()
 	return nil
 }
@@ -182,7 +182,7 @@ func (request *UploadRequest) UploadApt() error {
 func (request *UploadRequest) UploadRaw() error {
 	result := request.BuildResult()
 	log.Info(fmt.Sprintf("Uploading raw file -> %+v", result))
-	FileWrite(result)
+	WriteDB(result)
 	request.HandlePrivate()
 	return nil
 }
@@ -360,7 +360,7 @@ func (request *UploadRequest) UploadTemplate() error {
 	}
 	request.fileID = result.FileID
 	log.Info(fmt.Sprintf("Uploading template -> %+v", result))
-	FileWrite(result)
+	WriteDB(result)
 	request.HandlePrivate()
 	return nil
 }

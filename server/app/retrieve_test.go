@@ -448,7 +448,7 @@ func TestResult_GetResultByFileID(t *testing.T) {
 			result.GetResultByFileID(tt.args.fileID)
 		}
 		WriteOwnerInDB(result.Owner)
-		FileWrite(result)
+		WriteDB(result)
 		result.GetResultByFileID(tt.args.fileID)
 		if result.FileID != tt.fields.FileID &&
 			result.Owner != tt.fields.Owner && result.Name != tt.fields.Name &&
@@ -558,7 +558,7 @@ func TestSearch(t *testing.T) {
 	for _, tt := range tests {
 		errorred := false
 		WriteFileInDB("FileID", tt.args.query["Name"], "subutai", tt.args.query["Repo"])
-		FileWrite(result1)
+		WriteDB(result1)
 		gotList, err := Search(tt.args.query)
 		if err != nil {
 			errorred = true

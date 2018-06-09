@@ -114,7 +114,7 @@ func FileDelete(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Error while deleting the file: %v", err)))
 		return
 	}
-	log.Info("Successfully uploaded a file: ", request.FileID)
+	log.Info("Successfully deleted a file: ", request.FileID)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(request.FileID))
 }

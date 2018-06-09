@@ -488,7 +488,7 @@ func TestUploadRequest_HandlePrivate(t *testing.T) {
 			request.fileID = tt.fields.fileID
 			result.Repo = "raw"
 			log.Info(fmt.Sprintf("Going to write result: %+v, request: %+v", result, request))
-			FileWrite(result)
+			WriteDB(result)
 			request.HandlePrivate()
 			if !db.CheckShare(tt.fields.fileID, tt.fields.Owner) {
 				errored = true
