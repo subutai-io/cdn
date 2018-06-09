@@ -14,7 +14,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/config"
-	"github.com/subutai-io/cdn/download"
+	"github.com/subutai-io/cdn/utils"
 )
 
 var (
@@ -1066,7 +1066,7 @@ func UserFile(owner, file string) (list []string) {
 		if b := tx.Bucket(Users).Bucket([]byte(owner)); b != nil {
 			if files := b.Bucket([]byte("files")); files != nil {
 				files.ForEach(func(k, v []byte) error {
-					if NameByHash(string(k)) == file && download.In([]string{owner}, FileField(string(k), "owner")) {
+					if NameByHash(string(k)) == file && utils.In([]string{owner}, FileField(string(k), "owner")) {
 						list = append(list, string(k))
 					}
 					return nil

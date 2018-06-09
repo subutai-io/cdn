@@ -28,6 +28,7 @@ import (
 	"github.com/subutai-io/cdn/db"
 	"github.com/subutai-io/cdn/download"
 	"github.com/subutai-io/cdn/upload"
+	"github.com/subutai-io/cdn/utils"
 )
 
 func readTempl(hash string) (configfile string, err error) {
@@ -559,7 +560,7 @@ func allFieldsPresent(templateData *download.ListItem) (bool, string) {
 		fieldName := typeOfT.Field(i).Name
 		fieldValue := f.Interface()
 
-		if (download.In([]string{fieldName}, requiredFields) && fieldValue == "") ||
+		if (utils.In([]string{fieldName}, requiredFields) && fieldValue == "") ||
 			(fieldName == "Owner" && len(templateData.Owner) == 0) {
 			message := fieldName + " field required"
 			return false, message
