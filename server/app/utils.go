@@ -11,8 +11,8 @@ import (
 
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
-	"github.com/sirupsen/logrus"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/db"
 )

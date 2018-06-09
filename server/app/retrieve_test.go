@@ -12,16 +12,6 @@ import (
 	"github.com/subutai-io/cdn/db"
 )
 
-func WriteOwnerInDB(owner string) {
-	db.DB.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(db.Users); b != nil {
-			b.CreateBucket([]byte(owner))
-			log.Info("Created owner ", owner)
-		}
-		return nil
-	})
-}
-
 func WriteFileInDB(fileID, fileName, owner, repo string) {
 	db.DB.Update(func(tx *bolt.Tx) error {
 		if b := tx.Bucket(db.MyBucket); b != nil {
@@ -112,7 +102,6 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 			}
 		} else if tt.name == "t6" {
 			WriteFileInDB(tt.fields.FileID, tt.fields.Name, tt.fields.Owner, "raw")
-			WriteOwnerInDB(tt.fields.Owner)
 			if err := request.ValidateInfo(); err != nil {
 				errored = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
@@ -122,62 +111,6 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 			break
 		}
 	}
-}
-
-func TestSearchRequest_ValidateList(t *testing.T) {
-	Integration = 0
-	SetUp()
-	type fields struct {
-		FileID     string
-		Owner      string
-		Name       string
-		Repo       string
-		Version    string
-		Tags       string
-		Token      string
-		Verified   string
-		Operation  string
-		validators map[string]ValidateFunction
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		{name: "t1", fields: fields{Owner: "owner1", Token: "token1"}},
-		{name: "t2", fields: fields{Owner: "owner2", Token: "token2"}},
-	}
-	for _, tt := range tests {
-		errored := false
-		request := &SearchRequest{
-			FileID:     tt.fields.FileID,
-			Owner:      tt.fields.Owner,
-			Name:       tt.fields.Name,
-			Repo:       tt.fields.Repo,
-			Version:    tt.fields.Version,
-			Tags:       tt.fields.Tags,
-			Token:      tt.fields.Token,
-			Verified:   tt.fields.Verified,
-			Operation:  tt.fields.Operation,
-			validators: tt.fields.validators,
-		}
-		if tt.name == "t1" {
-			request.ValidateList()
-			if request.Owner != "" && request.Token != "" {
-				errored = true
-				t.Errorf("%q. SearchRequest.ValidateList().Owner must be empty. Got: %v", tt.name, request.Owner)
-			}
-		} else if tt.name == "t2" {
-			WriteOwnerInDB(tt.fields.Owner)
-			request.ValidateList()
-			if request.Owner != tt.fields.Owner {
-				t.Errorf("%q. SearchRequest.ValidateList().Wait: %v, Got: %v", tt.name, tt.fields.Owner, request.Owner)
-			}
-		}
-		if errored {
-			break
-		}
-	}
-	TearDown()
 }
 
 func TestSearchRequest_ParseRequest(t *testing.T) {
@@ -418,94 +351,6 @@ func TestResult_BuildResult(t *testing.T) {
 	}
 }
 
-func TestResult_GetResultByFileID(t *testing.T) {
-	Integration = 0
-	SetUp()
-	defer TearDown()
-	type fields struct {
-		FileID        string
-		Owner         string
-		Name          string
-		Filename      string
-		Repo          string
-		Version       string
-		Scope         string
-		Md5           string
-		Sha256        string
-		Size          int64
-		Tags          string
-		Date          string
-		Timestamp     string
-		Description   string
-		Architecture  string
-		Parent        string
-		ParentVersion string
-		ParentOwner   string
-		PrefSize      string
-	}
-	type args struct {
-		fileID string
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{name: "t1", fields: fields{FileID: "id1", Owner: "owner1", Name: "existedFile", Filename: "file1", Repo: "raw"}, args: args{fileID: "id1"}},
-		{name: "t2", fields: fields{FileID: "id2", Owner: "owner2", Name: "NotExistedFile", Filename: "file2"}, args: args{fileID: "id2"}},
-		{name: "t3", fields: fields{FileID: "id3", Owner: "owner3", Name: "TemplateFile", Filename: "file3-subutai-template", Repo: "template", Architecture: "arch"}, args: args{fileID: "id3"}},
-		{name: "t4", fields: fields{FileID: "id4", Owner: "owner4", Name: "AptFile", Filename: "file4", Repo: "apt", Architecture: "arch"}, args: args{fileID: "id4"}},
-		{name: "t5", fields: fields{FileID: "id5", Owner: "owner5", Name: "AptFile", Filename: "file5", Architecture: "arch"}, args: args{fileID: "id5"}},
-		{name: "t6", fields: fields{FileID: "id6", Owner: "", Name: "AptFile", Filename: "file6", Repo: "apt", Architecture: "arch"}, args: args{fileID: "id6"}},
-	}
-	for _, tt := range tests {
-		errored := false
-		result := &Result{
-			FileID:        tt.fields.FileID,
-			Owner:         tt.fields.Owner,
-			Name:          tt.fields.Name,
-			Filename:      tt.fields.Filename,
-			Repo:          tt.fields.Repo,
-			Version:       tt.fields.Version,
-			Scope:         tt.fields.Scope,
-			Md5:           tt.fields.Md5,
-			Sha256:        tt.fields.Sha256,
-			Size:          tt.fields.Size,
-			Tags:          tt.fields.Tags,
-			Date:          tt.fields.Date,
-			Timestamp:     tt.fields.Timestamp,
-			Description:   tt.fields.Description,
-			Architecture:  tt.fields.Architecture,
-			Parent:        tt.fields.Parent,
-			ParentVersion: tt.fields.ParentVersion,
-			ParentOwner:   tt.fields.ParentOwner,
-			PrefSize:      tt.fields.PrefSize,
-		}
-		if tt.name == "t2" {
-			result = GetResultByFileID(tt.args.fileID)
-		}
-		WriteOwnerInDB(result.Owner)
-		WriteDB(result)
-		result = GetResultByFileID(tt.args.fileID)
-		if result.FileID != tt.fields.FileID &&
-			result.Owner != tt.fields.Owner && result.Name != tt.fields.Name &&
-			result.Filename != tt.fields.Filename && result.Repo != tt.fields.Repo &&
-			result.Version != tt.fields.Version && result.Scope != tt.fields.Scope &&
-			result.Md5 != tt.fields.Md5 && result.Sha256 != tt.fields.Sha256 &&
-			result.Size != tt.fields.Size && result.Tags != tt.fields.Tags && result.Description != tt.fields.Description &&
-			result.Architecture != tt.fields.Architecture && result.Parent != tt.fields.Parent &&
-			result.ParentVersion != tt.fields.ParentVersion && result.ParentOwner != tt.fields.ParentOwner &&
-			result.PrefSize != tt.fields.PrefSize {
-			errored = true
-			t.Errorf("%q. Result = GetResultByFileID() = %v, want %v", tt.name, result, tt.fields)
-		}
-		if errored {
-			break
-		}
-	}
-	TearDown()
-}
-
 func TestFilterInfo(t *testing.T) {
 	Integration = 0
 	SetUp()
@@ -550,13 +395,12 @@ func TestFilterInfo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		errored := false
-		// if tt.name == "t1" {
-		// 	if gotResult := FilterInfo(tt.args.query, tt.args.files); !reflect.DeepEqual(gotResult, tt.wantResult) {
-		// 		errored = true
-		// 		t.Errorf("%q. FilterInfo() = %v, want %v", tt.name, gotResult, tt.wantResult)
-		// 	}
-		// } else
-		if tt.name == "t2" {
+		if tt.name == "t1" {
+			if gotResult := FilterInfo(tt.args.query, tt.args.files); !reflect.DeepEqual(gotResult, tt.wantResult) {
+				errored = true
+				t.Errorf("%q. FilterInfo() = %v, want %v", tt.name, gotResult, tt.wantResult)
+			}
+		} else if tt.name == "t2" {
 			if gotResult := FilterInfo(tt.args.query, tt.args.files); !reflect.DeepEqual(gotResult, tt.wantResult) {
 				errored = true
 				t.Errorf("%q. FilterInfo() = %v, want %v", tt.name, gotResult, tt.wantResult)
