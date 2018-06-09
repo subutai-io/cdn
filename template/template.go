@@ -161,6 +161,16 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		filename := t.Name + "-subutai-template_" + t.Version + "_" + t.Architecture + ".tar.gz"
+		if IDs := db.UserFile(owner, filename); len(IDs) > 0 {
+			for _, ID := range IDs {
+				item := download.FormatItem(db.Info(ID), "template")
+				if item.Name == t.Name && item.Version == t.Version {
+					w.WriteHeader(http.StatusNotAcceptable)
+					w.Write([]byte("File with same key (name + owner + version) already exists"))
+					return
+				}
+			}
+		}
 		db.Write(owner, t.ID, filename, map[string]string{
 			"type":           "template",
 			"arch":           t.Architecture,
