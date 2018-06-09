@@ -141,6 +141,7 @@ type Result struct {
 }
 
 func (result *Result) ConvertToOld() *OldResult {
+	log.Info(fmt.Sprintf("Converting result %+v to oldResult", result))
 	oldResult := &OldResult{
 		FileID:   result.FileID,
 		Owner:    []string{result.Owner},
@@ -171,13 +172,15 @@ func (result *Result) BuildResult(info map[string]string) {
 	return
 }
 
-func (result *Result) GetResultByFileID(fileID string) {
+func GetResultByFileID(fileID string) (result *Result) {
 	info, err := GetFileInfo(fileID)
 	if err != nil {
 		log.Warn(fmt.Sprintf("Couldn't build result by fileID: %v", err))
 	} else {
+		result = new(Result)
 		result.BuildResult(info)
 	}
+	return
 }
 
 type FilterFunction func(map[string]string, []*Result) []*Result

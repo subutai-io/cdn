@@ -482,11 +482,11 @@ func TestResult_GetResultByFileID(t *testing.T) {
 			PrefSize:      tt.fields.PrefSize,
 		}
 		if tt.name == "t2" {
-			result.GetResultByFileID(tt.args.fileID)
+			result = GetResultByFileID(tt.args.fileID)
 		}
 		WriteOwnerInDB(result.Owner)
-		FileWrite(result)
-		result.GetResultByFileID(tt.args.fileID)
+		WriteDB(result)
+		result = GetResultByFileID(tt.args.fileID)
 		if result.FileID != tt.fields.FileID &&
 			result.Owner != tt.fields.Owner && result.Name != tt.fields.Name &&
 			result.Filename != tt.fields.Filename && result.Repo != tt.fields.Repo &&
@@ -497,7 +497,7 @@ func TestResult_GetResultByFileID(t *testing.T) {
 			result.ParentVersion != tt.fields.ParentVersion && result.ParentOwner != tt.fields.ParentOwner &&
 			result.PrefSize != tt.fields.PrefSize {
 			errored = true
-			t.Errorf("%q. Result.GetResultByFileID() = %v, want %v", tt.name, result, tt.fields)
+			t.Errorf("%q. Result = GetResultByFileID() = %v, want %v", tt.name, result, tt.fields)
 		}
 		if errored {
 			break
@@ -700,7 +700,7 @@ func TestSearch(t *testing.T) {
 	for _, tt := range tests {
 		errorred := false
 		WriteFileInDB("FileID", tt.args.query["Name"], "subutai", tt.args.query["Repo"])
-		FileWrite(result1)
+		WriteDB(result1)
 		gotList, err := Search(tt.args.query)
 		if err != nil {
 			errorred = true
