@@ -28,6 +28,7 @@ type SearchRequest struct {
 	Verified  string `json:"Verified,omitempty"`  // flag for searching only among verified CDN users
 	Operation string `json:"Operation,omitempty"` // operation type requested
 
+	admin      string
 	validators map[string]ValidateFunction
 }
 
@@ -38,6 +39,9 @@ func (request *SearchRequest) InitValidators() {
 }
 
 func (request *SearchRequest) ValidateRequest() error {
+	if !In(request.Operation, []string{"info", "list"}) {
+		return fmt.Errorf("incorrect SearchRequest: specify request.Operation type - either \"info\" or \"list\"")
+	}
 	validator := request.validators[request.Operation]
 	return validator()
 }
@@ -95,9 +99,7 @@ func (request *SearchRequest) BuildQuery() (query map[string]string) {
 	query = make(map[string]string)
 	m := structs.Map(request)
 	for k, v := range m {
-		if k == "validators" {
-			continue
-		}
+		log.Debug(fmt.Sprintf("Building query - key: %+v, value: %+v", k, v))
 		value := v.(string)
 		if value == "" {
 			continue
@@ -106,6 +108,9 @@ func (request *SearchRequest) BuildQuery() (query map[string]string) {
 		if query[k] == "latest" {
 			query[k] = ""
 		}
+	}
+	if request.admin != "" {
+		query["admin"] = request.admin
 	}
 	return
 }
@@ -302,7 +307,7 @@ func GetFileInfo(fileID string) (info map[string]string, err error) {
 func MatchQuery(file, query map[string]string) bool {
 	log.Info(fmt.Sprintf("\nfile: %+v\n\nquery: %+v", file, query))
 	for key, value := range query {
-		if key == "Token" || key == "Verified" || key == "Operation" {
+		if key == "Token" || key == "Verified" || key == "Operation" || key == "admin" {
 			continue
 		}
 		if file[key] != value {
@@ -310,21 +315,23 @@ func MatchQuery(file, query map[string]string) bool {
 			return false
 		}
 	}
-	log.Info(fmt.Sprintf("FileID: %s", file["FileID"]))
-	log.Info(fmt.Sprintf("IsPublic: %v", db.IsPublic(file["FileID"])))
-	if (query["Token"] == "" && !db.IsPublic(file["FileID"])) ||
-		(query["Token"] != "" && !db.CheckShare(file["FileID"], db.TokenOwner(query["Token"]))) {
-		log.Warn("file unavailable to user")
+	fileID := file["FileID"]
+	token := file["Token"]
+	verified := file["Verified"]
+	shared := db.IsPublic(fileID)
+	if token != "" && db.CheckShare(fileID, db.TokenOwner(token)) {
+		shared = true
+	}
+	if verified == "true" && !In(file["Owner"], verifiedUsers) {
+		log.Warn("file unavailable because user is not verified")
 		return false
 	}
-	if query["Verified"] == "true" && !In(file["Owner"], verifiedUsers) {
-		log.Warn("file unavailable to user because user is not verified")
-		return false
+	if query["admin"] != "true" {
+		log.Info("Verdict: %+v", shared)
+		return shared
+	} else {
+		return true
 	}
-	if !(query["Verified"] == "true") && query["Token"] != "" && !db.CheckShare(file["FileID"], db.TokenOwner(query["Token"])) {
-		return false
-	}
-	return true
 }
 
 // Search return list of files with parameters like query

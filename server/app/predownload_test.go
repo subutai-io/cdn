@@ -26,7 +26,7 @@ func PreDownloadAllFiles(user gorjun.GorjunUser) {
 func PreDownload() {
 	log.Info("Pre-downloading files to CDN")
 	PreDownloadAllFiles(Subutai)
-	PreDownloadAllFiles(Akenzhaliev)
-	PreDownloadAllFiles(Abaytulakova)
+	PreDownloadAllFiles(Lorem)
+	PreDownloadAllFiles(Ipsum)
 	log.Info("Pre-downloading files finished")
 }

@@ -27,12 +27,12 @@ type GorjunUser struct {
 }
 
 func FirstGorjunUser() GorjunUser {
-	return GorjunUser{"akenzhaliev", "akenzhaliev@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+	return GorjunUser{"lorem", "lorem@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
 	"", "", ""}
 }
 
 func SecondGorjunUser() GorjunUser {
-	return GorjunUser{"abaytulakova", "abaytulakova@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
+	return GorjunUser{"ipsum", "ipsum@optimal-dynamics.com", "127.0.0.1:8080", os.Getenv("HOME") + "/.gnupg",
 	"", "", ""}
 }
 

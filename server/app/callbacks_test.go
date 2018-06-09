@@ -49,19 +49,19 @@ func TestFileSearch(t *testing.T) {
 			oldResults := make([]*OldResult, 0)
 			if i == 0 {
 				results = append(results, new(Result))
-				results[0].GetResultByFileID(UserFiles[PublicScope][Akenzhaliev.Username][2])
+				results[0].GetResultByFileID(UserFiles[PublicScope][Lorem.Username][2])
 			} else if i == 1 || i == 2 {
 				results = append(results, new(Result))
 				results = append(results, new(Result))
 				results = append(results, new(Result))
 				if i == 1 {
-					results[0].GetResultByFileID(UserFiles[PublicScope][Akenzhaliev.Username][i - 1])
+					results[0].GetResultByFileID(UserFiles[PublicScope][Lorem.Username][i - 1])
 					results[1].GetResultByFileID(UserFiles[PublicScope][Subutai.Username][i - 1])
-					results[2].GetResultByFileID(UserFiles[PublicScope][Abaytulakova.Username][i - 1])
+					results[2].GetResultByFileID(UserFiles[PublicScope][Ipsum.Username][i - 1])
 				} else {
-					results[0].GetResultByFileID(UserFiles[PublicScope][Akenzhaliev.Username][i - 1])
+					results[0].GetResultByFileID(UserFiles[PublicScope][Lorem.Username][i - 1])
 					results[1].GetResultByFileID(UserFiles[PublicScope][Subutai.Username][i - 1])
-					results[2].GetResultByFileID(UserFiles[PublicScope][Abaytulakova.Username][i - 1])
+					results[2].GetResultByFileID(UserFiles[PublicScope][Ipsum.Username][i - 1])
 				}
 			}
 			for i := 0; i < len(results); i++ {

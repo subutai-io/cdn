@@ -6,6 +6,7 @@ import (
 	"github.com/subutai-io/cdn/libgorjun"
 	"os"
 	"io"
+	"path/filepath"
 )
 
 type PreUploadFunction func(int, gorjun.GorjunUser)
@@ -25,7 +26,7 @@ func PrepareUploadRequest(scope int, user gorjun.GorjunUser, repo string, index 
 	filePath, _ := os.Open(Dirs[scope][user.Username] + file)
 	request := &UploadRequest{
 		File:     io.Reader(filePath),
-		Filename: file,
+		Filename: filepath.Base(file),
 		Repo:     repo,
 		Owner:    user.Username,
 		Token:    user.Token,
@@ -48,7 +49,10 @@ func PreUploadFileUnit(scope int, user gorjun.GorjunUser, repo string, index int
 
 func PreUploadUnit(scope int, user gorjun.GorjunUser) {
 	fileIDs := make([]string, 0)
-	repos := []string{"raw", "template", "apt"}
+	repos := []string{
+		"raw", "template", "apt",
+		"template", "template", "template", "template", "template", "template", "template",
+	}
 	for i := 0; i < len(Files[scope][user.Username][IDsLayer]); i++ {
 		file := Files[scope][user.Username][NamesLayer][i]
 		path := FilesDir + file
@@ -68,7 +72,10 @@ func PreUploadUnit(scope int, user gorjun.GorjunUser) {
 func PreUploadIntegration(scope int, user gorjun.GorjunUser) {
 	fileIDs := make([]string, 0)
 	dir := Dirs[scope][user.Username]
-	repos := []string{"raw", "template", "apt"}
+	repos := []string{
+		"raw", "template", "apt",
+		"template", "template", "template", "template", "template", "template", "template",
+	}
 	for i := 0; i < len(Files[scope][user.Username][IDsLayer]); i++ {
 		filename := Files[scope][user.Username][NamesLayer][i]
 		path := dir + filename
@@ -95,7 +102,7 @@ func PreUploadAllFiles(user gorjun.GorjunUser) {
 func PreUpload() {
 	log.Info("Pre-uploading files to CDN")
 	PreUploadAllFiles(Subutai)
-	PreUploadAllFiles(Akenzhaliev)
-	PreUploadAllFiles(Abaytulakova)
+	PreUploadAllFiles(Lorem)
+	PreUploadAllFiles(Ipsum)
 	log.Info("Pre-uploading files finished")
 }
