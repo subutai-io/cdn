@@ -1,13 +1,14 @@
 package app
 
 import (
-	"net/http"
-	"github.com/subutai-io/cdn/db"
-	"github.com/subutai-io/agent/log"
 	"context"
-	"github.com/subutai-io/cdn/config"
 	"fmt"
+	"net/http"
+
+	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/auth"
+	"github.com/subutai-io/cdn/config"
+	"github.com/subutai-io/cdn/db"
 )
 
 var (
@@ -61,14 +62,15 @@ func ListenAndServe() {
 func WaitShutdown() {
 	Stop = make(chan bool)
 	log.Info("Waiting for shut down request...")
-	loop:
+loop:
 	for {
 		select {
-		case <-Stop: {
-			log.Info("Received shut down request. Stopping server...")
-			Server.Shutdown(context.Background())
-			break loop
-		}
+		case <-Stop:
+			{
+				log.Info("Received shut down request. Stopping server...")
+				Server.Shutdown(context.Background())
+				break loop
+			}
 		}
 	}
 	log.Info("Server stopped successfully")

@@ -339,12 +339,7 @@ func Search(query map[string]string) (list []*Result, err error) {
 	db.DB.View(func(tx *bolt.Tx) error {
 		files := tx.Bucket(db.MyBucket)
 		files.ForEach(func(k, v []byte) error {
-			file, err := GetFileInfo(string(k))
-			if err != nil {
-				log.Info("error")
-				return err
-			}
-			//log.Info("File: ", file)
+			file, _ := GetFileInfo(string(k))
 			if MatchQuery(file, query) {
 				log.Info("File and query are equal")
 				sr := new(Result)

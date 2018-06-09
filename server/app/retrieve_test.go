@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
@@ -421,7 +422,7 @@ func TestResult_GetResultByFileID(t *testing.T) {
 		{name: "t6", fields: fields{FileID: "id6", Owner: "", Name: "AptFile", Filename: "file6", Repo: "apt", Architecture: "arch"}, args: args{fileID: "id6"}},
 	}
 	for _, tt := range tests {
-		errorred := false
+		errored := false
 		result := &Result{
 			FileID:        tt.fields.FileID,
 			Owner:         tt.fields.Owner,
@@ -458,13 +459,75 @@ func TestResult_GetResultByFileID(t *testing.T) {
 			result.Architecture != tt.fields.Architecture && result.Parent != tt.fields.Parent &&
 			result.ParentVersion != tt.fields.ParentVersion && result.ParentOwner != tt.fields.ParentOwner &&
 			result.PrefSize != tt.fields.PrefSize {
-			errorred = true
+			errored = true
 			t.Errorf("%q. Result.GetResultByFileID() = %v, want %v", tt.name, result, tt.fields)
 		}
-		if errorred {
+		if errored {
 			break
 		}
 	}
+	TearDown()
+}
+
+func TestSearchRequest_Retrieve(t *testing.T) {
+	Integration = 0
+	SetUp()
+	type fields struct {
+		FileID     string
+		Owner      string
+		Name       string
+		Repo       string
+		Version    string
+		Tags       string
+		Token      string
+		Verified   string
+		Operation  string
+		validators map[string]ValidateFunction
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+		{name: "t1", fields: fields{FileID: "id", Name: "notexistedfile", Owner: "subutai", Repo: "raw", Operation: "list"}},
+		{name: "t2", fields: fields{FileID: "id2", Repo: "raw", Operation: "info"}},
+		{name: "t3", fields: fields{Name: "file1", Owner: "subutai", Repo: "raw", Operation: "list"}},
+	}
+	PrepareUsersAndTokens()
+	for _, tt := range tests {
+		errored := false
+		request := &SearchRequest{
+			FileID:     tt.fields.FileID,
+			Owner:      tt.fields.Owner,
+			Name:       tt.fields.Name,
+			Repo:       tt.fields.Repo,
+			Version:    tt.fields.Version,
+			Tags:       tt.fields.Tags,
+			Token:      tt.fields.Token,
+			Verified:   tt.fields.Verified,
+			Operation:  tt.fields.Operation,
+			validators: tt.fields.validators,
+		}
+		if tt.name == "t1" {
+			if results := request.Retrieve(); results != nil {
+				errored = true
+				t.Errorf("%q. SearchRequest.Retrieve(). File is not exist", tt.name)
+			}
+		}
+		if tt.name == "t2" {
+			WriteFileInDB(tt.fields.FileID, "file1", tt.fields.Owner, tt.fields.Repo)
+			results := request.Retrieve()
+			log.Info(fmt.Sprintf("%v. Results: %v", tt.name, results))
+			for _, result := range results {
+				if result.FileID != tt.fields.FileID && len(results) != 1 {
+					t.Errorf("%q. SearchRequest.Retrieve()", tt.name)
+				}
+			}
+		}
+		if errored {
+			break
+		}
+	}
+	TearDown()
 }
 
 func TestSearch(t *testing.T) {
