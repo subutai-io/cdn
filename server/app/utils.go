@@ -9,11 +9,12 @@ import (
 	"io"
 	"os"
 
+	"strings"
+
 	"github.com/boltdb/bolt"
+	"github.com/sirupsen/logrus"
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/db"
-	"strings"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -85,4 +86,14 @@ func SetLogLevel(logLevel string) {
 	if !set {
 		log.Level(log.InfoLevel)
 	}
+}
+
+func GetSize(filePath string) (size int) {
+	file, err := os.Open(filePath)
+	if err == nil {
+		stat, _ := file.Stat()
+		file.Close()
+		size = int(stat.Size())
+	}
+	return size
 }
