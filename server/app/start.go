@@ -40,12 +40,15 @@ func ListenAndServe() {
 		http.HandleFunc("/kurjun/rest/apt/info", FileSearch)
 		http.HandleFunc("/kurjun/rest/apt/list", FileSearch)
 		http.HandleFunc("/kurjun/rest/apt/upload", FileUpload)
+		http.HandleFunc("/kurjun/rest/apt/delete", FileDelete)
 		http.HandleFunc("/kurjun/rest/raw/info", FileSearch)
 		http.HandleFunc("/kurjun/rest/raw/list", FileSearch)
 		http.HandleFunc("/kurjun/rest/raw/upload", FileUpload)
+		http.HandleFunc("/kurjun/rest/raw/delete", FileDelete)
 		http.HandleFunc("/kurjun/rest/template/info", FileSearch)
 		http.HandleFunc("/kurjun/rest/template/list", FileSearch)
 		http.HandleFunc("/kurjun/rest/template/upload", FileUpload)
+		http.HandleFunc("/kurjun/rest/template/delete", FileDelete)
 		Registered = true
 	}
 	log.Info(fmt.Sprintf("Configuration before starting: %+v %+v %+v %+v", config.ConfigurationCDN, config.ConfigurationDB, config.ConfigurationNetwork, config.ConfigurationStorage))

@@ -31,7 +31,7 @@ func FileWrite(result *Result) (err error) {
 			}
 		} else {
 			err := fmt.Errorf("user doesn't exist")
-			log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+			log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 			return err
 		}
 		if b, err := tx.Bucket(db.MyBucket).CreateBucket([]byte(result.FileID)); err == nil {
@@ -40,7 +40,7 @@ func FileWrite(result *Result) (err error) {
 			b, _ = tx.Bucket(db.SearchIndex).CreateBucketIfNotExists([]byte(strings.ToLower(result.Filename)))
 			b.Put(now, []byte(result.Filename))
 		} else {
-			log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+			log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 			return err
 		}
 		if b := tx.Bucket(db.MyBucket).Bucket([]byte(result.FileID)); b != nil {
@@ -48,13 +48,13 @@ func FileWrite(result *Result) (err error) {
 				c.Put([]byte(result.Owner), []byte("w"))
 				log.Info(fmt.Sprintf("Bucket owner set up successfully"))
 			} else {
-				log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+				log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 				return err
 			}
 			if _, err := b.CreateBucket([]byte("scope")); err == nil {
 				log.Info(fmt.Sprintf("Bucket scope set up successfully"))
 			} else {
-				log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+				log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 				return err
 			}
 			if c, err := b.CreateBucket([]byte("hash")); err == nil {
@@ -62,7 +62,7 @@ func FileWrite(result *Result) (err error) {
 				c.Put([]byte("sha256"), []byte(result.Sha256))
 				log.Info(fmt.Sprintf("Bucket hash set up successfully"))
 			} else {
-				log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+				log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 				return err
 			}
 			if c, err := b.CreateBucket([]byte("type")); err == nil {
@@ -70,11 +70,11 @@ func FileWrite(result *Result) (err error) {
 					d.Put([]byte(result.Owner), []byte("w"))
 					log.Info(fmt.Sprintf("Bucket type set up successfully"))
 				} else {
-					log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+					log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 					return err
 				}
 			} else {
-				log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+				log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 				return err
 			}
 			sz := make([]byte, 8)
@@ -104,12 +104,12 @@ func FileWrite(result *Result) (err error) {
 				b.Put([]byte("tag"), []byte(result.Tags))
 			} else {
 				err := fmt.Errorf("unrecognized repo %s", result.Repo)
-				log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+				log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 				return err
 			}
 		} else {
 			err := fmt.Errorf("couldn't open file's bucket")
-			log.Warn(fmt.Sprintf("WriteDB error: %v", err))
+			log.Warn(fmt.Sprintf("FileWrite error: %v", err))
 			return err
 		}
 		log.Info(fmt.Sprintf("File successfully added to repo %s", result.Repo))
