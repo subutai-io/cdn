@@ -36,18 +36,15 @@ func (request *DeleteRequest) ParseRequest(r * http.Request) error {
 
 func (request *DeleteRequest) Delete() error {
 	searchRequest := &SearchRequest{
-		FileID: request.FileID,
-		Owner:  request.Owner,
-		Token:  request.Token,
-		Repo:   request.Repo,
+		FileID:    request.FileID,
+		Owner:     request.Owner,
+		Token:     request.Token,
+		Repo:      request.Repo,
+		Operation: "list",
 	}
-	searchRequest.InitValidators()
 	list := searchRequest.Retrieve()
 	if len(list) == 0 {
 		return fmt.Errorf("no files found")
-	}
-	if len(list) > 1 {
-		return fmt.Errorf("more than one file exist")
 	}
 	DeleteDB(list[0])
 	DeleteFS(list[0])

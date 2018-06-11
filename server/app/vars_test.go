@@ -34,19 +34,60 @@ var (
 var (
 	// 0-layer stands for IDs of public files
 	// 1-layer stands for IDs of private files
-	UserFiles = []map[string][]string {
+	UserFiles = []map[string][]string{
 		{
-			"subutai": {},
-			"lorem":   {},
-			"ipsum":   {},
+			"subutai": {
+
+			},
+			"lorem":   {
+
+			},
+			"ipsum":   {
+
+			},
 		},
 		{
-			"subutai": {},
-			"lorem":   {},
-			"ipsum":   {},
+			"subutai": {
+
+			},
+			"lorem":   {
+
+			},
+			"ipsum":   {
+
+			},
 		},
 	}
 )
+
+var (
+	Repos = []map[string][]string{
+		{
+			"subutai": {
+				"raw", "template",
+			},
+			"lorem":   {
+				"raw", "template", "apt",
+				"template", "template", "template", "template", "template", "template", "template",
+			},
+			"ipsum":   {
+				"raw", "template",
+			},
+		},
+		{
+			"subutai": {
+				"raw", "template",
+			},
+			"lorem":   {
+				"raw", "template",
+			},
+			"ipsum":   {
+				"raw", "template",
+			},
+		},
+	}
+)
+
 
 // all user test files directories
 var (
@@ -68,7 +109,7 @@ var (
 
 // all user test files' IDs and filenames
 var (
-	Files = []map[string][][]string {
+	Files = []map[string][][]string{
 		// 0-layer stands for public files for download
 		{
 			// 0-layer stands for IDs
@@ -85,14 +126,14 @@ var (
 			},
 			"lorem": {
 				{
-					"f32dd7d5-0c9a-4b1a-bfcf-35909310d6b9", // 0
-					"d674228c-fe0f-4849-b104-467872944058", // 1
-					"542d34f8-5146-49b4-acbe-35953b5f2f7c", // 2
+					"f32dd7d5-0c9a-4b1a-bfcf-35909310d6b9", // 0 - 0
+					"d674228c-fe0f-4849-b104-467872944058", // 1 - 1
+					"542d34f8-5146-49b4-acbe-35953b5f2f7c", // 2 - 2
 					"f32dd7d5-0c9a-4b1a-bfcf-35909310d6b9", // 3 - incorrect filename
-					"5eab3bc3-1d4c-4252-a066-58ffe98d023e", // 4 - full template config
+					"5eab3bc3-1d4c-4252-a066-58ffe98d023e", // 4 - full template config - 3
 					"0c531e2f-10d0-4bbb-99be-c7154d33a77d", // 5 - no config
 					"8ee172da-5c36-4c9a-9194-3ff295890776", // 6 - borked name & version
-					"dae96500-d5d6-4878-8fe0-1a09c416e4e5", // 7 - dependent template
+					"dae96500-d5d6-4878-8fe0-1a09c416e4e5", // 7 - dependent template - 4
 					"98236816-0392-4db8-96a6-4d835180098a", // 8 - semi-empty config
 					"be10ba49-bb9c-409d-9182-0a13896b32d8", // 9 - template with bad dependencies
 				},
@@ -159,7 +200,7 @@ var (
 )
 
 var (
-	PublicKeys = map[string]string {
+	PublicKeys = map[string]string{
 		"subutai": SubutaiKey,
 		"lorem":   LoremKey,
 		"ipsum":   IpsumKey,

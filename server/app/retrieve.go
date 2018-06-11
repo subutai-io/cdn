@@ -226,7 +226,7 @@ func FilterList(query map[string]string, files []*Result) (results []*Result) {
 	return files
 }
 
-func (request *SearchRequest) Retrieve() []*Result {
+func (request *SearchRequest) Retrieve() (results []*Result) {
 	query := request.BuildQuery()
 	log.Info("Query: ", query)
 	files, err := Search(query)
@@ -235,13 +235,16 @@ func (request *SearchRequest) Retrieve() []*Result {
 		log.Error("retrieve couldn't search the query %+v", query)
 		return nil
 	}
+	if !In(request.Operation, []string{"info", "list"}) {
+		return
+	}
 	filter := filters[request.Operation]
 	log.Info(fmt.Sprintf("request.Operation = %s", request.Operation))
 	log.Info(fmt.Sprintf("query = %+v", query))
 	log.Info(fmt.Sprintf("files = %+v", files))
-	results := filter(query, files)
+	results = filter(query, files)
 	log.Info(fmt.Sprintf("results = %+v", results))
-	return results
+	return
 }
 
 func GetFileInfo(fileID string) (info map[string]string, err error) {

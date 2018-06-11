@@ -12,6 +12,7 @@ import (
 )
 
 func CountDB(result *Result) int {
+	log.Debug(fmt.Sprintf("CountDB: result == %+v", result))
 	answer := 0
 	db.DB.View(func(tx *bolt.Tx) error {
 		myBucket := tx.Bucket(db.MyBucket)
@@ -53,6 +54,7 @@ func DeleteDB(result *Result) {
 		searchIndex.ForEach(func(k, v []byte) error {
 			if string(k) == result.Filename {
 				if uploads := searchIndex.Bucket(k); uploads != nil {
+					keys := uploads.Stats().KeyN
 					uploadDate := ""
 					uploads.ForEach(func(k, v []byte) error {
 						if string(v) == result.FileID {
@@ -61,9 +63,10 @@ func DeleteDB(result *Result) {
 						return nil
 					})
 					if len(uploadDate) > 0 {
+						keys--
 						uploads.Delete([]byte(uploadDate))
 					}
-					if uploads.Stats().KeyN == 0 {
+					if keys == 0 {
 						cleaned = true
 					}
 				}
@@ -117,7 +120,7 @@ func WriteDB(result *Result) (err error) {
 			b.Put([]byte("date"), now)
 			b.Put([]byte("name"), []byte(result.Filename))
 			b, _ = tx.Bucket(db.SearchIndex).CreateBucketIfNotExists([]byte(strings.ToLower(result.Filename)))
-			b.Put(now, []byte(result.Filename))
+			b.Put(now, []byte(result.FileID))
 		} else {
 			log.Warn(fmt.Sprintf("WriteDB error: %v", err))
 			return err
