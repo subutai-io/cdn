@@ -117,7 +117,7 @@ func WriteDB(result *Result) (err error) {
 			b.Put([]byte("date"), now)
 			b.Put([]byte("name"), []byte(result.Filename))
 			b, _ = tx.Bucket(db.SearchIndex).CreateBucketIfNotExists([]byte(strings.ToLower(result.Filename)))
-			b.Put(now, []byte(result.Filename))
+			b.Put(now, []byte(result.FileID))
 		} else {
 			log.Warn(fmt.Sprintf("WriteDB error: %v", err))
 			return err
