@@ -66,6 +66,8 @@ func AddShare(hash, owner, user string) {
 	log.Debug(fmt.Sprintf("Sharing finished"))
 }
 
+//insert
+
 func CheckAuthID(token string) (name string) {
 	DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(AuthID)
@@ -77,6 +79,8 @@ func CheckAuthID(token string) (name string) {
 	})
 	return
 }
+
+//select
 
 func CheckRepo(owner string, repo []string, hash string) (val int) {
 	log.Debug(fmt.Sprintf("CheckRepo (repo: \"%+v (len: %+v)\", owner: \"%+v\", file: \"%+v\" (name: %+v))", repo, len(repo), owner, hash, NameByHash(hash)))
@@ -107,6 +111,8 @@ func CheckRepo(owner string, repo []string, hash string) (val int) {
 	log.Debug(fmt.Sprintf("Found %+v matches", val))
 	return
 }
+
+//select
 
 // CheckShare returns true if user has access to file, otherwise - false
 func CheckShare(hash, user string) (shared bool) {
@@ -148,6 +154,8 @@ func CheckShare(hash, user string) (shared bool) {
 	return
 }
 
+//select
+
 func CleanAuthID() {
 	DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(AuthID)
@@ -158,6 +166,8 @@ func CleanAuthID() {
 		return nil
 	})
 }
+
+//delete
 
 func CleanSearchIndex() {
 	DB.Update(func(tx *bolt.Tx) error {
@@ -185,6 +195,8 @@ func CleanSearchIndex() {
 	})
 }
 
+//delete
+
 func CleanTokens() {
 	DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(Tokens)
@@ -197,6 +209,8 @@ func CleanTokens() {
 		return nil
 	})
 }
+
+//delete
 
 func CleanUserFiles() {
 	DB.Update(func(tx *bolt.Tx) error {
@@ -221,6 +235,8 @@ func CleanUserFiles() {
 	})
 }
 
+//delete
+
 func Close() {
 	DB.Close()
 }
@@ -243,6 +259,8 @@ func CountMd5(hash string) (md5 int) {
 	return
 }
 
+//select
+
 // CountTotal counts and sets user's total quota usage
 func CountTotal(user string) (total int) {
 	DB.View(func(tx *bolt.Tx) error {
@@ -259,6 +277,8 @@ func CountTotal(user string) (total int) {
 	})
 	return
 }
+
+//select
 
 func DebugDatabase() {
 	//	log.Debug(fmt.Sprintf("\nDB.GoString():\n%+v\n", DB.GoString()))
@@ -405,6 +425,8 @@ func Edit(owner, key, value string, options ...map[string]string) {
 	log.Check(log.WarnLevel, "Editing data in db", err)
 }
 
+//Update
+
 // FileField provides list of file's field properties
 func FileField(hash, field string) (list []string) {
 	log.Debug(fmt.Sprintf("FileField: providing field %+v for file %+v", field, NameByHash(hash)))
@@ -431,6 +453,8 @@ func FileField(hash, field string) (list []string) {
 	return
 }
 
+//select
+
 // FileSignatures returns map with file's owners and their signatures
 func FileSignatures(hash string) (list map[string]string) {
 	log.Debug(fmt.Sprintf("Gathering owners and their signatures of file %+v", NameByHash(hash)))
@@ -451,6 +475,8 @@ func FileSignatures(hash string) (list map[string]string) {
 	log.Debug(fmt.Sprintf("Owners and their signatures: %+v", list))
 	return
 }
+
+//select
 
 // GetFileScope shows users with whom owner shared a file with particular hash
 func GetFileScope(hash, owner string) (scope []string) {
@@ -475,6 +501,8 @@ func GetFileScope(hash, owner string) (scope []string) {
 	})
 	return
 }
+
+//select
 
 func GetUserToken(user string) (token string) {
 	DB.View(func(tx *bolt.Tx) error {
@@ -502,7 +530,10 @@ func GetUserToken(user string) (token string) {
 		log.Debug(fmt.Sprintf("(GetUserToken): Couldn't find valid token of %s", user))
 	}
 	return
+
 }
+
+//select
 
 // Hash returns MD5 and SHA256 hashes by ID
 func Hash(key string) (md5, sha256 string) {
@@ -521,6 +552,8 @@ func Hash(key string) (md5, sha256 string) {
 	})
 	return
 }
+
+//select
 
 func Info(id string) map[string]string {
 	log.Debug(fmt.Sprintf("\n\nGathering %+v file's info", NameByHash(id)))
@@ -545,16 +578,18 @@ func Info(id string) map[string]string {
 	return list
 }
 
+//select
+
 func InitDB() *bolt.DB {
 	log.Info(fmt.Sprintf("Initializing db: config.ConfigurationDB.Path = %s, config.ConfigurationStorage.Path = %s", config.ConfigurationDB.Path, config.ConfigurationStorage.Path))
 	os.MkdirAll(filepath.Dir(config.ConfigurationDB.Path), 0755)
 	os.MkdirAll(config.ConfigurationStorage.Path, 0755)
 	db, err := bolt.Open(config.ConfigurationDB.Path, 0600, &bolt.Options{Timeout: 3 * time.Second})
-	log.Check(log.FatalLevel, "Opening DB: " + config.ConfigurationDB.Path, err)
+	log.Check(log.FatalLevel, "Opening DB: "+config.ConfigurationDB.Path, err)
 	err = db.Update(func(tx *bolt.Tx) error {
 		for _, b := range [][]byte{MyBucket, SearchIndex, Users, Tokens, AuthID, Tags} {
 			_, err := tx.CreateBucketIfNotExists(b)
-			log.Check(log.FatalLevel, "Creating bucket: " + string(b), err)
+			log.Check(log.FatalLevel, "Creating bucket: "+string(b), err)
 		}
 		return nil
 	})
@@ -588,6 +623,8 @@ func IsPublic(hash string) (public bool) {
 	return
 }
 
+//select
+
 // LastHash returns hash of the last uploaded file
 func LastHash(name, t string) (hash string) {
 	DB.View(func(tx *bolt.Tx) error {
@@ -604,6 +641,8 @@ func LastHash(name, t string) (hash string) {
 	})
 	return
 }
+
+//select
 
 func MakePublic(hash, owner string) {
 	log.Debug(fmt.Sprintf("MakePublic(%+v, %+v) started", hash, owner))
