@@ -49,14 +49,10 @@ func PreUploadFileUnit(scope int, user gorjun.GorjunUser, repo string, index int
 
 func PreUploadUnit(scope int, user gorjun.GorjunUser) {
 	fileIDs := make([]string, 0)
-	repos := []string{
-		"raw", "template", "apt",
-		"template", "template", "template", "template", "template", "template", "template",
-	}
 	for i := 0; i < len(Files[scope][user.Username][IDsLayer]); i++ {
 		file := Files[scope][user.Username][NamesLayer][i]
 		path := FilesDir + file
-		repo := repos[i]
+		repo := Repos[PublicScope][user.Username][i]
 		request, err := PreUploadFileUnit(scope, user, repo, i)
 		if err != nil {
 			log.Warn("Failed to upload %s, repo: %s, user: %s, token: %s: %v", path, repo, user.Username, user.Token, err)
@@ -72,14 +68,10 @@ func PreUploadUnit(scope int, user gorjun.GorjunUser) {
 func PreUploadIntegration(scope int, user gorjun.GorjunUser) {
 	fileIDs := make([]string, 0)
 	dir := Dirs[scope][user.Username]
-	repos := []string{
-		"raw", "template", "apt",
-		"template", "template", "template", "template", "template", "template", "template",
-	}
 	for i := 0; i < len(Files[scope][user.Username][IDsLayer]); i++ {
 		filename := Files[scope][user.Username][NamesLayer][i]
 		path := dir + filename
-		repo := repos[i]
+		repo := Repos[PublicScope][user.Username][i]
 		fileID, err := user.Upload(path, repo, ScopeType(scope))
 		if err != nil {
 			log.Warn("Failed to upload %s, repo: %s, user: %s, token: %s", path, repo, user.Username, user.Token)

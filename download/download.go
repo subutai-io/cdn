@@ -16,6 +16,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"github.com/subutai-io/cdn/config"
 	"github.com/subutai-io/cdn/db"
+	"github.com/subutai-io/cdn/utils"
 )
 
 // ListItem describes Gorjun entity. It can be APT package, Subutai template or Raw file.
@@ -152,7 +153,7 @@ func Info(repo string, r *http.Request) []byte {
 	token := strings.ToLower(r.URL.Query().Get("token"))
 	version := r.URL.Query().Get("version")
 	verified := r.URL.Query().Get("verified")
-	version = processVersion(version)
+	version = utils.ProcessVersion(version)
 	if name == "" {
 		name = subname
 	}
@@ -173,19 +174,19 @@ func Info(repo string, r *http.Request) []byte {
 				list = []string{id}
 			} else if owner == "" && token != "" {
 				log.Info("Case 2")
-				list = intersect([]string{id}, intersect(db.SearchName(name), db.OwnerFilesByRepo(db.TokenOwner(token), repo)))
+				list = utils.Intersect([]string{id}, utils.Intersect(db.SearchName(name), db.OwnerFilesByRepo(db.TokenOwner(token), repo)))
 				if len(list) == 0 {
-					list = intersect([]string{id}, intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo)))
+					list = utils.Intersect([]string{id}, utils.Intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo)))
 					if len(list) == 0 {
-						list = intersect([]string{id}, db.SearchName(name))
+						list = utils.Intersect([]string{id}, db.SearchName(name))
 					}
 				}
 			} else if owner != "" && token == "" {
 				log.Info("Case 3")
-				list = intersect([]string{id}, db.OwnerFilesByRepo(owner, repo))
+				list = utils.Intersect([]string{id}, db.OwnerFilesByRepo(owner, repo))
 			} else {
 				log.Info("Case 4")
-				list = intersect([]string{id}, union(db.OwnerFilesByRepo(owner, repo), intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
+				list = utils.Intersect([]string{id}, utils.Union(db.OwnerFilesByRepo(owner, repo), utils.Intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
 			}
 		} else {
 			list = []string{id}
@@ -206,7 +207,7 @@ func Info(repo string, r *http.Request) []byte {
 				verified = "true"
 			} else if owner == "" && token != "" {
 				log.Info("Case 2")
-				list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+				list = utils.Intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 				onlyTokenOwner := make([]string, 0)
 				for _, k := range list {
 					if db.FileField(k, "owner")[0] == db.TokenOwner(token) {
@@ -215,7 +216,7 @@ func Info(repo string, r *http.Request) []byte {
 				}
 				list = onlyTokenOwner
 				if len(list) == 0 {
-					list = intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
+					list = utils.Intersect(db.SearchName(name), db.TokenFilesByRepo(token, repo))
 					if len(list) == 0 {
 						list = db.SearchName(name)
 						verified = "true"
@@ -226,16 +227,16 @@ func Info(repo string, r *http.Request) []byte {
 				list = db.OwnerFilesByRepo(owner, repo)
 			} else {
 				log.Info("Case 4")
-				list = intersect(db.SearchName(name), union(db.OwnerFilesByRepo(owner, repo), intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
+				list = utils.Intersect(db.SearchName(name), utils.Union(db.OwnerFilesByRepo(owner, repo), utils.Intersect(db.TokenFilesByRepo(db.GetUserToken(owner), repo), db.TokenFilesByRepo(token, repo))))
 			}
 		} else {
 			list = db.SearchName(name)
 		}
 	}
-	list = unique(list)
+	list = utils.Unique(list)
 	if tag != "" {
 		listByTag, _ := db.Tag(tag)
-		list = intersect(list, listByTag)
+		list = utils.Intersect(list, listByTag)
 	}
 	if verified == "true" {
 		itemLatestVersion = GetVerified(list, name, repo, version)
@@ -326,19 +327,19 @@ func List(repo string, r *http.Request) []byte {
 		log.Info("Case 2")
 	} else if owner != "" && token == "" {
 		log.Info("Case 3")
-		list = intersect(list, db.OwnerFilesByRepo(owner, repo))
+		list = utils.Intersect(list, db.OwnerFilesByRepo(owner, repo))
 	} else {
 		log.Info("Case 4")
-		list = union(db.OwnerFilesByRepo(owner, repo),
-			intersect(
+		list = utils.Union(db.OwnerFilesByRepo(owner, repo),
+			utils.Intersect(
 				db.TokenFilesByRepo(db.GetUserToken(owner), repo),
 				db.TokenFilesByRepo(token, repo)))
 	}
-	list = unique(list)
+	list = utils.Unique(list)
 	if tag != "" {
 		listByTag, err := db.Tag(tag)
 		log.Check(log.DebugLevel, "Looking for artifacts with tag "+tag, err)
-		list = intersect(list, listByTag)
+		list = utils.Intersect(list, listByTag)
 	}
 	pstr := strings.Split(page, ",")
 	p[0], _ = strconv.Atoi(pstr[0])
@@ -364,7 +365,7 @@ func List(repo string, r *http.Request) []byte {
 		log.Debug(fmt.Sprintf("File #%+v (hash: %+v) in formatted way: %+v", i, k, item))
 		if (name == "" || (name != "" && ((subname != "" && strings.Contains(item.Name, subname)) || name == item.Name || strings.HasPrefix(name, item.Name+"-subutai-template")))) &&
 			(version == "" || (version != "" && (item.Version == version || (version == "latest" && checkVersion(items, item) != -1)))) &&
-			(verified != "true" || In(item.Owner, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"})) {
+			(verified != "true" || utils.In(item.Owner, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"})) {
 			if version == "latest" {
 				positionOlderItem := checkVersion(items, item)
 				if positionOlderItem != len(items) {
@@ -392,43 +393,6 @@ func List(repo string, r *http.Request) []byte {
 	return output
 }
 
-func checkVersion(items []ListItem, item ListItem) int {
-	exists := false
-	for i, v := range items {
-		if v.Name == item.Name && (len(v.Owner) > 0 && len(item.Owner) > 0 && v.Owner[0] == item.Owner[0]) {
-			exists = true
-			vVersion, _ := semver.Make(v.Version)
-			itemVersion, _ := semver.Make(item.Version)
-			if itemVersion.GTE(vVersion) {
-				log.Info(fmt.Sprintf("i = %d, vVersion: %+v, itemVersion: %+v, v: %+v <---> item: %+v", i, vVersion, itemVersion, v, item))
-				return i
-			}
-		}
-	}
-	if !exists {
-		return len(items)
-	}
-	return -1
-}
-
-func processVersion(version string) string {
-	if version == "latest" {
-		return ""
-	}
-	return version
-}
-
-func In(str []string, list []string) bool {
-	for _, s := range list {
-		for _, t := range str {
-			if s == t {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 	log.Debug(fmt.Sprintf("Getting file \"%+v\" from verified users", name))
 	latestVersion, _ := semver.Make("")
@@ -444,7 +408,7 @@ func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 			if info["name"] == name || (strings.HasPrefix(info["name"], name+"-subutai-template") && repo == "template") {
 				for _, owner := range db.FileField(info["id"], "owner") {
 					itemVersion, _ := semver.Make(info["version"])
-					if In([]string{owner}, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}) {
+					if utils.In([]string{owner}, []string{"subutai", "jenkins", "docker", "travis", "appveyor", "devops"}) {
 						if itemVersion.GTE(latestVersion) && len(versionTemplate) == 0 {
 							log.Debug(fmt.Sprintf("First if %+v", k))
 							latestVersion = itemVersion
@@ -460,6 +424,7 @@ func GetVerified(list []string, name, repo, versionTemplate string) ListItem {
 	}
 	return itemLatestVersion
 }
+
 
 func FormatItem(info map[string]string, repo string) ListItem {
 	log.Debug(fmt.Sprintf("Repo: %+v, formatting item %+v", repo, info))
@@ -503,32 +468,22 @@ func FormatItem(info map[string]string, repo string) ListItem {
 	return item
 }
 
-func intersect(listA, listB []string) (list []string) {
-	mapA := make(map[string]int)
-	for _, item := range listA {
-		mapA[item]++
-	}
-	for _, item := range listB {
-		if mapA[item] > 0 {
-			mapA[item]--
-			list = append(list, item)
+
+func checkVersion(items []ListItem, item ListItem) int {
+	exists := false
+	for i, v := range items {
+		if v.Name == item.Name && (len(v.Owner) > 0 && len(item.Owner) > 0 && v.Owner[0] == item.Owner[0]) {
+			exists = true
+			vVersion, _ := semver.Make(v.Version)
+			itemVersion, _ := semver.Make(item.Version)
+			if itemVersion.GTE(vVersion) {
+				log.Info(fmt.Sprintf("i = %d, vVersion: %+v, itemVersion: %+v, v: %+v <---> item: %+v", i, vVersion, itemVersion, v, item))
+				return i
+			}
 		}
 	}
-	return
-}
-
-func unique(list []string) (result []string) {
-	was := make(map[string]bool)
-	for _, v := range list {
-		if !was[v] {
-			was[v] = true
-			result = append(result, v)
-		}
+	if !exists {
+		return len(items)
 	}
-	return
-}
-
-func union(listA []string, listB []string) []string {
-	listA = append(listA, listB[:]...)
-	return unique(listA)
+	return -1
 }
