@@ -40,7 +40,7 @@ after_success:
   - cat template.out >> coverage.txt
   - cat torrent.out >> coverage.txt
   - cat upload.out >> coverage.txt
-  - cat utils.out >> utils.txt
+  - cat utils.out >> coverage.txt
   - bash <(curl -s https://codecov.io/bash)
   - sudo systemctl start gorjun.service
   - sudo systemctl status gorjun.service
