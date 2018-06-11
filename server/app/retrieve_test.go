@@ -45,9 +45,18 @@ func WriteFileWithoutRepo(fileID, fileName, owner string) {
 	})
 }
 
+func TestValidateRequest(t *testing.T) {
+	request := new(SearchRequest)
+	request.Operation = "operation"
+	if err := request.ValidateRequest(); err == nil {
+		t.Error(err)
+	}
+}
+
 func TestSearchRequest_ValidateInfo(t *testing.T) {
 	Integration = 0
 	SetUp()
+	PrepareUsersAndTokens()
 	defer TearDown()
 	type fields struct {
 		FileID   string
@@ -66,6 +75,7 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 		{name: "t4", fields: fields{FileID: "id4", Owner: "NotExistingOwner", Name: "name4"}},
 		{name: "t5", fields: fields{FileID: "id5", Owner: "Owner", Name: "name5", Verified: "true"}},
 		{name: "t6", fields: fields{FileID: "id6", Owner: "subutai", Name: "name6"}},
+		{name: "t7", fields: fields{FileID: "id7", Owner: "lorem", Name: "name7", Verified: "true"}},
 	}
 	for _, tt := range tests {
 		errored := false
@@ -106,6 +116,12 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 				errored = true
 				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
 			}
+		} else if tt.name == "t7" {
+			WriteFileInDB(tt.fields.FileID, tt.fields.Name, tt.fields.Owner, "raw")
+			if err := request.ValidateInfo(); err == nil {
+				errored = true
+				t.Errorf("%q. SearchRequest.ValidateInfo. Returned error: %v", tt.name, err)
+			}
 		}
 		if errored {
 			break
@@ -113,9 +129,70 @@ func TestSearchRequest_ValidateInfo(t *testing.T) {
 	}
 }
 
+func TestSearchRequest_ValidateList(t *testing.T) {
+	Integration = 0
+	SetUp()
+	PrepareUsersAndTokens()
+	defer TearDown()
+	type fields struct {
+		FileID     string
+		Owner      string
+		Name       string
+		Repo       string
+		Version    string
+		Tags       string
+		Token      string
+		Verified   string
+		Operation  string
+		admin      string
+		validators map[string]ValidateFunction
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+		{name: "t1", fields: fields{Owner: "subutai", Token: Subutai.Token}},
+		{name: "t2", fields: fields{Owner: "owner"}},
+		{name: "t3", fields: fields{Owner: "lorem", Token: Lorem.Token, Verified: "true"}},
+	}
+	for _, tt := range tests {
+		request := &SearchRequest{
+			FileID:     tt.fields.FileID,
+			Owner:      tt.fields.Owner,
+			Name:       tt.fields.Name,
+			Repo:       tt.fields.Repo,
+			Version:    tt.fields.Version,
+			Tags:       tt.fields.Tags,
+			Token:      tt.fields.Token,
+			Verified:   tt.fields.Verified,
+			Operation:  tt.fields.Operation,
+			admin:      tt.fields.admin,
+			validators: tt.fields.validators,
+		}
+		if tt.name == "t1" {
+			if err := request.ValidateList(); err != nil {
+				t.Errorf("%q. SearchRequest.ValidateList() error = %v", tt.name, err)
+			}
+		}
+		if tt.name == "t2" {
+			request.ValidateList()
+			if request.Owner != "" && request.Token == "" {
+				t.Errorf("%q. SearchRequest.ValidateList(). Owner must be empty. Got: %v", tt.name, tt.fields.Owner)
+			}
+		}
+		if tt.name == "t3" {
+			if err := request.ValidateList(); err == nil {
+				t.Errorf("%q. SearchRequest.ValidateList() error = %v", tt.name, err)
+			}
+		}
+	}
+}
+
 func TestSearchRequest_ParseRequest(t *testing.T) {
 	Integration = 0
 	SetUp()
+	PrepareUsersAndTokens()
+	TearDown()
 	type fields struct {
 		FileID     string
 		Owner      string
@@ -134,7 +211,8 @@ func TestSearchRequest_ParseRequest(t *testing.T) {
 
 	request1, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/raw/info?id=id1&owner=owner1&name=name1&version=version1&tags=tag1&token=token1&verified=false", nil)
 	request2, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/apt/info?id=id2&owner=owner2&name=name2&version=version2&tags=tag2&token=token2&verified=false", nil)
-	request3, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/template/info?id=id3&owner=owner2&name=name2", nil)
+	request3, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/template/info?id=id3&owner=owner3&name=name3", nil)
+	request4, _ := http.NewRequest("POST", "http://127.0.0.1:8080/kurjun/rest/template/info?id=id4&owner=subutai&name=name4&&verified=true&&token=15a5237ee5314282e52156cfad72e86b53ef0ad47baecc31233dbb1c06f4327c", nil)
 
 	tests := []struct {
 		name   string
@@ -147,9 +225,10 @@ func TestSearchRequest_ParseRequest(t *testing.T) {
 			Token: "token2", Verified: "false", Operation: "info"}, args: args{httpRequest: request2}},
 		{name: "t3", fields: fields{FileID: "id3", Owner: "owner3", Name: "name3", Repo: "", Version: "", Tags: "",
 			Token: "", Verified: "", Operation: ""}, args: args{httpRequest: request3}},
+		{name: "t4", fields: fields{FileID: "id4", Owner: "subutai", Name: "name4", Repo: "", Version: "", Tags: "",
+			Token: Subutai.Token, Verified: "true", Operation: ""}, args: args{httpRequest: request4}},
 	}
 	for _, tt := range tests {
-		errored := false
 		SRequest := &SearchRequest{
 			FileID:     tt.fields.FileID,
 			Owner:      tt.fields.Owner,
@@ -173,14 +252,14 @@ func TestSearchRequest_ParseRequest(t *testing.T) {
 			SRequest.Token != tt.fields.Token &&
 			SRequest.Verified != tt.fields.Verified &&
 			SRequest.Operation != tt.fields.Operation {
-			errored = true
 			t.Errorf("%q. Error. Wait %v, got %v", tt.name, tt.fields, SRequest)
 		}
-		if errored {
-			break
+		if tt.name == "t4" {
+			if SRequest.admin != "true" {
+				t.Error("admin must be true")
+			}
 		}
 	}
-	TearDown()
 }
 
 func TestSearchRequest_BuildQuery(t *testing.T) {
@@ -351,6 +430,47 @@ func TestResult_BuildResult(t *testing.T) {
 	}
 }
 
+func TestGetResultByFileID(t *testing.T) {
+	Integration = 0
+	SetUp()
+	PrepareUsersAndTokens()
+	defer TearDown()
+	result := new(Result)
+	result.FileID = "id1"
+	result.Filename = "file1"
+	result.Name = "file1"
+	result.Owner = "subutai"
+	result.Repo = "raw"
+	WriteDB(result)
+	type args struct {
+		fileID string
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantResult *Result
+	}{
+		{name: "t1", args: args{fileID: "id1"}, wantResult: result},
+		{name: "t2", args: args{fileID: "id2"}, wantResult: result},
+	}
+	for _, tt := range tests {
+		if tt.name == "t1" {
+			gotResult := GetResultByFileID(tt.args.fileID)
+			if gotResult.FileID != tt.wantResult.FileID &&
+				gotResult.Filename != tt.wantResult.Filename &&
+				gotResult.Name != tt.wantResult.Name &&
+				gotResult.Owner != tt.wantResult.Owner &&
+				gotResult.Repo != tt.wantResult.Repo {
+				t.Errorf("%q. GetResultByFileID() = %v, want %v", tt.name, gotResult, tt.wantResult)
+			}
+		} else if tt.name == "t2" {
+			if result := GetResultByFileID(tt.args.fileID); result != nil {
+				t.Errorf("%q. GetResultByFileID() ", tt.name)
+			}
+		}
+	}
+}
+
 func TestFilterInfo(t *testing.T) {
 	Integration = 0
 	SetUp()
@@ -411,6 +531,57 @@ func TestFilterInfo(t *testing.T) {
 		}
 	}
 	TearDown()
+}
+
+func TestFilterList(t *testing.T) {
+	Integration = 0
+	SetUp()
+	PrepareUsersAndTokens()
+	defer TearDown()
+	result1 := new(Result)
+	result1.Name = "file1"
+	result1.Repo = "raw"
+	result1.Tags = "tag1"
+	result1.FileID = "id1"
+	result1.Owner = "subutai"
+	result1.Version = "1"
+	result1.Filename = "file1"
+	result1.Date = " 2018-06-09T07:52:15.208754096+06:00"
+
+	result2 := new(Result)
+	result2.Name = "file2"
+	result2.Repo = "raw"
+	result2.Tags = "tag1"
+	result2.FileID = "id2"
+	result2.Owner = "subutai"
+	result2.Version = "0"
+	result2.Filename = "file1"
+	result2.Date = " 2018-06-09T07:53:15.208754096+06:00"
+	var results []*Result
+	results = append(results, result1)
+	results = append(results, result2)
+
+	var wantResults []*Result
+	wantResults = append(wantResults, result1)
+	wantResults = append(wantResults, result2)
+
+	type args struct {
+		query map[string]string
+		files []*Result
+	}
+	query := map[string]string{"FileID": "id1", "Name": "file1", "Filename": "file1", "Repo": "raw", "Tags": "tag1", "Owner": "subutai", "Version": "1", "Token": Subutai.Token}
+	tests := []struct {
+		name        string
+		args        args
+		wantResults []*Result
+	}{
+		{name: "t1", args: args{query: query, files: results}, wantResults: wantResults},
+	}
+	for _, tt := range tests {
+		if gotResults := FilterList(tt.args.query, tt.args.files); !reflect.DeepEqual(gotResults, tt.wantResults) {
+			t.Errorf("%q. FilterList() = %v, want %v", tt.name, gotResults, tt.wantResults)
+		}
+	}
 }
 
 func TestSearchRequest_Retrieve(t *testing.T) {
@@ -514,6 +685,41 @@ func TestGetFileInfo(t *testing.T) {
 		}
 	}
 	TearDown()
+}
+
+func TestMatchQuery(t *testing.T) {
+	Integration = 0
+	SetUp()
+	PrepareUsersAndTokens()
+	defer TearDown()
+	type args struct {
+		file  map[string]string
+		query map[string]string
+	}
+	file1 := map[string]string{"FileID": "id1", "Filename": "file1", "Owner": "subutai", "Token": Subutai.Token, "Repo": "raw"}
+	query1 := map[string]string{"FileID": "id1", "Filename": "file1", "Owner": "subutai", "Token": Subutai.Token, "Repo": "raw"}
+	file2 := map[string]string{"FileID": "id2", "Filename": "file2", "Owner": "lorem", "Verified": "true", "Repo": "raw"}
+	query2 := map[string]string{"FileID": "id2", "Filename": "file2", "Owner": "lorem", "Verified": "true", "Repo": "raw"}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{name: "t1", args: args{file: file1, query: query1}},
+		{name: "t2", args: args{file: file2, query: query2}},
+	}
+	for _, tt := range tests {
+		if tt.name == "t1" {
+			WriteFileInDB(tt.args.file["FileID"], tt.args.file["Filename"], tt.args.file["Owner"], tt.args.file["Repo"])
+			if got := MatchQuery(tt.args.file, tt.args.query); !got {
+				t.Errorf("%q. MatchQuery()", tt.name)
+			}
+		} else if tt.name == "t2" {
+			WriteFileInDB(tt.args.file["FileID"], tt.args.file["Filename"], tt.args.file["Owner"], tt.args.file["Repo"])
+			if got := MatchQuery(tt.args.file, tt.args.query); got {
+				t.Errorf("%q. MatchQuery()", tt.name)
+			}
+		}
+	}
 }
 
 func TestSearch(t *testing.T) {
