@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/boltdb/bolt"
-	"github.com/subutai-io/cdn/db"
 )
 
 func TestCheckOwner(t *testing.T) {
@@ -25,8 +24,8 @@ func TestCheckOwner(t *testing.T) {
 	}
 	for _, tt := range tests {
 		if tt.name == "t1" {
-			db.DB.Update(func(tx *bolt.Tx) error {
-				if b := tx.Bucket(db.Users); b != nil {
+			DB.DB.Update(func(tx *bolt.Tx) error {
+				if b := tx.Bucket(DB.Users); b != nil {
 					b.CreateBucket([]byte(tt.args.owner))
 				}
 				return nil

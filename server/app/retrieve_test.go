@@ -9,41 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/db"
 )
-
-func WriteFileInDB(fileID, fileName, owner, repo string) {
-	db.DB.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(db.MyBucket); b != nil {
-			if c, _ := b.CreateBucket([]byte(fileID)); c != nil {
-				c.Put([]byte("name"), []byte(fileName))
-				if d, _ := c.CreateBucket([]byte("owner")); d != nil {
-					d.Put([]byte(owner), []byte("w"))
-				}
-				if d, _ := c.CreateBucket([]byte("type")); d != nil {
-					d.Put([]byte(repo), []byte("w"))
-				}
-				c.CreateBucket([]byte("scope"))
-			}
-		}
-		return nil
-	})
-}
-
-func WriteFileWithoutRepo(fileID, fileName, owner string) {
-	db.DB.Update(func(tx *bolt.Tx) error {
-		if b := tx.Bucket(db.MyBucket); b != nil {
-			if c, _ := b.CreateBucket([]byte(fileID)); c != nil {
-				c.Put([]byte("name"), []byte(fileName))
-				if d, _ := c.CreateBucket([]byte("owner")); d != nil {
-					d.Put([]byte(owner), []byte("w"))
-				}
-				c.CreateBucket([]byte("scope"))
-			}
-		}
-		return nil
-	})
-}
 
 func TestValidateRequest(t *testing.T) {
 	request := new(SearchRequest)
@@ -441,7 +407,7 @@ func TestGetResultByFileID(t *testing.T) {
 	result.Name = "file1"
 	result.Owner = "subutai"
 	result.Repo = "raw"
-	WriteDB(result)
+//	WriteDB(result)
 	type args struct {
 		fileID string
 	}

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
-	"github.com/subutai-io/cdn/db"
 	"fmt"
 	"os"
 	"mime/multipart"
@@ -15,6 +14,7 @@ import (
 	"github.com/subutai-io/agent/log"
 	"strconv"
 	"github.com/subutai-io/cdn/libgorjun"
+	"github.com/subutai-io/cdn/db"
 )
 
 func PrepareRequest(token, filePath, repo, version, tags, private string) *http.Request {
@@ -488,9 +488,9 @@ func TestUploadRequest_HandlePrivate(t *testing.T) {
 			request.fileID = tt.fields.fileID
 			result.Repo = "raw"
 			log.Info(fmt.Sprintf("Going to write result: %+v, request: %+v", result, request))
-			WriteDB(result)
+//			WriteDB(result)
 			request.HandlePrivate()
-			if !db.CheckShare(tt.fields.fileID, tt.fields.Owner) {
+			if !DB.CheckShare(tt.fields.fileID, tt.fields.Owner) {
 				errored = true
 				t.Errorf("file is not available to its owner")
 			}

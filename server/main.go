@@ -4,8 +4,8 @@ import (
 	"github.com/subutai-io/cdn/server/app"
 	"github.com/urfave/cli"
 	"os"
-	"github.com/subutai-io/cdn/config"
-	"github.com/subutai-io/cdn/db"
+	"github.com/asdine/storm"
+	"github.com/subutai-io/agent/log"
 )
 
 var (
@@ -24,15 +24,23 @@ var (
 )
 */
 
-func Init() {
+func init() {
+	log.Info("Initialization started")
 	app.SetLogLevel(Log)
-	config.InitConfig()
-	db.DB = db.InitDB()
+	app.InitConfig()
 	app.InitFilters()
+	var err error
+	app.DB, err = storm.Open(app.ConfigurationDB.Path)
+	if err != nil {
+		log.Panic("Couldn't open DB")
+		os.Exit(1)
+	}
+	log.Info("Initialization ended")
 }
 
 // main starts/stops CDN server
 func main() {
+	log.Info("Starting main")
 	application := cli.NewApp()
 	application.Name = "CDN"
 	application.Version = AppVersion

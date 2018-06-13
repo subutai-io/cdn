@@ -12,7 +12,6 @@ import (
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/db"
 )
 
 type ValidateFunction func() error
@@ -50,7 +49,7 @@ func (request *SearchRequest) ValidateInfo() error {
 	if request.FileID == "" && request.Name == "" {
 		return fmt.Errorf("both fileID and name weren't given")
 	}
-	if request.FileID != "" && request.Name != "" && db.NameByHash(request.FileID) != request.Name {
+	if request.FileID != "" && request.Name != "" && DB.NameByHash(request.FileID) != request.Name {
 		return fmt.Errorf("both fileID and name provided but they are not the same")
 	}
 	if !CheckOwner(request.Owner) {
@@ -90,7 +89,7 @@ func (request *SearchRequest) ParseRequest(httpRequest *http.Request) error {
 	request.Token = strings.ToLower(httpRequest.URL.Query().Get("token"))
 	request.Verified = strings.ToLower(httpRequest.URL.Query().Get("verified"))
 	request.Operation = strings.Split(strings.Split(rest, "/")[4], "?")[0]
-	if db.TokenOwner(request.Token) == "subutai" {
+	if DB.TokenOwner(request.Token) == "subutai" {
 		request.admin = "true"
 	}
 	return request.ValidateRequest()
@@ -247,71 +246,6 @@ func (request *SearchRequest) Retrieve() (results []*Result) {
 	return
 }
 
-func GetFileInfo(fileID string) (info map[string]string, err error) {
-	info = make(map[string]string)
-	info["FileID"] = fileID
-	err = db.DB.View(func(tx *bolt.Tx) error {
-		file := tx.Bucket(db.MyBucket).Bucket([]byte(fileID))
-		if file == nil {
-			return fmt.Errorf("file %s not found", fileID)
-		}
-		owner := file.Bucket([]byte("owner"))
-		key, _ := owner.Cursor().First()
-		info["Owner"] = string(key)
-		info["Name"] = string(file.Get([]byte("name")))
-		info["Filename"] = string(file.Get([]byte("name")))
-		repo := file.Bucket([]byte("type"))
-		if repo != nil {
-			key, _ = repo.Cursor().First()
-			info["Repo"] = string(key)
-			if info["Repo"] == "template" {
-				info["Name"] = strings.Split(info["Name"], "-subutai-template")[0]
-			}
-		}
-		if len(info["Repo"]) == 0 {
-			return fmt.Errorf("couldn't find repo for file %s", fileID)
-		}
-		info["Version"] = string(file.Get([]byte("version")))
-		info["Tags"] = string(file.Get([]byte("tag")))
-		info["Date"] = string(file.Get([]byte("date")))
-		date, _ := time.Parse(time.RFC3339Nano, info["Date"])
-		info["Timestamp"] = strconv.FormatInt(date.Unix(), 10)
-		if hash := tx.Bucket(db.MyBucket).Bucket([]byte(fileID)).Bucket([]byte("hash")); hash != nil {
-			hash.ForEach(func(k, v []byte) error {
-				if string(k) == "md5" {
-					info["Md5"] = string(v)
-				}
-				if string(k) == "sha256" {
-					info["Sha256"] = string(v)
-				}
-				return nil
-			})
-		}
-		sz := file.Get([]byte("size"))
-		if sz != nil {
-			info["Size"] = string(sz)
-		} else {
-			info["Size"] = string(file.Get([]byte("Size")))
-		}
-		info["Description"] = string(file.Get([]byte("Description")))
-		arch := file.Get([]byte("Architecture"))
-		if arch != nil {
-			info["Architecture"] = string(arch)
-		} else {
-			info["Architecture"] = string(file.Get([]byte("arch")))
-		}
-		info["Parent"] = string(file.Get([]byte("parent")))
-		info["ParentVersion"] = string(file.Get([]byte("parent-version")))
-		info["ParentOwner"] = string(file.Get([]byte("parent-owner")))
-		info["PrefSize"] = string(file.Get([]byte("prefsize")))
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return
-}
-
 func MatchQuery(file, query map[string]string) bool {
 	log.Info(fmt.Sprintf("\nfile: %+v\n\nquery: %+v", file, query))
 	for key, value := range query {
@@ -326,8 +260,8 @@ func MatchQuery(file, query map[string]string) bool {
 	fileID := file["FileID"]
 	token := file["Token"]
 	verified := file["Verified"]
-	shared := db.IsPublic(fileID)
-	if token != "" && db.CheckShare(fileID, db.TokenOwner(token)) {
+	shared := DB.IsPublic(fileID)
+	if token != "" && DB.CheckShare(fileID, DB.TokenOwner(token)) {
 		shared = true
 	}
 	if verified == "true" && !In(file["Owner"], verifiedUsers) {
@@ -340,23 +274,4 @@ func MatchQuery(file, query map[string]string) bool {
 	} else {
 		return true
 	}
-}
-
-// Search return list of files with parameters like query
-func Search(query map[string]string) (list []*Result, err error) {
-	db.DB.View(func(tx *bolt.Tx) error {
-		files := tx.Bucket(db.MyBucket)
-		files.ForEach(func(k, v []byte) error {
-			file, _ := GetFileInfo(string(k))
-			if MatchQuery(file, query) {
-				log.Info("File and query are equal")
-				sr := new(Result)
-				sr.BuildResult(file)
-				list = append(list, sr)
-			}
-			return nil
-		})
-		return nil
-	})
-	return list, nil
 }
