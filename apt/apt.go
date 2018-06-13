@@ -114,6 +114,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		ID := my_uuid.String()
 		db.AddTag(strings.Split(tags, ","), ID, "apt")
+		if e := db.IsAptExist(header.Filename); e == true {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Failed to upload apt with the same name"))
+			return
+		}
 		err = db.Write(owner, ID, header.Filename, meta)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

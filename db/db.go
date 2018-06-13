@@ -663,6 +663,17 @@ func OwnerFilesByRepo(owner string, repo string) (list []string) {
 	return
 }
 
+func IsAptExist(filename string) bool {
+	exists := false
+	db.View(func(tx *bolt.Tx) error {
+		if b := tx.Bucket(SearchIndex).Bucket([]byte(filename)); b != nil {
+			exists = true
+		}
+		return nil
+	})
+	return exists
+}
+
 func PrintBucketName(buckets []string) (path string) {
 	path = "tx"
 	for i := range buckets {
