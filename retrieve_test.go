@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/boltdb/bolt"
-
 	"github.com/subutai-io/agent/log"
 )
 

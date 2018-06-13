@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/pgp"
 	"math/rand"
 	"crypto/md5"
 	"crypto/sha256"
@@ -238,7 +237,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			log.Info("User " + name + " registered with this key " + key)
 			return
 		} else if len(r.MultipartForm.Value["key"]) > 0 {
-			key := pgp.Verify("Hub", r.MultipartForm.Value["key"][0])
+			key := Verify("Hub", r.MultipartForm.Value["key"][0])
 			log.Debug(fmt.Sprintf("Key == %+v", r.MultipartForm.Value["key"]))
 			if len(key) == 0 {
 				log.Debug(fmt.Sprintf("Key empty"))
@@ -246,7 +245,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("Signature check failed"))
 				return
 			}
-			fingerprint := pgp.Fingerprint(key)
+			fingerprint := Fingerprint(key)
 			if len(fingerprint) == 0 {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte("Filed to get key fingerprint"))
@@ -284,7 +283,7 @@ func Token(w http.ResponseWriter, r *http.Request) {
 			log.Warn(r.RemoteAddr + " - empty user name or message filed")
 			return
 		}
-		authid := pgp.Verify(name, message)
+		authid := Verify(name, message)
 		if DB.CheckAuthID(authid) == name {
 			token := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(time.Now().String(), name, rand.Float64()))))
 			DB.SaveToken(name, fmt.Sprintf("%x", sha256.Sum256([]byte(token))))
@@ -355,7 +354,7 @@ func Sign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	signature := r.MultipartForm.Value["signature"][0]
-	hash := pgp.Verify(owner, signature)
+	hash := Verify(owner, signature)
 	if len(hash) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Failed to verify signature with user key"))

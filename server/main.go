@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/subutai-io/cdn/server/app"
+	"github.com/subutai-io/cdn"
 	"github.com/urfave/cli"
 	"os"
-	"github.com/asdine/storm"
 	"github.com/subutai-io/agent/log"
 )
 
@@ -24,17 +23,12 @@ var (
 )
 */
 
-func init() {
+func Init() {
 	log.Info("Initialization started")
 	app.SetLogLevel(Log)
 	app.InitConfig()
+	app.InitDB()
 	app.InitFilters()
-	var err error
-	app.DB, err = storm.Open(app.ConfigurationDB.Path)
-	if err != nil {
-		log.Panic("Couldn't open DB")
-		os.Exit(1)
-	}
 	log.Info("Initialization ended")
 }
 

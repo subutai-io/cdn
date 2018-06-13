@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"github.com/subutai-io/agent/log"
 	"strconv"
-	"github.com/subutai-io/cdn/libgorjun"
-	"github.com/subutai-io/cdn/db"
 )
 
 func PrepareRequest(token, filePath, repo, version, tags, private string) *http.Request {

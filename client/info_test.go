@@ -1,4 +1,4 @@
-package gorjun
+package client
 
 import (
 	"testing"

@@ -6,6 +6,8 @@ import (
 	"github.com/subutai-io/agent/log"
 	"gopkg.in/gcfg.v1"
 	"fmt"
+	"github.com/asdine/storm"
+	"os"
 )
 
 type cdnConfiguration struct {
@@ -31,7 +33,7 @@ type configFile struct {
 
 const defaultConfig = `
 	[db]
-	path = /opt/gorjun/data/db/my-storm.db
+	path = /opt/gorjun/data/db/my.db
 
 	[CDN]
 	node =
@@ -52,6 +54,15 @@ var (
 	ConfigurationNetwork networkConfiguration
 	ConfigurationStorage fileConfiguration
 )
+
+func InitDB() {
+	var err error
+	DB, err = storm.Open(ConfigurationDB.Path)
+	if err != nil {
+		log.Panic("Couldn't open DB")
+		os.Exit(1)
+	}
+}
 
 func InitConfig() {
 	log.Info("Initialization started")

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os/exec"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/libgorjun"
+	"github.com/subutai-io/cdn/client"
 )
 
-func PreDownloadFiles(scope int, user gorjun.GorjunUser) { // private either 0 (false) or 1 (true)
+func PreDownloadFiles(scope int, user client.GorjunUser) { // private either 0 (false) or 1 (true)
 	for i := 0; i < len(Files[scope][user.Username][IDsLayer]); i++ {
 		cmd := exec.Command("wget", "-O", Dirs[scope][user.Username] + Files[scope][user.Username][NamesLayer][i], Raw + Files[scope][user.Username][IDsLayer][i])
 		cmd.Run()
@@ -16,7 +16,7 @@ func PreDownloadFiles(scope int, user gorjun.GorjunUser) { // private either 0 (
 	return
 }
 
-func PreDownloadAllFiles(user gorjun.GorjunUser) {
+func PreDownloadAllFiles(user client.GorjunUser) {
 	PreDownloadFiles(PublicScope, user)
 	PreDownloadFiles(PrivateScope, user)
 	log.Info(fmt.Sprintf("All files of user %s downloaded", user.Username))

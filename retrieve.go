@@ -3,12 +3,10 @@ package app
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/boltdb/bolt"
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 	"github.com/subutai-io/agent/log"

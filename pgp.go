@@ -7,12 +7,11 @@ import (
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/clearsign"
 
-	"github.com/subutai-io/cdn/db"
 	"fmt"
 )
 
 func Verify(name, message string) string {
-	for _, key := range db.UserKeys(name) {
+	for _, key := range DB.UserKeys(name) {
 		log.Info("Verifiying key %s", key)
 		entity, _ := openpgp.ReadArmoredKeyRing(bytes.NewBufferString(key))
 		log.Warn(fmt.Sprintf("Reading user public key"))

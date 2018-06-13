@@ -3,13 +3,13 @@ package app
 import (
 	"fmt"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/libgorjun"
 	"os"
 	"io"
 	"path/filepath"
+	"github.com/subutai-io/cdn/client"
 )
 
-type PreUploadFunction func(int, gorjun.GorjunUser)
+type PreUploadFunction func(int, client.GorjunUser)
 
 var (
 	PreUploaders  map[int]PreUploadFunction
@@ -21,7 +21,7 @@ func InitPreUploaders() {
 	PreUploaders[1] = PreUploadIntegration
 }
 
-func PrepareUploadRequest(scope int, user gorjun.GorjunUser, repo string, index int) (*UploadRequest) {
+func PrepareUploadRequest(scope int, user client.GorjunUser, repo string, index int) (*UploadRequest) {
 	file := Files[scope][user.Username][NamesLayer][index]
 	filePath, _ := os.Open(Dirs[scope][user.Username] + file)
 	request := &UploadRequest{
@@ -38,7 +38,7 @@ func PrepareUploadRequest(scope int, user gorjun.GorjunUser, repo string, index 
 	return request
 }
 
-func PreUploadFileUnit(scope int, user gorjun.GorjunUser, repo string, index int) (*UploadRequest, error) {
+func PreUploadFileUnit(scope int, user client.GorjunUser, repo string, index int) (*UploadRequest, error) {
 	request := PrepareUploadRequest(scope, user, repo, index)
 	err := request.Upload()
 	if err != nil {
@@ -47,7 +47,7 @@ func PreUploadFileUnit(scope int, user gorjun.GorjunUser, repo string, index int
 	return request, nil
 }
 
-func PreUploadUnit(scope int, user gorjun.GorjunUser) {
+func PreUploadUnit(scope int, user client.GorjunUser) {
 	fileIDs := make([]string, 0)
 	for i := 0; i < len(Files[scope][user.Username][IDsLayer]); i++ {
 		file := Files[scope][user.Username][NamesLayer][i]
@@ -65,7 +65,7 @@ func PreUploadUnit(scope int, user gorjun.GorjunUser) {
 	UserFiles[scope][user.Username] = fileIDs
 }
 
-func PreUploadIntegration(scope int, user gorjun.GorjunUser) {
+func PreUploadIntegration(scope int, user client.GorjunUser) {
 	fileIDs := make([]string, 0)
 	dir := Dirs[scope][user.Username]
 	for i := 0; i < len(Files[scope][user.Username][IDsLayer]); i++ {
@@ -84,7 +84,7 @@ func PreUploadIntegration(scope int, user gorjun.GorjunUser) {
 	UserFiles[scope][user.Username] = fileIDs
 }
 
-func PreUploadAllFiles(user gorjun.GorjunUser) {
+func PreUploadAllFiles(user client.GorjunUser) {
 	PreUploaders[Integration](PublicScope, user)
 	PreUploaders[Integration](PrivateScope, user)
 	log.Info(fmt.Sprintf("All uploaded files of user %s: %+v", user.Username, UserFiles))

@@ -1,6 +1,8 @@
 package app
 
-import "github.com/subutai-io/cdn/libgorjun"
+import (
+	"github.com/subutai-io/cdn/client"
+)
 
 var (
 	Integration int
@@ -15,9 +17,9 @@ var (
 )
 
 var (
-	Subutai = gorjun.VerifiedGorjunUser()
-	Lorem   = gorjun.FirstGorjunUser()
-	Ipsum   = gorjun.SecondGorjunUser()
+	Subutai = client.VerifiedGorjunUser()
+	Lorem   = client.FirstGorjunUser()
+	Ipsum   = client.SecondGorjunUser()
 )
 
 var (
