@@ -11,6 +11,33 @@ import (
 	"github.com/subutai-io/cdn/db"
 )
 
+type File struct {
+	FileID        string    `storm:"unique"`
+	Name          string    `storm:"index"`
+	Owner         string    `storm:"index"`
+	Version       string    `storm:"index"`
+	Md5           string    `storm:"index"`
+	Sha256        string    `storm:"index"`
+	Tags          []string  `storm:"index"`
+	Date          time.Time `storm:"index"`
+	Timestamp     string    `storm:"index"`
+	Size          int64     `storm:"index"`
+	Description   string    `storm:"index"`
+	Architecture  string    `storm:"index"`
+	Parent        string    `storm:"index"`
+	ParentVersion string    `storm:"index"`
+	ParentOwner   string    `storm:"index"`
+	PrefSize      string    `storm:"index"`
+}
+
+type User struct {
+	UserName string   `storm:"unique"`
+	Files    []File   `storm:"index"`
+	Tokens   []string `storm:"index"`
+	Keys     []string `storm:"index"`
+	AuthIDs  []string `storm:"index"`
+}
+
 func CountDB(result *Result) int {
 	log.Debug(fmt.Sprintf("CountDB: result == %+v", result))
 	answer := 0
