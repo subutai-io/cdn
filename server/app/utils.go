@@ -11,10 +11,9 @@ import (
 
 	"strings"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/boltdb/bolt"
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/db"
+	"os/exec"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -22,16 +21,13 @@ var (
 )
 
 func CheckOwner(owner string) bool {
-	exists := false
-	db.DB.View(func(tx *bolt.Tx) error {
-		exists = tx.Bucket(db.Users).Bucket([]byte(owner)) != nil
-		return nil
-	})
-	return exists
+	// TODO
+	return false
 }
 
 func CheckToken(token string) bool {
-	return db.TokenOwner(token) != ""
+	// TODO
+	return false
 }
 
 func Hash(file string, algo string) string {
@@ -96,4 +92,29 @@ func GetSize(filePath string) (size int) {
 		size = int(stat.Size())
 	}
 	return size
+}
+
+func GenerateReleaseFile() {
+	cmd := exec.Command("bash", "-c", "dpkg-scanpackages . /dev/null | tee Packages | gzip > Packages.gz")
+	cmd.Dir = ConfigurationStorage.Path
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't run dpkg-scanpackages")
+	}
+
+	cmd = exec.Command("bash", "-c", "apt-ftparchive release . > Release")
+	cmd.Dir = ConfigurationStorage.Path
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't run apt-ftparchive")
+	}
+	cmd = exec.Command("bash", "-c", "gpg --batch --yes --armor -u subutai-release@subutai.io -abs -o Release.gpg Release")
+	cmd.Dir = ConfigurationStorage.Path
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+		log.Info("Can't sign Realease file")
+	}
 }

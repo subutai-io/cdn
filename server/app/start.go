@@ -6,12 +6,11 @@ import (
 	"net/http"
 
 	"github.com/subutai-io/agent/log"
-	"github.com/subutai-io/cdn/auth"
-	"github.com/subutai-io/cdn/config"
-	"github.com/subutai-io/cdn/db"
+	"github.com/asdine/storm"
 )
 
 var (
+	DB         *storm.DB
 	Server     *http.Server
 	Start      chan bool
 	Stop       chan bool
@@ -28,15 +27,15 @@ func RunServer() {
 }
 
 func ListenAndServe() {
-	defer db.Close()
+	defer DB.Close()
 	if !Registered {
-		http.HandleFunc("/kurjun/rest/auth/key", auth.Key)
-		http.HandleFunc("/kurjun/rest/auth/keys", auth.Keys)
-		http.HandleFunc("/kurjun/rest/auth/sign", auth.Sign)
-		http.HandleFunc("/kurjun/rest/auth/owner", auth.Owner)
-		http.HandleFunc("/kurjun/rest/auth/token", auth.Token)
-		http.HandleFunc("/kurjun/rest/auth/register", auth.Register)
-		http.HandleFunc("/kurjun/rest/auth/validate", auth.Validate)
+		http.HandleFunc("/kurjun/rest/auth/key", Key)
+		http.HandleFunc("/kurjun/rest/auth/keys", Keys)
+		http.HandleFunc("/kurjun/rest/auth/sign", Sign)
+		http.HandleFunc("/kurjun/rest/auth/owner", Owner)
+		http.HandleFunc("/kurjun/rest/auth/token", Token)
+		http.HandleFunc("/kurjun/rest/auth/register", Register)
+		http.HandleFunc("/kurjun/rest/auth/validate", Validate)
 		http.HandleFunc("/kurjun/rest/apt/info", FileSearch)
 		http.HandleFunc("/kurjun/rest/apt/list", FileSearch)
 		http.HandleFunc("/kurjun/rest/apt/upload", FileUpload)
@@ -55,9 +54,9 @@ func ListenAndServe() {
 		http.HandleFunc("/kurjun/rest/template/download", FileDelete)
 		Registered = true
 	}
-	log.Info(fmt.Sprintf("Configuration before starting: %+v %+v %+v %+v", config.ConfigurationCDN, config.ConfigurationDB, config.ConfigurationNetwork, config.ConfigurationStorage))
+	log.Info(fmt.Sprintf("Configuration before starting: %+v %+v %+v %+v", ConfigurationCDN, ConfigurationDB, ConfigurationNetwork, ConfigurationStorage))
 	Server = &http.Server{
-		Addr:    ":" + config.ConfigurationNetwork.Port,
+		Addr:    ":" + ConfigurationNetwork.Port,
 		Handler: nil,
 	}
 	log.Info("Server has started. " + "Listening at " + "http://127.0.0.1:8080")
