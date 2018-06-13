@@ -54,6 +54,13 @@ func PrepareQuery(parameters ...Parameter) q.Matcher {
 	return query
 }
 
+func GetFileInfo(query q.Matcher) (files []File) {
+	log.Info("Started GetFileInfo")
+	db.Select(query).Find(&files)
+	log.Info("Finished GetFileInfo")
+	return files
+}
+
 func GetUserInfo(query q.Matcher) (users []User) {
 	log.Info("Started GetUserInfo")
 	DB.Select(query).Find(&users)
