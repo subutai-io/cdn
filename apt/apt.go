@@ -84,6 +84,11 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	log.Info("Start uploading the file")
 	if r.Method == "POST" {
 		_, header, _ := r.FormFile("file")
+		if e := db.IsFileExists(header.Filename); e == true {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Failed to upload apt with the same name"))
+			return
+		}
 		md5, sha256, owner := upload.Handler(w, r)
 		if len(md5) == 0 || len(sha256) == 0 {
 			log.Info("Md5 or sha256 is empty. Failed to calculate the hash")
