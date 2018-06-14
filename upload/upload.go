@@ -95,8 +95,8 @@ func Handler(w http.ResponseWriter, r *http.Request) (md5sum, sha256sum, owner s
 		return
 	}
 	if repo[3] != "apt" {
-		log.Debug(fmt.Sprintf("repo[3] is not apt. Renaming %+v to %+v", config.Storage.Path + header.Filename, config.Storage.Path + md5sum))
-		os.Rename(config.Storage.Path + header.Filename, config.Storage.Path + md5sum)
+		log.Debug(fmt.Sprintf("repo[3] is not apt. Renaming %+v to %+v", config.Storage.Path+header.Filename, config.Storage.Path+md5sum))
+		os.Rename(config.Storage.Path+header.Filename, config.Storage.Path+md5sum)
 	}
 	log.Info("File received: " + header.Filename + "(" + md5sum + ")")
 	return md5sum, sha256sum, owner
