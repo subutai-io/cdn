@@ -3,6 +3,7 @@ package db
 import (
 	"crypto/sha256"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -661,6 +662,18 @@ func OwnerFilesByRepo(owner string, repo string) (list []string) {
 	})
 	log.Debug(fmt.Sprintf("(OwnerFilesByRepo): list of all %+v's files from repo %+v: %+v", owner, repo, list))
 	return
+}
+
+func IsFileExists(filename string) bool {
+	exist := false
+	files, _ := ioutil.ReadDir(config.Storage.Path)
+	for _, file := range files {
+		if file.Name() == filename {
+			exist = true
+			return exist
+		}
+	}
+	return exist
 }
 
 func PrintBucketName(buckets []string) (path string) {
