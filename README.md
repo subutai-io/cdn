@@ -10,3 +10,4 @@ Use vagrant to create a multi-machine development and testing environment in an 
 > vagrant ssh master
 > ping cdn1.local
 > ping cdn2.local
+> ping cdn3.local

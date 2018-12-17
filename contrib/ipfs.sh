@@ -1,0 +1,11 @@
+#!/bin/bash
+
+ipfs pin add  
+/ipfs/QmepSBbWspyPkiQFMqkrqKeZpFr913VLrASnVqCGU1gW4c #virtualbox
+/ipfs/Qme9M21vV6q6GcXTiwWdW2dTFHMxRtsyco5EzJQw3QcNpC #libvirt
+/ipfs/QmRQe2U3mzCUJLfg233mJRYDsYyYdJaA9b1wS5vbSXupur #hyperv
+/ipfs/QmeKcFb8Bsg1mfn7aWuykduX75JBfBvZJifxbwsr9eGg7h #parallels
+/ipfs/QmetLuhCj5FrF5Xcu2d5FGyxsu4GWtsjGjFSi3FXtR73mY #vmware 
+/ipfs/QmeZ916vgARQkTWup4whQnsoMGc74MeB89mghUzcPLhwGM #management
+/ipfs/QmS3apSdNsCkmeWmvDfMNoyQErKNZCUjDBUWFoersC75Qg #generic-ansible
+/ipfs/QmZqg836oPxRKaK29q4ZHENWi8TzttYEeWX8qMAvxCH5jk #debian-stretch
